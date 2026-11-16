@@ -61,3 +61,9 @@
 - 核对 Google 官方 `googlecolab/colab-vscode` commit `d238503acf565e3ee5edf71df4263cbd8af01fa9` 的 `src/colab/commands/register.ts`：扩展命令插入 `from google.colab import drive` 和 `drive.mount('/content/drive')`。据此六本 notebook 直接放入同一挂载单元，位于配置之后、clone/解压/路径初始化之前。
 - 在 Colab 中默认启用挂载，本地和 AutoDL 默认跳过；保留首次 Google 授权交互、未挂载时的失败检查，不捕获并吞掉授权错误。浏览器专用旧开关改为通用 `MOUNT_DRIVE`。保留用户已设置的依赖安装、G0、恢复和备份控制；被改写代码单元的旧输出清除，原文件在 `runs/notebook_mount_20261116/before/` 留存。
 - 六本 notebook 的结构/语法/挂载顺序检查以及调用、缺少挂载、授权失败的离线 fixture 检查通过；`tests/test_workspace.py` 为 9 passed in 4.15s。归档见 `evidence/notebook_mount_20261116/`。实际 Google 授权、Drive 挂载和 GPU 实验没有在本机执行；本轮不更新任何科学门槛或真实实验结论。
+
+## 2026-11-16 — 读取用户首轮 Colab 执行记录
+
+- 用户报告 00 到 01 三本 notebook 执行成功；检查实际保存的输出，确认显示 Drive 已挂载、runs 已备份、G0 PASS；01 的执行开关仍为 False，preflight BLOCKED、真实模型 NOT_RUN、G1 INSUFFICIENT_EVIDENCE。正常结束的 notebook 不等于真实 G1 通过。
+- 环境记录为 L4 / Python 3.13.16 / Torch 2.14.1+cu130 / Transformers 5.22.1；FHT 缺失、模型与数据 revisions 未准备。适配器要求 Transformers 4.44.2；PyPI 上固定 tokenizers 0.19.1 提供 cp312 wheel，未列出 cp313 wheel。查阅 Colab 官方 runtime FAQ，2026.07 提供 Python 3.12.13，可作为下一步依赖安装的候选环境，GPU/完整依赖仍需实测。
+- 三本用户执行 notebook 与观察摘要保存在 `evidence/colab_first_session_20261116/`，保持原始输出和哈希，不修改其 source 或执行结果；未从 stdout 生成 G1 通过证据。下一步先备份当前 runs，再准备兼容环境、固定 SpinQuant/FHT 和真实数据。

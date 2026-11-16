@@ -1,0 +1,88 @@
+{
+  "evidence_kind": "USER_SUPPLIED_NOTEBOOK_EXECUTION_LOGS",
+  "source_type": "not_run",
+  "scope": "Archive of the user Colab session, not new G1 evidence or an independent remote rerun",
+  "observed": {
+    "drive_mount": "Mounted at /content/drive",
+    "runs_backup": "BACKED_UP",
+    "G0_stdout": "PASS",
+    "G1_preflight": "BLOCKED",
+    "real_model_execution": "NOT_RUN",
+    "G1_stdout": "INSUFFICIENT_EVIDENCE"
+  },
+  "preflight": {
+    "status": "BLOCKED",
+    "missing": [
+      "Missing immutable model_revision; run scripts/prepare_experiment.py",
+      "Missing immutable tokenizer_revision; run scripts/prepare_experiment.py",
+      "Missing immutable dataset_revision; run scripts/prepare_experiment.py",
+      "Pinned model shard size/SHA-256 metadata missing",
+      "Missing real fit/dev token manifest for seed 11",
+      "Missing real fit/dev token manifest for seed 23",
+      "Record an explicit actual model dtype; no silent fallback",
+      "Audited SpinQuant overlay missing"
+    ],
+    "environment": {
+      "schema_version": "1.0",
+      "created_at_utc": "2026-11-16T08:02:44.451384+00:00",
+      "python": "3.13.16",
+      "executable": "/usr/bin/python3",
+      "platform": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "machine": "x86_64",
+      "packages": {
+        "numpy": "2.4.6",
+        "scipy": "1.16.3",
+        "torch": "2.14.1+cu130",
+        "transformers": "5.22.1",
+        "datasets": "4.8.5",
+        "accelerate": "1.15.0",
+        "safetensors": "0.8.0",
+        "nbformat": "5.11.1",
+        "nbclient": "0.10.4",
+        "fast-hadamard-transform": null,
+        "flash-attn": null,
+        "triton": "3.8.0",
+        "lm_eval": null,
+        "tokenizers": "0.23.3",
+        "huggingface-hub": "1.33.0",
+        "pyarrow": "23.0.1",
+        "psutil": "5.9.5"
+      },
+      "cuda": {
+        "available": true,
+        "torch_cuda_build": "13.0",
+        "status": "DEVICE_DETECTED",
+        "devices": [
+          {
+            "index": 0,
+            "name": "NVIDIA L4",
+            "total_gib": 22.0343017578125,
+            "compute_capability": [
+              8,
+              9
+            ]
+          }
+        ],
+        "bf16_supported": true,
+        "nvidia_smi": "NVIDIA L4, 580.82.07, 23034 MiB, 8.9"
+      },
+      "compatibility_claim": "CPU tooling only; GPU kernels require target-device tests"
+    },
+    "stage": "G1",
+    "scope": "Execution prerequisites only; no new scientific evidence"
+  },
+  "files": [
+    {
+      "path": "00_Colab_GitHub_Workspace.ipynb",
+      "sha256": "04d66dfebe20e017b347bed2f77ca90a91a60b528883bd43c904ca0c0dcf0e71"
+    },
+    {
+      "path": "00_Colab_Preflight_and_Math.ipynb",
+      "sha256": "1af31fef8cab80ede07f7ba18a04007d2c8472f54c4c6763cbc63cbb8cccefe3"
+    },
+    {
+      "path": "01_Colab_Real_Layer_Pilot.ipynb",
+      "sha256": "3fa0b35734f30e7f2453440141b85e04246b8171038fcb0e39840d11ded8e791"
+    }
+  ]
+}

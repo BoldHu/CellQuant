@@ -41,3 +41,9 @@ G0 来自实测合成数学案例，为 PASS。G1–G4 没有完整真实证据�
 首次云端反馈：用户提供的 notebook 已执行 `/content/CellQuant` 初始化，在 `/content/drive/MyDrive` 不可用处停止；这不代表 `CellQuant` 项目文件夹必须预先存在。已补充 VS Code 先运行末尾挂载单元并授权的引导和错误提示，保留挂载检查与自动创建项目目录的逻辑。相关本地测试 9 项通过，记录在 `evidence/workspace_first_run_20261116/`；完整 Drive 挂载、持久化与 GPU 实验仍待用户会话验证。
 
 按用户后续要求，六本源 notebook 已直接包含前置的“挂载 Google Drive”单元，统一使用 `drive.mount("/content/drive")`。Colab 默认执行，本地/AutoDL 默认跳过；旧的 `MOUNT_DRIVE_IN_BROWSER` 改为通用 `MOUNT_DRIVE`，保留其余用户运行配置。六本 notebook 的 schema、Python 语法、单元顺序、挂载调用及失败传播 fixture 检查通过，9 项相关测试通过；真实授权/Drive 挂载仍为 NOT_RUN。记录见 `evidence/notebook_mount_20261116/`。
+
+## 用户首轮 Colab 会话反馈（2026-11-16）
+
+已读取用户保存的三本 00–01 notebook 输出并逐字节归档到 `evidence/colab_first_session_20261116/`。记录显示 Drive 已挂载、runs 快照 BACKED_UP、G0 输出 PASS；01 仅执行预检查，状态为 BLOCKED，`RUN_REAL_MODEL=False`，真实模型 NOT_RUN，G1 为 INSUFFICIENT_EVIDENCE。这里是用户会话输出归档，未在本机独立访问远程文件重算 gate。
+
+该会话为 NVIDIA L4（约 22.03GiB）、Python 3.13.16、Torch 2.14.1+cu130、Transformers 5.22.1，FHT 未安装。尚缺固定模型/tokenizer/dataset revisions、真实 fit/dev tokens、明确 dtype 和 SpinQuant overlay。下一步先准备与固定 Transformers 4.44.2/tokenizers 0.19.1 匹配的运行环境，再安装/实测 FHT、准备真实 G1；不能仅打开执行开关便进入 G1 或 AutoDL canary。

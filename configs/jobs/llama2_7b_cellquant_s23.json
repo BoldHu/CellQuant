@@ -1,0 +1,126 @@
+{
+  "data": {
+    "calibration_dataset": "Salesforce/wikitext",
+    "calibration_samples": 128,
+    "calibration_split": "train",
+    "dataset_config": "wikitext-2-raw-v1",
+    "final_tests_locked": true,
+    "sequence_length": 2048,
+    "token_manifest_path": null,
+    "validation_source": "disjoint_train_documents"
+  },
+  "dataset_revision": null,
+  "evaluation": {
+    "bootstrap_repetitions": 10000,
+    "c4": {
+      "config": "en",
+      "data_files": {
+        "validation": "en/c4-validation.00000-of-00008.json.gz"
+      },
+      "dataset_id": "allenai/c4",
+      "max_blocks": 256,
+      "max_documents": 10000,
+      "revision": null,
+      "split": "validation"
+    },
+    "context_length": 2048,
+    "formal_test_access": false,
+    "harness_path": "third_party/lm-evaluation-harness",
+    "note": "Resolve exact dataset/task revisions and metric keys before formal runs; no test-based tuning.",
+    "ppl_datasets": [
+      "wikitext2",
+      "c4_fixed_subset"
+    ],
+    "save_per_document_nll": true,
+    "save_per_question_predictions": true,
+    "task_dataset_revisions": {
+      "arc_challenge": null,
+      "arc_easy": null,
+      "hellaswag": null,
+      "lambada_openai": null,
+      "piqa": null,
+      "winogrande": null
+    },
+    "task_metric_keys": {
+      "arc_challenge": "acc_norm,none",
+      "arc_easy": "acc_norm,none",
+      "hellaswag": "acc_norm,none",
+      "lambada_openai": "acc,none",
+      "piqa": "acc_norm,none",
+      "winogrande": "acc,none"
+    },
+    "zeroshot_tasks": [
+      "arc_challenge",
+      "arc_easy",
+      "hellaswag",
+      "lambada_openai",
+      "piqa",
+      "winogrande"
+    ]
+  },
+  "execution_provenance_path": "runs/provenance/execution_provenance.json",
+  "experiment_status": "NOT_RUN",
+  "harness_commit": "d6de81643928d653435c431bae19945d41d32520",
+  "job_id": "llama2_7b_cellquant_s23",
+  "method": "cellquant",
+  "model_id": "meta-llama/Llama-2-7b-hf",
+  "model_revision": null,
+  "protocol_status": "UNFROZEN",
+  "quantization": {
+    "a_bits": 4,
+    "a_clip_ratio": 1.0,
+    "a_group_size": -1,
+    "calibration_rounder": "rtn_absmax_no_clip",
+    "final_weight_mse_clip": true,
+    "final_weight_rounder": "gptq",
+    "gptq_act_order": false,
+    "gptq_percdamp": 0.01,
+    "k_bits": 4,
+    "k_clip_ratio": 1.0,
+    "k_group_size": 128,
+    "note": "Stock SpinQuant has location-specific head_dim groups; adapter must record effective groups per module.",
+    "symmetric_a": true,
+    "symmetric_k": true,
+    "symmetric_v": true,
+    "symmetric_w": true,
+    "v_bits": 4,
+    "v_clip_ratio": 1.0,
+    "v_group_size": 128,
+    "w_bits": 4,
+    "w_group_size": -1
+  },
+  "required_gate": "G3",
+  "result_path": "runs/llama2_7b_cellquant_s23/result.json",
+  "result_source_type": "real_model",
+  "rotation": {
+    "fixed_r2_seed": 20261115,
+    "learn_base_weights": false,
+    "online_r1_added": false,
+    "q_checkpoint_orientation": "R1=Q.T",
+    "scope": "global_r1"
+  },
+  "runtime": {
+    "cpu_offload": true,
+    "dtype": "auto_detect_and_record",
+    "fht_backend": "extension",
+    "local_cache_only": false,
+    "max_memory_fraction": 0.85,
+    "resume_requires_full_fingerprint": true
+  },
+  "schema_version": "1.0",
+  "seed": 23,
+  "solver": {
+    "event_limit_per_pair": 200000,
+    "pair_budget": 128,
+    "schedule_seed": 23,
+    "seconds_per_pair": 300,
+    "selection_split": "validation_only",
+    "theta_limit": 0.7853981633974483,
+    "wall_seconds": 3600
+  },
+  "spinquant_overlay": "runs/spinquant_overlay_v2",
+  "spinquant_precision_policy": "validated_fp32_port_or_explicit_stock_fp64",
+  "stage": "full",
+  "tokenizer_revision": null,
+  "upstream_commit": "8f47aa3f00e8662caf1a484153920a07e5281c3a"
+}

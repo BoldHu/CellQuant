@@ -1,0 +1,11 @@
+--- a/utils/utils.py
++++ b/utils/utils.py
+@@ -15,7 +15,7 @@
+ 
+ import numpy as np
+ import torch
+-from fast_hadamard_transform import hadamard_transform
++from cellquant.hadamard import hadamard_transform
+ from torch.distributed.fsdp import (
+     FullStateDictConfig,
+ )

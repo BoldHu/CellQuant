@@ -1,0 +1,5 @@
+# CPU mathematics / protocol tools. Do not replace the provider's torch wheel.
+numpy>=1.24
+scipy>=1.10
+PyYAML>=6
+psutil>=5.9

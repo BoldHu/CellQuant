@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "source_type": "not_run",
+  "models": {
+    "meta-llama/Llama-2-7b-hf": {
+      "model_revision": null,
+      "tokenizer_revision": null
+    }
+  },
+  "data_manifest_path": null,
+  "data_manifest_sha256": null,
+  "protocol_manifest_path": null,
+  "protocol_sha256": null,
+  "dtype": null,
+  "note": "Template only. Never replace null with invented hashes. Resolve real revisions and compute hashes from real files."
+}

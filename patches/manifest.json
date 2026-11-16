@@ -1,0 +1,20 @@
+{
+  "patches": [
+    {
+      "path": "utils__fuse_norm_utils.py.patch",
+      "sha256": "476aa1186e77273a6ccb8e43c25c03e3602670833e89417fbe924f0b8b037194",
+      "upstream_file": "utils/fuse_norm_utils.py"
+    },
+    {
+      "path": "utils__utils.py.patch",
+      "sha256": "f356c6d96e7dbeb0bde856b37b4d90fd6c13d11b0acb3f67fbb043890394525f",
+      "upstream_file": "utils/utils.py"
+    },
+    {
+      "path": "eval_utils__gptq_utils.py.patch",
+      "sha256": "560c7cad19eaebc8873511fefe72ea8720cfb315a19beb705864af84799551d4",
+      "upstream_file": "eval_utils/gptq_utils.py"
+    }
+  ],
+  "upstream_commit": "8f47aa3f00e8662caf1a484153920a07e5281c3a"
+}

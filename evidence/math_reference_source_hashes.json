@@ -1,0 +1,5 @@
+{
+  "src/cellquant/math_reference.py": "4d05978f6a3e3a27858e9863609bf1063e1ef3fc89a28c9f2397b7a611d94557",
+  "tests/test_math_reference.py": "3ae9e2bf42babc0c52e306e9f549760ee927ea56581af605b08c042219f27d6f",
+  "scripts/run_math_checks.py": "afd504b72757cfe68e47988ecb89b9761d79ae6a6a21086e171394793f0da366"
+}

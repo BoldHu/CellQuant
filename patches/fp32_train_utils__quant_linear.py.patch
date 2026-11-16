@@ -1,0 +1,32 @@
+--- a/train_utils/quant_linear.py
++++ b/train_utils/quant_linear.py
+@@ -22,11 +22,11 @@
+         if R1 is not None:
+             dtype = self.weight.dtype
+             if not transpose:
+-                weight = (self.weight.to(torch.float64) @ R1.to(torch.float64)).to(
++                weight = (self.weight.to(torch.float32) @ R1.to(torch.float32)).to(
+                     dtype
+                 )
+             else:
+-                weight = (R1.T.to(torch.float64) @ self.weight.to(torch.float64)).to(
++                weight = (R1.T.to(torch.float32) @ self.weight.to(torch.float32)).to(
+                     dtype
+                 )
+             if R2 is not None:
+@@ -37,13 +37,13 @@
+                     W_ = weight
+                     init_shape = W_.shape
+                     temp = W_.reshape(-1, init_shape[-1] // had_dim, had_dim)
+-                    temp = temp.to(torch.float64) @ R2.to(torch.float64)
++                    temp = temp.to(torch.float32) @ R2.to(torch.float32)
+                     weight = temp.reshape(init_shape)
+                 else:
+                     W_ = weight.t()
+                     transposed_shape = W_.shape
+                     temp = W_.reshape(-1, transposed_shape[-1] // had_dim, had_dim)
+-                    temp = temp.to(torch.float64) @ R2.to(torch.float64)
++                    temp = temp.to(torch.float32) @ R2.to(torch.float32)
+                     weight = temp.reshape(transposed_shape).t()
+             weight = weight.to(dtype)
+         else:

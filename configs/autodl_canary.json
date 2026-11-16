@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "stage": "G2",
+  "profile": "autodl_canary",
+  "required_gate": "G1",
+  "gpu_hour_budget": 24,
+  "execution_provenance_path": "runs/provenance/execution_provenance.json",
+  "gate_report_path": "runs/gates/G1.json",
+  "gate_evidence_path": "runs/gates/G1_evidence.json",
+  "backend_module": "cellquant.experiment",
+  "run_default": false,
+  "jobs": [
+    {
+      "job_id": "canary_llama2_7b_hadamard_shared_s11",
+      "config_path": "configs/jobs/canary_llama2_7b_hadamard_shared_s11.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "hadamard_shared",
+      "seed": 11
+    },
+    {
+      "job_id": "canary_llama2_7b_spinquant_full_s11",
+      "config_path": "configs/jobs/canary_llama2_7b_spinquant_full_s11.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "spinquant_full",
+      "seed": 11
+    },
+    {
+      "job_id": "canary_llama2_7b_cellquant_s11",
+      "config_path": "configs/jobs/canary_llama2_7b_cellquant_s11.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "cellquant",
+      "seed": 11
+    },
+    {
+      "job_id": "canary_llama2_7b_hadamard_shared_s23",
+      "config_path": "configs/jobs/canary_llama2_7b_hadamard_shared_s23.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "hadamard_shared",
+      "seed": 23
+    },
+    {
+      "job_id": "canary_llama2_7b_spinquant_full_s23",
+      "config_path": "configs/jobs/canary_llama2_7b_spinquant_full_s23.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "spinquant_full",
+      "seed": 23
+    },
+    {
+      "job_id": "canary_llama2_7b_cellquant_s23",
+      "config_path": "configs/jobs/canary_llama2_7b_cellquant_s23.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "cellquant",
+      "seed": 23
+    }
+  ],
+  "hardware_request": "RTX PRO 6000 Blackwell 96GB, verify actual edition/MIG/visible capacity",
+  "note": "24 GPUh is a provisional total canary budget, not measured runtime. Time one step/GPTQ layer first. Full SpinQuant comparison cannot be substituted by a paper number."
+}

@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "seed": 20261115,
+  "evidence_kind": "EXECUTED_CPU_SYNTHETIC_REFERENCE",
+  "llm_experiment": false,
+  "source_type": "synthetic_math",
+  "scope": "input_side_single_pair",
+  "global_R1_model_implemented": false,
+  "W_shape": [
+    8,
+    16
+  ],
+  "X_shape": [
+    16,
+    6
+  ],
+  "pair": [
+    5,
+    13
+  ],
+  "quantizer": {
+    "bits": 4,
+    "codes": [
+      -8,
+      7
+    ],
+    "group_size": 16,
+    "symmetric": true,
+    "clip_ratio": 1.0,
+    "rounding": "ties_to_even"
+  },
+  "checks": {
+    "orthogonality": true,
+    "product_equivalence": true,
+    "screening_event_equivalence": true,
+    "cell_partition": true,
+    "analytic_product": true,
+    "analytic_loss": true,
+    "analytic_budgets": true,
+    "actual_acceptance": true,
+    "independent_requantization": true,
+    "rounding_and_zero": true
+  },
+  "metrics": {
+    "fp64_orthogonality_fro": 2.220481980834306e-16,
+    "fp64_product_relative_l2": 1.483649826614371e-16,
+    "screened_vs_full_events_equal": true,
+    "sample_detected_unstable_cells": 0,
+    "max_product_degree2_relative_l2": 2.8213027869824255e-16,
+    "max_loss_degree4_absolute_error": 9.26342336171615e-16,
+    "max_budget_degree2_absolute_error": 8.881784197001252e-16,
+    "actual_loss_nonincreasing": true,
+    "actual_budget_w_feasible": true,
+    "actual_budget_a_feasible": true,
+    "independent_requantized_loss_absolute_error": 0.0,
+    "ties_to_even_correct": true,
+    "all_zero_groups_finite_and_exact": true
+  },
+  "full_event_statistics": {
+    "screened": false,
+    "affected_groups": 14,
+    "stable_affected_groups": 10,
+    "dynamic_affected_groups": 4,
+    "owner_cells": 21,
+    "member_owner_interval_visits": 336
+  },
+  "screened_event_statistics": {
+    "screened": true,
+    "affected_groups": 14,
+    "stable_affected_groups": 10,
+    "dynamic_affected_groups": 4,
+    "owner_cells": 21,
+    "member_owner_interval_visits": 196
+  },
+  "solution": {
+    "baseline": {
+      "theta": 0.0,
+      "loss": 0.013931448098468541,
+      "budget_w": 2.2779231164731484,
+      "budget_a": 2.1091853663237217
+    },
+    "best": {
+      "theta": 0.6554277735267363,
+      "loss": 0.006323497573221167,
+      "budget_w": 2.029558510272713,
+      "budget_a": 1.8718220247766884
+    },
+    "accepted": true,
+    "event_count": 189,
+    "open_cell_count": 188,
+    "candidate_count": 921,
+    "feasible_candidate_count": 875,
+    "statistics": {
+      "screened": true,
+      "affected_groups": 14,
+      "stable_affected_groups": 10,
+      "dynamic_affected_groups": 4,
+      "owner_cells": 21,
+      "member_owner_interval_visits": 196
+    },
+    "seconds": 0.30671069999971223,
+    "interval_certified": false,
+    "global_Od_optimum": false,
+    "budget_tolerance": "1e-10 * max(1, initial_budget)"
+  },
+  "seconds_total": 0.5066022689998135,
+  "runtime": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "device": "CPU"
+  },
+  "implemented_scope": [
+    "complete input-axis groups",
+    "symmetric dynamic AbsMax RTN",
+    "one bilateral Givens coordinate",
+    "numerical full event partition",
+    "analytic degree-2 product / degree-4 loss",
+    "safe scale screening",
+    "numerical stationary/budget-root candidates",
+    "actual boundary/near-boundary evaluation",
+    "actual loss/budget acceptance"
+  ],
+  "limits": [
+    "NOT an LLM result or migration gate by itself",
+    "NOT interval-arithmetic certified",
+    "NOT a global optimum over O(d)",
+    "NOT a GPU/incremental production solver",
+    "reference event search restricted to d<=256 and m+T<=256; do not truncate real groups",
+    "output-side QW objective NOT_IMPLEMENTED",
+    "clipping/asymmetric/GPTQ objectives NOT_IMPLEMENTED",
+    "frozen-panel guarantees do not imply held-out or PPL improvement",
+    "polynomial root filtering and event deduplication have float64 tolerances"
+  ]
+}

@@ -1,0 +1,249 @@
+{
+  "schema_version": "1.0",
+  "stage": "G3",
+  "profile": "autodl_formal",
+  "required_gate": "G3",
+  "gpu_hour_budget": 240,
+  "budget_status": "PROVISIONAL_REQUIRES_MEASURED_ESTIMATE",
+  "execution_provenance_path": "runs/provenance/execution_provenance.json",
+  "gate_report_path": "runs/gates/G3.json",
+  "gate_evidence_path": "runs/gates/G3_evidence.json",
+  "backend_module": "cellquant.experiment",
+  "run_default": false,
+  "jobs": [
+    {
+      "job_id": "llama2_7b_fp_reference_s11",
+      "config_path": "configs/jobs/llama2_7b_fp_reference_s11.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "fp_reference",
+      "seed": 11
+    },
+    {
+      "job_id": "llama2_7b_hadamard_shared_s11",
+      "config_path": "configs/jobs/llama2_7b_hadamard_shared_s11.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "hadamard_shared",
+      "seed": 11
+    },
+    {
+      "job_id": "llama2_7b_spinquant_full_s11",
+      "config_path": "configs/jobs/llama2_7b_spinquant_full_s11.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "spinquant_full",
+      "seed": 11
+    },
+    {
+      "job_id": "llama2_7b_givens_ste_matched_s11",
+      "config_path": "configs/jobs/llama2_7b_givens_ste_matched_s11.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "givens_ste_matched",
+      "seed": 11
+    },
+    {
+      "job_id": "llama2_7b_angle_grid_matched_s11",
+      "config_path": "configs/jobs/llama2_7b_angle_grid_matched_s11.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "angle_grid_matched",
+      "seed": 11
+    },
+    {
+      "job_id": "llama2_7b_cellquant_s11",
+      "config_path": "configs/jobs/llama2_7b_cellquant_s11.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "cellquant",
+      "seed": 11
+    },
+    {
+      "job_id": "llama2_7b_hadamard_shared_s23",
+      "config_path": "configs/jobs/llama2_7b_hadamard_shared_s23.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "hadamard_shared",
+      "seed": 23
+    },
+    {
+      "job_id": "llama2_7b_spinquant_full_s23",
+      "config_path": "configs/jobs/llama2_7b_spinquant_full_s23.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "spinquant_full",
+      "seed": 23
+    },
+    {
+      "job_id": "llama2_7b_givens_ste_matched_s23",
+      "config_path": "configs/jobs/llama2_7b_givens_ste_matched_s23.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "givens_ste_matched",
+      "seed": 23
+    },
+    {
+      "job_id": "llama2_7b_angle_grid_matched_s23",
+      "config_path": "configs/jobs/llama2_7b_angle_grid_matched_s23.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "angle_grid_matched",
+      "seed": 23
+    },
+    {
+      "job_id": "llama2_7b_cellquant_s23",
+      "config_path": "configs/jobs/llama2_7b_cellquant_s23.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "cellquant",
+      "seed": 23
+    },
+    {
+      "job_id": "llama2_7b_hadamard_shared_s37",
+      "config_path": "configs/jobs/llama2_7b_hadamard_shared_s37.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "hadamard_shared",
+      "seed": 37
+    },
+    {
+      "job_id": "llama2_7b_spinquant_full_s37",
+      "config_path": "configs/jobs/llama2_7b_spinquant_full_s37.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "spinquant_full",
+      "seed": 37
+    },
+    {
+      "job_id": "llama2_7b_givens_ste_matched_s37",
+      "config_path": "configs/jobs/llama2_7b_givens_ste_matched_s37.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "givens_ste_matched",
+      "seed": 37
+    },
+    {
+      "job_id": "llama2_7b_angle_grid_matched_s37",
+      "config_path": "configs/jobs/llama2_7b_angle_grid_matched_s37.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "angle_grid_matched",
+      "seed": 37
+    },
+    {
+      "job_id": "llama2_7b_cellquant_s37",
+      "config_path": "configs/jobs/llama2_7b_cellquant_s37.json",
+      "model": "meta-llama/Llama-2-7b-hf",
+      "method": "cellquant",
+      "seed": 37
+    },
+    {
+      "job_id": "llama3_8b_fp_reference_s11",
+      "config_path": "configs/jobs/llama3_8b_fp_reference_s11.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "fp_reference",
+      "seed": 11
+    },
+    {
+      "job_id": "llama3_8b_hadamard_shared_s11",
+      "config_path": "configs/jobs/llama3_8b_hadamard_shared_s11.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "hadamard_shared",
+      "seed": 11
+    },
+    {
+      "job_id": "llama3_8b_spinquant_full_s11",
+      "config_path": "configs/jobs/llama3_8b_spinquant_full_s11.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "spinquant_full",
+      "seed": 11
+    },
+    {
+      "job_id": "llama3_8b_givens_ste_matched_s11",
+      "config_path": "configs/jobs/llama3_8b_givens_ste_matched_s11.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "givens_ste_matched",
+      "seed": 11
+    },
+    {
+      "job_id": "llama3_8b_angle_grid_matched_s11",
+      "config_path": "configs/jobs/llama3_8b_angle_grid_matched_s11.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "angle_grid_matched",
+      "seed": 11
+    },
+    {
+      "job_id": "llama3_8b_cellquant_s11",
+      "config_path": "configs/jobs/llama3_8b_cellquant_s11.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "cellquant",
+      "seed": 11
+    },
+    {
+      "job_id": "llama3_8b_hadamard_shared_s23",
+      "config_path": "configs/jobs/llama3_8b_hadamard_shared_s23.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "hadamard_shared",
+      "seed": 23
+    },
+    {
+      "job_id": "llama3_8b_spinquant_full_s23",
+      "config_path": "configs/jobs/llama3_8b_spinquant_full_s23.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "spinquant_full",
+      "seed": 23
+    },
+    {
+      "job_id": "llama3_8b_givens_ste_matched_s23",
+      "config_path": "configs/jobs/llama3_8b_givens_ste_matched_s23.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "givens_ste_matched",
+      "seed": 23
+    },
+    {
+      "job_id": "llama3_8b_angle_grid_matched_s23",
+      "config_path": "configs/jobs/llama3_8b_angle_grid_matched_s23.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "angle_grid_matched",
+      "seed": 23
+    },
+    {
+      "job_id": "llama3_8b_cellquant_s23",
+      "config_path": "configs/jobs/llama3_8b_cellquant_s23.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "cellquant",
+      "seed": 23
+    },
+    {
+      "job_id": "llama3_8b_hadamard_shared_s37",
+      "config_path": "configs/jobs/llama3_8b_hadamard_shared_s37.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "hadamard_shared",
+      "seed": 37
+    },
+    {
+      "job_id": "llama3_8b_spinquant_full_s37",
+      "config_path": "configs/jobs/llama3_8b_spinquant_full_s37.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "spinquant_full",
+      "seed": 37
+    },
+    {
+      "job_id": "llama3_8b_givens_ste_matched_s37",
+      "config_path": "configs/jobs/llama3_8b_givens_ste_matched_s37.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "givens_ste_matched",
+      "seed": 37
+    },
+    {
+      "job_id": "llama3_8b_angle_grid_matched_s37",
+      "config_path": "configs/jobs/llama3_8b_angle_grid_matched_s37.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "angle_grid_matched",
+      "seed": 37
+    },
+    {
+      "job_id": "llama3_8b_cellquant_s37",
+      "config_path": "configs/jobs/llama3_8b_cellquant_s37.json",
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "method": "cellquant",
+      "seed": 37
+    }
+  ],
+  "additional_2026_baseline": {
+    "status": "MUST_SELECT_AND_REPRODUCE_BEFORE_G4",
+    "candidates": [
+      "ThinQuant",
+      "SpectrumQuant",
+      "ConQuR",
+      "SignRot_separate_asym_protocol_if_needed"
+    ]
+  },
+  "note": "32-job core (2 FP references + 30 quantized runs) draft only, not permission to run. Revisions/metrics/protocol/budget must be frozen, G3 pass, backend implemented. Add 2026 matched baseline and ablations after compatible audit."
+}

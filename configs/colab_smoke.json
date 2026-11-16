@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "profile": "cpu_math_smoke",
+  "seed": 20261115,
+  "run_real_model": false,
+  "run_full": false,
+  "formal_gate_pass_claim": false,
+  "output_dir": "runs/00_preflight_math"
+}

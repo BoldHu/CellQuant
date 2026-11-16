@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "gate_id": "G4",
+  "source_type": "not_run",
+  "metrics": {},
+  "provenance": {},
+  "artifact_refs": [],
+  "note": "尚未运行。请由对应阶段的真实测量pipeline生成新证据；不要将占位值或测试fixture填成研究结果。"
+}

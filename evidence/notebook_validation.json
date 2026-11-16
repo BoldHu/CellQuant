@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-11-15T09:43:12.584120+00:00",
+  "status": "PASS",
+  "scope": "All default CPU code paths only. Real Hugging Face models, Colab GPUs, AutoDL GPUs, SpinQuant full backend and formal G0-G4 research gates were not validated.",
+  "engine": "IPython inprocess, not Jupyter nbclient",
+  "notebooks": [
+    {
+      "notebook": "notebooks/00_Colab_Preflight_and_Math.ipynb",
+      "source_sha256": "47a750fccde7e739820ea7d09f5ed1f4b119cc92c17df98d5d9ff3b683f90cf1",
+      "code_cells": 6,
+      "executed_cells": 6,
+      "status": "PASS",
+      "engine": "inprocess",
+      "executed_notebook": "evidence/executed_notebooks/00_Colab_Preflight_and_Math.ipynb",
+      "executed_sha256": "d1e821ca345d35091deda23cbd47a12929af9659eac7429489af28e7e71da3c2"
+    },
+    {
+      "notebook": "notebooks/01_Colab_Real_Layer_Pilot.ipynb",
+      "source_sha256": "debad88027f02a1a5d24028c1a656503beabe58a93adebe88beb54475f9759c3",
+      "code_cells": 7,
+      "executed_cells": 7,
+      "status": "PASS",
+      "engine": "inprocess",
+      "executed_notebook": "evidence/executed_notebooks/01_Colab_Real_Layer_Pilot.ipynb",
+      "executed_sha256": "2cfa2e7673ef31e1307aec42c1752fb2e0a02f4ecb4366c6c4186e3ecc851680"
+    },
+    {
+      "notebook": "notebooks/02_AutoDL_Migration_and_Canary.ipynb",
+      "source_sha256": "0bca7c1bf2a737a0741d8efa0b55363c9a0784e0ee57b829cf42d87d43446157",
+      "code_cells": 7,
+      "executed_cells": 7,
+      "status": "PASS",
+      "engine": "inprocess",
+      "executed_notebook": "evidence/executed_notebooks/02_AutoDL_Migration_and_Canary.ipynb",
+      "executed_sha256": "f77859df91e42ffc2da360f0e4639c778eabe71d58135da9ba1d83de44d3d817"
+    },
+    {
+      "notebook": "notebooks/03_Full_Experiments.ipynb",
+      "source_sha256": "ac7d7e6cb5b507152b4dd502e8c4b5f3fe7c8ea01fa86be0a3434e061c0d49b2",
+      "code_cells": 5,
+      "executed_cells": 5,
+      "status": "PASS",
+      "engine": "inprocess",
+      "executed_notebook": "evidence/executed_notebooks/03_Full_Experiments.ipynb",
+      "executed_sha256": "06358be7ca2a5e50fe1fc861cbfa612dbe6049fb88b8fd9113294687f637101b"
+    },
+    {
+      "notebook": "notebooks/04_Paper_Analysis.ipynb",
+      "source_sha256": "740bf90222c5d5aea65c929360e84922c9b71ba42367fc5ecee83341aff24b47",
+      "code_cells": 7,
+      "executed_cells": 7,
+      "status": "PASS",
+      "engine": "inprocess",
+      "executed_notebook": "evidence/executed_notebooks/04_Paper_Analysis.ipynb",
+      "executed_sha256": "e4adf2b9a41015fdfe652b6bdabbf406a412841be9c0267d38f3b3f29e4bdf62"
+    }
+  ],
+  "total_code_cells": 32
+}

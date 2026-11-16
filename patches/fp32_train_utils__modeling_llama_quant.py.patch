@@ -1,0 +1,20 @@
+--- a/train_utils/modeling_llama_quant.py
++++ b/train_utils/modeling_llama_quant.py
+@@ -1089,7 +1089,7 @@
+             inputs_embeds = self.embed_tokens(input_ids)
+         if R1 is not None:
+             dtype = inputs_embeds.dtype
+-            inputs_embeds = (inputs_embeds.to(torch.float64) @ R1.to(torch.float64)).to(
++            inputs_embeds = (inputs_embeds.to(torch.float32) @ R1.to(torch.float32)).to(
+                 dtype
+             )
+ 
+@@ -1381,7 +1381,7 @@
+         if self.R1 is not None:
+             dtype = hidden_states.dtype
+             hidden_states = (
+-                hidden_states.to(torch.float64) @ self.R1.weight.T.to(torch.float64)
++                hidden_states.to(torch.float32) @ self.R1.weight.T.to(torch.float32)
+             ).to(dtype)
+ 
+         if self.config.pretraining_tp > 1:

@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "source_type": "not_run",
+  "evidence_kind": "NOT_RUN",
+  "status": "NOT_RUN",
+  "model_id": null,
+  "method": null,
+  "seed": null,
+  "protocol_sha256": null,
+  "metrics": {},
+  "note": "No experiment result in this template."
+}

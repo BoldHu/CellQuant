@@ -10,7 +10,7 @@
 | 筛选与事件增量 | IMPLEMENTED_CPU | scale-stable 输入组筛选、输出完整行 signed hull；按实际事件收费并记录阶段耗时 |
 | CUDA dense GEMM/量化 | IMPLEMENTED / SMALL_CASE_VALIDATED | 本机 CUDA 小共享求解器和 4096 元素量化一致性检查；全 GPU 增量事件 kernel NOT_IMPLEMENTED |
 | Hadamard / angle-grid / Givens STE / fixed-scale | IMPLEMENTED | 相同面板、坐标预算、约束、墙钟上限；小矩阵验证。grid/STE 中途 optimizer 恢复 NOT_IMPLEMENTED |
-| 真实层采集与 Colab G1 | IMPLEMENTED / REAL_7B_NOT_RUN | 逐层 GPU 调度，q/up 可抽输出行、o/down 完整 hidden；小随机模型已检查采集形状 |
+| 真实层采集与 Colab G1 | IMPLEMENTED / COLAB_RUN_STARTED_OUTCOME_UNKNOWN | 用户 11-16 保存的 01 显示 READY、7B 分片加载完成；尚无完整 G1 结果。逐层 GPU 采集、默认 CPU 求解；见下方进度诊断记录 |
 | SpinQuant 固定上游 / overlay / R.bin | IMPLEMENTED | commit 8f47aa3… 已核对、tracked tree clean；禁 embedding centering、保 gamma，导出全部 R2 |
 | FP 旋转 / GPTQ W4A4KV4 | IMPLEMENTED / TINY_CUDA_VALIDATED | MHA/GQA 小模型 FP 相对误差约 1e-7；GPTQ 有限输出、逐层恢复与连续运行参数差 0 |
 | 完整 R1+R2 CE/SGDG baseline | IMPLEMENTED / TINY_CUDA_VALIDATED | 实际两步训练与 Trainer 恢复一致；正式 100 步×8 的完整 CE 训练池尚未运行，distinct blocks 数另报 |
@@ -83,3 +83,13 @@ HF 权限反馈（2026-11-16）：用户附件明确为 Llama-2-7b-hf 的 403/Ga
 workspace 新增默认 False 的 PREPARE_G1_INPUTS 和完整调度单元，串联既有真实数据准备、预检查、权重下载校验与 models/datasets/runs Drive 备份；复用冻结配置，不覆盖失败残留。01 在真实执行时要求准备配置存在，显示实际路径和具体缺项。保留用户已有执行开关；不修改科学门槛或把模型配置文件当权重。
 
 相关测试 **22 passed in 8.93s**，覆盖缺配置禁止启动模型、草案仅供不执行模式、准备/校验失败不备份、执行开关、冻结配置复用与原存储完整性检查。两本 notebook schema/语法及未改动单元保留检查通过。记录与脱敏前版本归档见 `evidence/g1_input_preparation_20261116/`。本机未执行真实 HF 权重下载或 Colab G1；仍须用户在云端显式运行新增准备单元后再启动 01。
+
+## 真实 G1 已启动，补齐运行可观测性（2026-11-16）
+
+最新用户保存的 01 显示实际配置为 `runs/prepared/g1/config.json`、预检查 READY、L4、两个 checkpoint shards 加载完成。用户反馈约 10 分钟没有后续输出、已用系统 RAM 约 28GB、GPU 几乎空闲。无法从这些记录确认仍在计算、死锁或剩余内存是否足够；未读取云端实际 PID、state/result.json，真实 G1 结果保持未知及 INSUFFICIENT_EVIDENCE，不能再把本次尝试描述为尚未启动。
+
+代码核对确认模型先驻留 CPU，随后逐层 GPU 采集；求解默认 CPU，事件/数值根仍为 CPU FP64。旧代码在采集、初始化、求解和 held-out 计算时没有进度输出，state.json 甚至可能一直停在 fusion。新增实际阶段/seed/层/面板/方法/坐标对进度，每 30 秒输出 RSS、CPU 累计时间、剩余 RAM 心跳；心跳不增加算法进度序号，不计为科学成功。01 使用独立日志和 unbuffered 子进程，并加入只读诊断入口。诊断校验命令、工作目录和 PID 创建时间，明确标记 legacy 状态，不加载模型或改变冻结协议。
+
+本地相关回归 **80 passed in 9.09s**，验证五方法进度回调前后 Q/损失一致、完整输出侧采集轴、心跳不伪造进展、I/O 失败传播与陈旧 PID 拒绝；包括既有可执行的小 CUDA 测试，不代表本次 Colab 7B 验证。三个 notebook schema/语法与未改动单元保留检查通过。首轮新增采集测试时发现 Windows 读/替换状态文件的瞬时共享冲突，限定重试后最终套件通过；失败原日志也保留。记录及脱敏前版本见 `evidence/g1_live_progress_20261116/`。
+
+新版日志尚未在用户 L4/预训练 7B 上运行；当前旧进程不会自动获得改动。先在同一服务器独立终端采样，旧作业结束/停止后再同步代码并以新 run 执行 `python -u -m cellquant.experiment --config runs/prepared/g1/config.json`（或 01）。科研门槛 hash 未变，未切换 device/dtype、削减维度或填入实验结果。全 GPU 增量事件 kernel 仍 NOT_IMPLEMENTED。

@@ -21,6 +21,7 @@ from .events import GroupOrbit, ResourceLimit, WorkBudget
 from .math_reference import _trig_roots, _real_to_fourier, _fourier_to_real, trig_value
 from .quantization import QuantSpec, quantize, risk
 from .runtime import atomic_json, config_hash
+from .progress import report
 
 
 @dataclass
@@ -432,7 +433,7 @@ def panel_specs(specs, panel):
     return selected if isinstance(selected,tuple) else (selected,selected)
 
 
-def fit_shared_rotation(panels,q0,quant_specs,schedule,budgets=None,config=None):
+def fit_shared_rotation(panels,q0,quant_specs,schedule,budgets=None,config=None,*,progress=None):
     start=time.perf_counter()
     config=config or SolverConfig()
     panels=list(panels);schedule=[tuple(map(int,p)) for p in schedule]
@@ -440,9 +441,13 @@ def fit_shared_rotation(panels,q0,quant_specs,schedule,budgets=None,config=None)
         raise ValueError("Nonempty panels with unique IDs required")
     q=np.asarray(q0,dtype=np.float64).copy();d=panels[0].hidden_size
     if q.shape!=(d,d) or any(p.hidden_size!=d for p in panels):raise ValueError("All panels must share one complete hidden dimension")
+    report(progress,'solve.orthogonality',device='cpu')
     orth=float(np.linalg.norm(q.T@q-np.eye(d))/math.sqrt(d))
     if not np.isfinite(q).all() or orth>1e-6:raise ValueError("q0 is not numerically orthogonal")
-    states=[PanelState(p,q,*panel_specs(quant_specs,p),device=config.device,fixed=config.fixed_scales) for p in panels]
+    states=[]
+    for p in panels:
+        report(progress,'solve.initialize_panel',panel_id=p.panel_id,device=config.device)
+        states.append(PanelState(p,q,*panel_specs(quant_specs,p),device=config.device,fixed=config.fixed_scales))
     initial=aggregate(states);limits=budgets or {k:initial[k] for k in ("budget_w","budget_a")}
     signature=config_hash({"panels":panel_fingerprint(panels),"q0":hashlib.sha256(q.tobytes()).hexdigest(),
                            "schedule":schedule,"specs":{s.panel.panel_id:[asdict(s.wspec),asdict(s.aspec)] for s in states},"limits":limits,
@@ -473,6 +478,7 @@ def fit_shared_rotation(panels,q0,quant_specs,schedule,budgets=None,config=None)
         for index in range(offset,len(schedule)):
             remaining=config.wall_seconds-spent_before-(time.perf_counter()-start)
             if remaining<=0:raise ResourceLimit("Total solver wall-clock budget exhausted")
+            report(progress,'solve.pair',pair_index=index,pair_count=len(schedule),device=config.device)
             cfg=SolverConfig(**{**asdict(config),"seconds_per_pair":min(config.seconds_per_pair,remaining)})
             result=solve_pair(states,schedule[index],limits,cfg)
             result.update(pair=list(schedule[index]),pair_index=index)

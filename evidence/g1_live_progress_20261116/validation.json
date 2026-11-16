@@ -1,0 +1,47 @@
+{
+  "source_type": "unit_test_fixture",
+  "notebooks": [
+    {
+      "notebook": "00_Colab_GitHub_Workspace.ipynb",
+      "schema_and_syntax": "PASS",
+      "unchanged_existing_cells": 16
+    },
+    {
+      "notebook": "00_Colab_Preflight_and_Math.ipynb",
+      "schema_and_syntax": "PASS",
+      "unchanged_existing_cells": 11
+    },
+    {
+      "notebook": "01_Colab_Real_Layer_Pilot.ipynb",
+      "schema_and_syntax": "PASS",
+      "unchanged_existing_cells": 10
+    }
+  ],
+  "gate_sha256_unchanged": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "source_sha256": {
+    "progress.py": "d65f0455e67e2788dc3685db38ee8c7f89ee7bc66a6d125d1f5aff9a81601acd",
+    "diagnostics.py": "704c2039d0d4493e74a3241d2dd8fe5e1f1aa1aff1dbbd0916ea3149e1c4f56a",
+    "experiment.py": "2bbf61e1d3287df031f9f310e98b4c51328a049d563be17a99694079dafb7483",
+    "pilot.py": "629c7aef1ed457bd6b53eda263375c086379e89bd2080b88929b7c623146b21f",
+    "capture.py": "d43a06d67b16c9e86b9f70e20b978a8bc0a92fe8a80df8f2e1a2d4484d493729",
+    "baselines.py": "5ba7f3ca070075fc9b7133e03e0a93469332921792043ed8855949e68edf8516",
+    "solver.py": "83129f1d72a521665ffffabd17e0c604e91d6b506a91564d5c9292d045ab31e3"
+  },
+  "tests": {
+    "command": "python -m pytest -q tests/test_progress.py tests/test_notebook_g1_inputs.py tests/test_pipeline.py tests/test_production.py tests/test_runtime.py",
+    "result": "80 passed in 9.09s"
+  },
+  "colab_observation": {
+    "scope": "USER_SUPPLIED_NOTEBOOK_EXECUTION_LOGS",
+    "preflight": "READY",
+    "checkpoint_shards_loaded": true,
+    "real_g1_outcome": "UNKNOWN; no completed run artifacts provided",
+    "user_report": "About 10 minutes without new output; about 28 GB used system RAM; GPU almost idle"
+  },
+  "not_executed": [
+    "pretrained 7B G1 with new progress on Colab L4",
+    "real GPU performance diagnosis",
+    "AutoDL 96GB run"
+  ],
+  "prior_test_failure": "pytest_capture.log: 1 failed / 9 passed, Windows transient read/replace sharing race; bounded retry added; final suite passed"
+}

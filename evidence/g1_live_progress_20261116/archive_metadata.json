@@ -1,0 +1,20 @@
+[
+  {
+    "path": "notebooks\\00_Colab_GitHub_Workspace.ipynb",
+    "original_sha256": "2d37d80fe5de3625acf6deccf14d5c85b12087425b7fbdeb99b43f965eb8bafa",
+    "redactions": 68,
+    "archive_sha256": "78ab585731730766fca0f6e1676a032cfe895abb5a25ef62776779059da158b4"
+  },
+  {
+    "path": "notebooks\\00_Colab_Preflight_and_Math.ipynb",
+    "original_sha256": "5705f5143bcd45fb8b5d9959f85ad6515fffd9e7f45dbbbd912f35219fd8bde5",
+    "redactions": 0,
+    "archive_sha256": "abeea0c5da5a87e6d90eb40182d4f769bbf2e810abf4564b2bf9615117e1bc3b"
+  },
+  {
+    "path": "notebooks\\01_Colab_Real_Layer_Pilot.ipynb",
+    "original_sha256": "bfe4bac4b595b967d86922d1bc52e024c29613d8ac4c31bf418be652f37dd9b2",
+    "redactions": 1,
+    "archive_sha256": "0801da3ec30eb171a217a84856c99ef3330aecce55f5dfe40b55e614d94b4462"
+  }
+]

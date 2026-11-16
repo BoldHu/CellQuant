@@ -5,6 +5,7 @@ import numpy as np
 from .solver import CalibrationPanel
 from .data import token_hash
 from .runtime import config_hash
+from .progress import report
 
 
 def _tree_to(value,device):
@@ -17,7 +18,7 @@ def _tree_to(value,device):
 
 
 def capture_panels(model,blocks,*,layers,projections=('q_proj','up_proj','down_proj'),
-                   tokens_per_panel=128,input_weight_rows=64,seed=11,device='cuda',graph_identity=None,source_type='real_layer'):
+                   tokens_per_panel=128,input_weight_rows=64,seed=11,device='cuda',graph_identity=None,source_type='real_layer',progress=None):
     import torch
     if not blocks or tokens_per_panel<len(blocks):raise ValueError('Sample at least one token per independent block')
     if not getattr(model,'_cellquant_online_installed',False):raise ValueError('Capture requires the audited fixed R2/R3/R4 graph')
@@ -25,6 +26,7 @@ def capture_panels(model,blocks,*,layers,projections=('q_proj','up_proj','down_p
     if source_type not in {'real_layer','unit_test_fixture'}:raise ValueError('Explicit capture source type required')
     if len(set(layers))!=len(layers) or min(layers)<0 or max(layers)>=len(model.model.layers):raise ValueError('Invalid layers')
     rng=np.random.default_rng(seed);hidden=[];kwargs_list=[];handles=[]
+    report(progress,'capture.embedding',device=device,blocks=len(blocks))
     class CapturedInput(Exception):pass
     def first_hook(module,args,kwargs):
         hidden.append(args[0].detach().cpu());kwargs_list.append(_tree_to(kwargs,'cpu'));raise CapturedInput
@@ -50,6 +52,7 @@ def capture_panels(model,blocks,*,layers,projections=('q_proj','up_proj','down_p
     panels=[]
     with torch.inference_mode():
         for lid,layer in enumerate(model.model.layers):
+            report(progress,'capture.layer',device=device,layer=lid,layer_count=max(layers)+1,selected=lid in layers)
             layer.to(device);captured={};weights={};active=[0]
             try:
                 if lid in layers:
@@ -84,4 +87,5 @@ def capture_panels(model,blocks,*,layers,projections=('q_proj','up_proj','down_p
             if lid>=max(layers):break
     if len(panels)!=len(layers)*len(projections):raise RuntimeError('Incomplete panel capture')
     if str(device).startswith('cuda'):torch.cuda.empty_cache()
+    report(progress,'capture.complete',panels=len(panels))
     return panels

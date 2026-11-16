@@ -172,12 +172,15 @@ def run_experiment(config,*,project_root=None,preflight_only=False):
     from .capture import capture_panels
     from .runner import execution_fingerprint
     from .resources import ResourceMonitor
+    from .progress import RunProgress
+    print(f'[CellQuant] run_dir={output} pid={os.getpid()}',flush=True)
+    progress=RunProgress(output)
     monitor=ResourceMonitor().start()
-    model=None;timings={};phase='initialization';training=None
+    model=None;timings={};phase='initialization';training=None;result=None
     @contextlib.contextmanager
     def measured(name):
         nonlocal phase
-        phase=name;atomic_json(output/'state.json',{'status':'RUNNING','phase':name,'run_id':run_id,'updated_at_utc':utc_now()})
+        phase=name;progress.step(name)
         torch.cuda.synchronize();start=time.perf_counter()
         try:yield
         finally:
@@ -193,6 +196,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False):
         with measured('load'):
             _verify_weight_files(config,output)
             model,tokenizer=_load_model(config,training=method in {'spinquant_full','spinquant_r1_control'})
+        progress.step('fixed_rotations')
         quant=config['quantization'];r2=fixed_r2(model.config,config['rotation']['fixed_r2_seed'])
         graph_identity=config_hash({'overlay':overlay['overlay_sha256'],'r2_seed':config['rotation']['fixed_r2_seed'],
                                      'model':config['model_revision'],'dtype':config['runtime']['dtype'],'r3r4':'upstream fp32_had'})
@@ -208,9 +212,13 @@ def run_experiment(config,*,project_root=None,preflight_only=False):
                     raise ExperimentBlocked('G1 resume provenance changed; create a new protocol')
                 base['parent_run_dir']=str(prior.resolve())
             with measured('fusion'):
-                fuse_norms(model);export_spinquant_rotation(np.eye(model.config.hidden_size),r2,output/'fixed_R.bin')
-                rotate_model(model,output/'fixed_R.bin');install_online_graph(model,quant,quantized=False)
-            paths=run_pilot(config,model,output,graph_identity=graph_identity,execution_fingerprint=fingerprint['sha256'])
+                progress.step('fusion.norms',device='cpu');fuse_norms(model)
+                progress.step('fusion.export',device='cpu')
+                export_spinquant_rotation(np.eye(model.config.hidden_size),r2,output/'fixed_R.bin')
+                progress.step('fusion.rotate',device='cuda');rotate_model(model,output/'fixed_R.bin')
+                progress.step('fusion.online_graph');install_online_graph(model,quant,quantized=False)
+            paths=run_pilot(config,model,output,graph_identity=graph_identity,execution_fingerprint=fingerprint['sha256'],progress=progress.step)
+            progress.step('g1.evidence')
             gate=build_g1_evidence(paths,output,g0_evidence_path=config.get('g0_evidence_path','runs/build_m2/G0_evidence.json'))
             result={**base,'source_type':'real_layer','status':'COMPLETE' if all(read_json(p)['status']=='COMPLETE' for p in paths) else 'RESOURCE_BLOCKED',
                     'evidence_kind':'REAL_LAYER_PILOT','gate':gate['status'],
@@ -367,12 +375,13 @@ def run_experiment(config,*,project_root=None,preflight_only=False):
         token=os.environ.get('HF_TOKEN');message=f'{type(exc).__name__}: {exc}'
         if token:message=message.replace(token,'[REDACTED]')
         result={**base,'status':'INTERRUPTED' if isinstance(exc,KeyboardInterrupt) else 'BLOCKED' if isinstance(exc,ExperimentBlocked) else 'FAILED',
-                'phase':phase,'reason':message,'timings':timings}
+                'phase':progress.state['phase'],'reason':message,'timings':timings}
         result['resources']=monitor.stop();atomic_json(output/'resources.json',result['resources'])
         atomic_json(output/'result.json',result)
         if isinstance(exc,KeyboardInterrupt):raise
         return result
     finally:
+        progress.close(result['status'] if result is not None else 'INTERRUPTED_OR_FAILED')
         if model is not None:del model
         gc.collect();torch.cuda.empty_cache()
 

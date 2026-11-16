@@ -199,7 +199,28 @@ subprocess.run(["git", "-C", "/content/CellQuant", "pull", "--ff-only", "origin"
 
 本地 `.ipynb` 若有更新，在 VS Code 中保存并使用对应版本；浏览器打开的 GitHub notebook 需要重新打开才能看到新单元。仅云端 `git pull` 不会替换已经打开的本地 notebook 内容。
 
-## 6. 已验证与待验证
+## 6. 01 长时间无输出、GPU 空闲时
+
+`Loading checkpoint shards: 100%` 只表示权重加载结束。当前后端先把模型放在 CPU，融合后逐层将模型送往 GPU 采集面板；默认 `solver.device=cpu`，完整输出侧矩阵变换、匹配对照和事件根搜索会消耗 CPU。GPU 空闲不能单独证明卡死。`_is_quantized_training_enabled` 是上游遍历模型属性触发的 FutureWarning，本身不是失败原因。
+
+新进程启动时打印唯一 run_dir/PID，之后每 30 秒输出资源心跳。`state.json` 记录实际阶段、seed、fit/heldout、层号、方法、面板/坐标对、进度序号、CPU 累计时间、RSS 和剩余系统 RAM；结束时更新最终状态。`progress_sequence` 只在算法报告进展时增加，心跳不增加它，也不产生科学证据。01 每次调用使用独立日志，重跑不会覆盖旧的 pilot.log。
+
+在能访问同一 `/content/CellQuant` 的独立终端运行只读诊断：
+
+```bash
+cd /content/CellQuant
+python -m cellquant.diagnostics --project-root /content/CellQuant
+```
+
+不需要另建 Colab 服务器；忙碌 kernel 中的新单元会排队，另一服务器也看不到本次进程。没有独立终端时，可在同一服务器的独立 kernel 中调用 notebook 的只读诊断单元。间隔 30 秒比较两次 CPU 累计时间、进度序号、可用 RAM 和进程状态。CPU 时间增长说明正在消耗 CPU，不能保证算法有效前进；若资源与进度都持续不动，需要进一步定位，不能仅凭一次 0% 断言死锁。若进程已经消失，应查看日志尾部、退出码和 result.json，不能继续把陈旧 RUNNING 文件视为活跃作业。
+
+旧版本在采集和求解阶段可能一直留下 `phase=fusion`；诊断会标记 legacy 状态，不将它当作当前阶段。新版会校验 PID 创建时间，避免 PID 被重用而误认旧作业。诊断不导入 torch、不加载模型、不修改运行目录，也不打印命令行中的凭据。
+
+默认两 seeds、五方法时每方法预算约 1440 秒；它不是整次 G1 的完成时间承诺，准备、held-out、无法在单个运算内部提前终止的计算仍可能耗时。科学门槛、实际矩阵维度、精度和预算保持不变。不要为让 GPU 看起来繁忙而直接变更冻结协议中的 device/dtype。
+
+正在运行的旧进程不会自动获得新日志。先读取诊断与保留日志，待旧作业结束或停止后再同步代码、重启 kernel，以新 run 运行；不混用新旧代码续跑。模型缓存仍保留在当前 VM，无需因为诊断而重复下载或创建模型副本。
+
+## 7. 已验证与待验证
 
 本轮本地检查覆盖缓存路径、版本化备份/恢复、内容去重、源文件变化、传输中断、文件冲突、路径逃逸、损坏对象/索引拒绝，以及模型下载入口的本地 safetensors fixture。fixtures 不产生任何真实模型指标。
 

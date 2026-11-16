@@ -5,6 +5,7 @@ import time
 import numpy as np
 
 from .quantization import QuantSpec, torch_quantize
+from .progress import report
 from .solver import (SolverConfig, PanelState, aggregate, rotate_rows,
                      fit_shared_rotation,panel_specs)
 
@@ -12,15 +13,18 @@ from .solver import (SolverConfig, PanelState, aggregate, rotate_rows,
 METHODS=('hadamard_shared','cellquant','angle_grid_matched','givens_ste_matched','fixed_scale_search_matched')
 
 
-def fit_baseline(method,panels,q0,specs,schedule,config=None,*,grid_points=129,ste_steps=100,learning_rate=.02):
+def fit_baseline(method,panels,q0,specs,schedule,config=None,*,grid_points=129,ste_steps=100,learning_rate=.02,progress=None):
     config=config or SolverConfig()
     if method not in METHODS:raise ValueError(f"Unknown matched method: {method}")
     if method in {'cellquant','fixed_scale_search_matched'}:
         cfg=SolverConfig(**{**asdict(config),'fixed_scales':method=='fixed_scale_search_matched'})
-        return fit_shared_rotation(panels,q0,specs,schedule,config=cfg)
+        return fit_shared_rotation(panels,q0,specs,schedule,config=cfg,progress=progress)
     if config.resume:raise ValueError("Grid/STE resume requires a completed method artifact; partial optimizer resume is not supported")
     start=time.perf_counter();q=np.asarray(q0,dtype=np.float64).copy()
-    states=[PanelState(p,q,*panel_specs(specs,p),device=config.device) for p in panels]
+    states=[]
+    for p in panels:
+        report(progress,'solve.initialize_panel',panel_id=p.panel_id,device=config.device)
+        states.append(PanelState(p,q,*panel_specs(specs,p),device=config.device))
     initial=aggregate(states);limits={k:initial[k] for k in ('budget_w','budget_a')}
     factors=[];log=[];evaluations=0
     def evaluate(pair,theta):
@@ -31,6 +35,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config=None,*,grid_points=129,s
         for index,pair in enumerate(schedule):
             remaining=config.wall_seconds-(time.perf_counter()-start)
             if remaining<=0:break
+            report(progress,'solve.pair',pair_index=index,pair_count=len(schedule),device=config.device)
             stop=time.perf_counter()+min(config.seconds_per_pair,remaining)
             baseline=aggregate(states);best=dict(baseline,theta=0.)
             if method=='angle_grid_matched':

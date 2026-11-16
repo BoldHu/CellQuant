@@ -11,11 +11,13 @@ from .baselines import METHODS,fit_baseline
 from .capture import capture_panels
 from .data import verify_disjoint,load_token_manifest
 from .gates import evaluate_file
+from .progress import report
 
 
-def panel_metrics(panels,q,specs,device='cpu'):
+def panel_metrics(panels,q,specs,device='cpu',*,progress=None):
     rows=[]
     for panel in panels:
+        report(progress,'heldout.panel',panel_id=panel.panel_id,device=device)
         state=PanelState(panel,q,*panel_specs(specs,panel),device=device)
         pieces=panel.metadata['tokens_per_block'];offset=0;blocks=[]
         for index,count in enumerate(pieces):
@@ -31,25 +33,30 @@ def panel_metrics(panels,q,specs,device='cpu'):
     return rows
 
 
-def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_fingerprint=None):
+def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_fingerprint=None,progress=None):
     output=Path(output);formal=config['formal_pilot'];records=[]
     if set(formal['methods'])!=set(METHODS):raise ValueError('G1 requires Hadamard, cell, STE, grid, fixed-scale controls')
     quant=config['quantization']
     env=environment_report();hardware=config_hash({k:env[k] for k in ['python','packages','cuda','platform']})
     for seed in config['seeds']:
+        def emit(phase,**details):report(progress,'g1.'+phase,seed=seed,**details)
+        emit('tokens')
         manifest_path=config['data']['token_manifests'][str(seed)]
         manifest,parts=load_token_manifest(manifest_path);fit=parts['fit'];heldout=parts['dev'];verify_disjoint(fit,heldout)
         start=time.perf_counter()
         kwargs=dict(layers=formal['layers'],projections=formal['projections'],input_weight_rows=formal['input_weight_rows'],seed=seed,device=device,graph_identity=graph_identity)
-        fit_panels=capture_panels(model,fit,tokens_per_panel=formal['fit_tokens_per_panel'],**kwargs)
+        fit_panels=capture_panels(model,fit,tokens_per_panel=formal['fit_tokens_per_panel'],progress=lambda phase,**d:emit(phase,split='fit',**d),**kwargs)
         from .spinquant_adapter import panel_quant_specs
         specs=panel_quant_specs(model,fit_panels,quant)
         capture_seconds=time.perf_counter()-start
-        heldout_panels=capture_panels(model,heldout,tokens_per_panel=formal['heldout_tokens_per_panel'],**kwargs)
+        heldout_panels=capture_panels(model,heldout,tokens_per_panel=formal['heldout_tokens_per_panel'],progress=lambda phase,**d:emit(phase,split='heldout',**d),**kwargs)
+        emit('initial_rotation',device='cpu')
         q0=hadamard_rotation(model.config.hidden_size,seed)
         schedule=pair_schedule(len(q0),config['solver']['pair_budget'],seed)
         method_budget=config['solver'].get('wall_seconds_per_method',min(2400.,config.get('gpu_hour_budget',4)*3600/len(METHODS)/len(config['seeds'])))
         for method in formal['methods']:
+            def method_progress(phase,**details):emit(phase,method=method,**details)
+            method_progress('solve.start',device=config['solver'].get('device','cpu'),wall_budget_seconds=method_budget)
             dest=output/f'seed_{seed}'/method;dest.mkdir(parents=True,exist_ok=True)
             resume=False
             if config.get('resume_run_dir'):
@@ -70,7 +77,8 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
                 seconds_per_pair=config['solver'].get('seconds_per_pair',300.),wall_seconds=method_budget,
                 device=config['solver'].get('device','cpu'),checkpoint_path=str(dest/'rotation_state.npz'),
                 execution_fingerprint=execution_fingerprint or graph_identity,resume=resume)
-            result=fit_baseline(method,fit_panels,q0,specs,schedule,cfg)
+            result=fit_baseline(method,fit_panels,q0,specs,schedule,cfg,progress=method_progress)
+            method_progress('solve.complete',solver_status=result['status'])
             q=result.pop('q');atomic_npz(dest/'Q.npz',Q=q)
             row={'source_type':'real_layer','status':result['status'],'seed':seed,'method':method,
                 'model_id':formal['model_id'],'model_revision':config['model_revision'],
@@ -83,8 +91,9 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
                 'context_lengths':sorted({len(b['tokens']) for b in fit+heldout}),
                 'capture_seconds':capture_seconds,'total_calibration_seconds':capture_seconds+result['seconds'],
                 'q_path':str((dest/'Q.npz').resolve()),'q_sha256':sha256_file(dest/'Q.npz'),'solver':result,
-                'heldout':panel_metrics(heldout_panels,q,specs,cfg.device)}
+                'heldout':panel_metrics(heldout_panels,q,specs,cfg.device,progress=method_progress)}
             path=atomic_json(dest/'pilot_result.json',row);records.append(path)
+            method_progress('method.saved',result_path=str(path),solver_status=result['status'])
     return records
 
 

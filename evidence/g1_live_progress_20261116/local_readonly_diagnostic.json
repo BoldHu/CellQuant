@@ -1,0 +1,666 @@
+{
+  "observed_at_utc": "2026-11-16T10:42:16.137351+00:00",
+  "project_root": "D:\\python_project\\quant-llm",
+  "processes": [],
+  "recent_runs": [],
+  "system_memory": {
+    "available_gib": 3.80059814453125,
+    "total_gib": 15.730949401855469,
+    "swap_used_gib": 1.3148040771484375
+  },
+  "process_read_errors": [
+    {
+      "pid": 288,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 328,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 968,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1052,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1512,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1624,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1636,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1700,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1712,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1744,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1752,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1832,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1856,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1888,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1920,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1928,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 1956,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2020,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2080,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2156,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2164,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2280,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2300,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2348,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2364,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2372,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2512,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2580,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2596,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2620,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2628,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2816,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2840,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2888,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2900,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2912,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 2936,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3080,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3088,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3092,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3160,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3188,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3228,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3316,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3324,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3396,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3512,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3548,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3692,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3720,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3752,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3848,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3868,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3936,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3948,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 3956,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4004,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4152,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4164,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4256,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4288,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4376,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4388,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4424,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4468,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4580,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4648,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4680,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4724,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4836,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 4880,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5012,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5144,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5156,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5336,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5432,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5468,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5476,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5484,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5496,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5508,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5540,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5548,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5556,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5596,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5604,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5628,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5668,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5676,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5684,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5692,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5708,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5720,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5732,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5740,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5748,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5756,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5764,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5776,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5784,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5792,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5804,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5812,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5828,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5836,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5856,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5864,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5872,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5884,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5900,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5944,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5956,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5964,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 5984,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 6120,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 6468,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 6536,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 6644,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 7280,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 7580,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 7700,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 8256,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 8424,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 8488,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 8512,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 8600,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 8924,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 9192,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 9256,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 9404,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 9648,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 10204,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 10244,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 10300,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 10376,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 10500,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 10656,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 10772,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 10956,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 11332,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 11376,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 12036,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 12528,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 13652,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 19504,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 20844,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 21904,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 22108,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 23168,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 23620,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 25516,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 29040,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 30164,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 30276,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 30788,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 31244,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 33040,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 33824,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 34932,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 35164,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 35340,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 36520,
+      "read_error": "AccessDenied"
+    },
+    {
+      "pid": 36756,
+      "read_error": "AccessDenied"
+    }
+  ],
+  "scope": "One resource sample cannot prove progress or deadlock. Compare CPU time/progress across samples; no gate evidence."
+}

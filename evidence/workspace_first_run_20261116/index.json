@@ -1,0 +1,8 @@
+{
+  "scope": "local first-run guidance regression; not a Drive mount test",
+  "files_sha256": {
+    "pytest.log": "0cf95324313be4fbfe29ed6d328dd34105d29e1cfe5f4ca6af82f4f6da94de85",
+    "execution.json": "f6b95cf278cfd896afe09f0d1ddcb8a3ee493876174aeec2a9a750607da05434"
+  },
+  "workspace_source_sha256": "0d735e787e713b9e95d4c46749ecb52896ecc6fea47d8ce0c7afcfffe9621a3f"
+}

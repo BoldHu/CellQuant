@@ -56,7 +56,13 @@ def configure_workspace(project_root: str | Path, drive_root: str | Path, *, app
         raise ValueError("Keep the local checkout and durable storage in separate trees")
     # Never create an ordinary local folder where a missing Colab mount should be.
     if drive.as_posix().startswith("/content/drive/") and not Path("/content/drive/MyDrive").is_dir():
-        raise RuntimeError("Mount Google Drive first; /content/drive/MyDrive is unavailable")
+        raise RuntimeError(
+            "Google Drive 尚未挂载到 /content/drive（MyDrive 入口不可用）。\n"
+            "VS Code: Ctrl+Shift+P → Colab: Mount Google Drive to Server...，"
+            "单独运行扩展追加到 notebook 末尾的单元并完成授权，再重跑当前单元。\n"
+            "浏览器 Colab: 设置 MOUNT_DRIVE_IN_BROWSER=True 后重跑配置与当前单元。\n"
+            f"项目文件夹 {drive.name!r} 会在挂载成功后自动创建，无需预先在云盘中新建。"
+        )
     if not drive.parent.is_dir():
         raise FileNotFoundError(f"Durable parent is unavailable; mount/create it first: {drive.parent}")
     if apply and any(m in sys.modules for m in ("huggingface_hub", "datasets", "transformers")):

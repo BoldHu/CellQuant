@@ -37,3 +37,5 @@ G0 来自实测合成数学案例，为 PASS。G1–G4 没有完整真实证据�
 新增 `00_Colab_GitHub_Workspace.ipynb`、`cellquant.workspace`、`scripts/cache_model.py` 和 [工作流说明](COLAB_VSCODE.md)。模型与数据先缓存到 `/content/CellQuant` 本地盘，按 SHA-256 去重、版本化备份到用户配置的 Drive 根目录；恢复校验文件并拒绝冲突，凭据不包含在缓存区域中。权重可单独按固定 revision 下载和校验，再备份、加载并进入真实 G1。五本原阶段 notebook 会识别 Git clone 和每个 kernel 的缓存配置。
 
 本地全套 125 项测试通过，最终增补 CLI 选项后相关 25 项再次通过；六本 notebook 的 IPython inprocess 默认路径及 6 条 CLI 初始化/备份/恢复命令实际执行成功。Google 登录、Drive FUSE、VS Code 云端 kernel、真实模型下载、Colab GPU G1 为 **NOT_RUN**，需要用户账号和远程 runtime。正式运行前需要提交本次源码并重新冻结相应指纹；Git 更新不会赋予旧 checkpoint 或旧 G3 新的资格。实际日志和 notebook 执行记录见 `runs/workspace_20261116/`，可携带记录见 `evidence/workspace_20261116/`。门槛不变。
+
+首次云端反馈：用户提供的 notebook 已执行 `/content/CellQuant` 初始化，在 `/content/drive/MyDrive` 不可用处停止；这不代表 `CellQuant` 项目文件夹必须预先存在。已补充 VS Code 先运行末尾挂载单元并授权的引导和错误提示，保留挂载检查与自动创建项目目录的逻辑。相关本地测试 9 项通过，记录在 `evidence/workspace_first_run_20261116/`；完整 Drive 挂载、持久化与 GPU 实验仍待用户会话验证。

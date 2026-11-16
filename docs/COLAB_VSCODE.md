@@ -13,6 +13,10 @@
 
 执行命令面板 **Colab: Mount Google Drive to Server...**，运行扩展添加的挂载单元。这个官方命令会提供当前扩展所需的挂载代码。浏览器 Colab 使用 notebook 中的 `MOUNT_DRIVE_IN_BROWSER=True`。操作名称已按 [官方指南](https://github.com/googlecolab/colab-vscode/wiki/User-Guide) 核对；扩展的 server mounting 与 terminal 仍标为实验功能，基础流程只需 notebook kernel。
 
+**首次运行先单独执行挂载单元。** 扩展将它追加在 notebook 末尾；执行命令本身不等于挂载完成。运行该单元并完成 Google 授权后，再从项目配置单元开始运行。云盘中没有 `CellQuant` 文件夹属于正常情况，初始化会自动创建；`/content/drive/MyDrive` 不存在则说明当前配置的挂载入口不可用，需要先挂载。
+
+可以在同一个 Colab kernel 验证 `from pathlib import Path; print(Path("/content/drive/MyDrive").is_dir())`。返回 True 后重新运行 `configure_workspace` 所在单元即可。不要手动创建本地 `MyDrive` 目录来替代挂载，否则文件会落在临时运行时而不是云盘。
+
 在初始化 notebook 的配置单元设置：
 
 ```python

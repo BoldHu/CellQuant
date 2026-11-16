@@ -11,9 +11,16 @@
 
 打开本地 `notebooks/00_Colab_GitHub_Workspace.ipynb`，选择右上角 **Select Kernel → Colab → New Colab Server**，按提示登录 Google 并选择资源。VS Code 编辑的是本地文件，单元在远程 kernel 执行；远程 Python 不会自动看到尚未 push/pull 的本地源码。
 
-执行命令面板 **Colab: Mount Google Drive to Server...**，运行扩展添加的挂载单元。这个官方命令会提供当前扩展所需的挂载代码。浏览器 Colab 使用 notebook 中的 `MOUNT_DRIVE_IN_BROWSER=True`。操作名称已按 [官方指南](https://github.com/googlecolab/colab-vscode/wiki/User-Guide) 核对；扩展的 server mounting 与 terminal 仍标为实验功能，基础流程只需 notebook kernel。
+六本 notebook 已在配置之后、路径初始化之前直接加入 **挂载 Google Drive** 单元。选择 Colab 内核后从上到下运行，在该单元按 Google 弹窗完成授权即可。`MOUNT_DRIVE` 在 Colab 中默认启用，本地和 AutoDL 默认跳过；浏览器与 VS Code 使用同一个挂载命令。
 
-**首次运行先单独执行挂载单元。** 扩展将它追加在 notebook 末尾；执行命令本身不等于挂载完成。运行该单元并完成 Google 授权后，再从项目配置单元开始运行。云盘中没有 `CellQuant` 文件夹属于正常情况，初始化会自动创建；`/content/drive/MyDrive` 不存在则说明当前配置的挂载入口不可用，需要先挂载。
+挂载代码与已核对的 [Google 官方扩展源码](https://github.com/googlecolab/colab-vscode/blob/d238503acf565e3ee5edf71df4263cbd8af01fa9/src/colab/commands/register.ts#L71) 一致：
+
+```python
+from google.colab import drive
+drive.mount("/content/drive")
+```
+
+首次授权由 Google 弹窗完成；已挂载的会话会复用挂载。云盘中没有 `CellQuant` 文件夹属于正常情况，工作区初始化会自动创建；`/content/drive/MyDrive` 不存在则说明当前配置的挂载入口不可用，需要先完成挂载单元。
 
 可以在同一个 Colab kernel 验证 `from pathlib import Path; print(Path("/content/drive/MyDrive").is_dir())`。返回 True 后重新运行 `configure_workspace` 所在单元即可。不要手动创建本地 `MyDrive` 目录来替代挂载，否则文件会落在临时运行时而不是云盘。
 

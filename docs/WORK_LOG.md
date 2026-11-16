@@ -55,3 +55,9 @@
 - 用户的云端 notebook 已运行到 `configure_workspace`，错误指向缺少 `/content/drive/MyDrive` 挂载入口，用户将其理解成缺少项目文件夹。现有代码本就会在挂载后创建 `CellQuant`，没有删除或绕过挂载检查。
 - 补充错误信息、初始化 notebook 说明与操作文档：VS Code 挂载命令将单元追加在末尾，必须先单独运行并完成授权；之后重跑初始化即可。保留用户修改的配置、执行次数和原始报错输出。
 - 本地执行 `python -m pytest -q tests/test_workspace.py`：9 passed in 9.11s；notebook schema 校验通过。记录在 `runs/workspace_first_run_20261116/`，归档于同名 evidence 目录；未代用户完成 Google 授权或运行云端 GPU。
+
+## 2026-11-16 — 将挂载命令直接写入 notebook
+
+- 核对 Google 官方 `googlecolab/colab-vscode` commit `d238503acf565e3ee5edf71df4263cbd8af01fa9` 的 `src/colab/commands/register.ts`：扩展命令插入 `from google.colab import drive` 和 `drive.mount('/content/drive')`。据此六本 notebook 直接放入同一挂载单元，位于配置之后、clone/解压/路径初始化之前。
+- 在 Colab 中默认启用挂载，本地和 AutoDL 默认跳过；保留首次 Google 授权交互、未挂载时的失败检查，不捕获并吞掉授权错误。浏览器专用旧开关改为通用 `MOUNT_DRIVE`。保留用户已设置的依赖安装、G0、恢复和备份控制；被改写代码单元的旧输出清除，原文件在 `runs/notebook_mount_20261116/before/` 留存。
+- 六本 notebook 的结构/语法/挂载顺序检查以及调用、缺少挂载、授权失败的离线 fixture 检查通过；`tests/test_workspace.py` 为 9 passed in 4.15s。归档见 `evidence/notebook_mount_20261116/`。实际 Google 授权、Drive 挂载和 GPU 实验没有在本机执行；本轮不更新任何科学门槛或真实实验结论。

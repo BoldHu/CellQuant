@@ -39,3 +39,5 @@ G0 来自实测合成数学案例，为 PASS。G1–G4 没有完整真实证据�
 本地全套 125 项测试通过，最终增补 CLI 选项后相关 25 项再次通过；六本 notebook 的 IPython inprocess 默认路径及 6 条 CLI 初始化/备份/恢复命令实际执行成功。Google 登录、Drive FUSE、VS Code 云端 kernel、真实模型下载、Colab GPU G1 为 **NOT_RUN**，需要用户账号和远程 runtime。正式运行前需要提交本次源码并重新冻结相应指纹；Git 更新不会赋予旧 checkpoint 或旧 G3 新的资格。实际日志和 notebook 执行记录见 `runs/workspace_20261116/`，可携带记录见 `evidence/workspace_20261116/`。门槛不变。
 
 首次云端反馈：用户提供的 notebook 已执行 `/content/CellQuant` 初始化，在 `/content/drive/MyDrive` 不可用处停止；这不代表 `CellQuant` 项目文件夹必须预先存在。已补充 VS Code 先运行末尾挂载单元并授权的引导和错误提示，保留挂载检查与自动创建项目目录的逻辑。相关本地测试 9 项通过，记录在 `evidence/workspace_first_run_20261116/`；完整 Drive 挂载、持久化与 GPU 实验仍待用户会话验证。
+
+按用户后续要求，六本源 notebook 已直接包含前置的“挂载 Google Drive”单元，统一使用 `drive.mount("/content/drive")`。Colab 默认执行，本地/AutoDL 默认跳过；旧的 `MOUNT_DRIVE_IN_BROWSER` 改为通用 `MOUNT_DRIVE`，保留其余用户运行配置。六本 notebook 的 schema、Python 语法、单元顺序、挂载调用及失败传播 fixture 检查通过，9 项相关测试通过；真实授权/Drive 挂载仍为 NOT_RUN。记录见 `evidence/notebook_mount_20261116/`。

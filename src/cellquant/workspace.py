@@ -58,9 +58,9 @@ def configure_workspace(project_root: str | Path, drive_root: str | Path, *, app
     if drive.as_posix().startswith("/content/drive/") and not Path("/content/drive/MyDrive").is_dir():
         raise RuntimeError(
             "Google Drive 尚未挂载到 /content/drive（MyDrive 入口不可用）。\n"
-            "VS Code: Ctrl+Shift+P → Colab: Mount Google Drive to Server...，"
-            "单独运行扩展追加到 notebook 末尾的单元并完成授权，再重跑当前单元。\n"
-            "浏览器 Colab: 设置 MOUNT_DRIVE_IN_BROWSER=True 后重跑配置与当前单元。\n"
+            "先运行 notebook 中的“挂载 Google Drive”单元并完成 Google 授权，"
+            "再重跑当前单元；该挂载单元同时支持浏览器和 VS Code 的 Colab 内核。\n"
+            "若手动关闭了挂载，请设置 MOUNT_DRIVE=True 后重跑配置和挂载单元。\n"
             f"项目文件夹 {drive.name!r} 会在挂载成功后自动创建，无需预先在云盘中新建。"
         )
     if not drive.parent.is_dir():

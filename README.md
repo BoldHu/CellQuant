@@ -14,6 +14,8 @@
 
 GitHub → VS Code/Colab → Drive 工作流：先打开 [初始化 notebook](notebooks/00_Colab_GitHub_Workspace.ipynb)，按 [操作说明](docs/COLAB_VSCODE.md) 连接官方 Colab 扩展、挂载 Drive 和 clone 本仓库 `master`。代码在本地编辑后 push，云端 pull 并重启 kernel；模型、数据和运行记录通过带 SHA-256 的版本快照持久化到 Drive，计算时读取 Colab 本地盘。
 
+六本 notebook 均直接包含“挂载 Google Drive”单元。在 Colab 中从上到下运行并完成 Google 授权；本地和 AutoDL 环境默认跳过挂载。
+
 ```bash
 python -m pip install -e '.[dev]'
 python -m pytest -q

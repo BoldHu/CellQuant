@@ -1,0 +1,12 @@
+[
+  {
+    "notebook": "00_Colab_GitHub_Workspace.ipynb",
+    "original_sha256": "26054a373e4971212504b682728911ea5215e2a3bdda10f0bc85ca539358bc71",
+    "credential_patterns_redacted": 68
+  },
+  {
+    "notebook": "01_Colab_Real_Layer_Pilot.ipynb",
+    "original_sha256": "10878eebc055b5c571c216667b4e6b387c2488062fe1bf228f456aa12272bcf2",
+    "credential_patterns_redacted": 0
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "source_type": "unit_test_fixture",
+  "status": "PASS",
+  "checks": [
+    "both notebook schemas and code syntax",
+    "large input preparation disabled by default",
+    "existing user configuration including RUN_REAL_MODEL retained",
+    "unmodified cell sources and outputs retained",
+    "scientific gates unchanged"
+  ],
+  "unchanged_cells": 22,
+  "notebook_sha256": {
+    "00_Colab_GitHub_Workspace.ipynb": "d093430c75d1293ab8769feb9c45b57cc0c85d8e505a3684814960ee2bebeb02",
+    "01_Colab_Real_Layer_Pilot.ipynb": "47e6230336b33740f1ce18ede55c11107eef65460a26218c855eb8af1ca25572"
+  },
+  "pytest_log": "pytest.log",
+  "real_hf_download": "NOT_RUN",
+  "colab_g1": "NOT_RUN"
+}

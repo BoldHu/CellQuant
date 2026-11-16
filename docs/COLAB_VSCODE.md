@@ -96,7 +96,11 @@ login(token=os.environ["HF_TOKEN"], add_to_git_credential=False)
 
 登录单元会显示账号名称并执行 `HfApi.auth_check`，再下载小配置文件。若返回 403 且明确提示账号不在 `authorized list` 中，需到目标模型页面申请访问或使用已获权限账号的令牌；改变 token 输入方式不能消除该权限限制。保留真实 HTTP 异常，不再用 `force_download=True` 将它包装成泛化的下载失败。
 
-先准备版本与真实校准数据，再独立下载并核验模型：
+workspace notebook 现已直接包含“准备真实 G1 输入：校准数据、模型权重与 Drive 备份”单元。上方 HF 权限检查下载的小型 `config.json` 不包含模型权重。先将顶部 `PREPARE_G1_INPUTS=True` 并运行配置单元，再运行该准备单元；它依次执行数据准备、真实预检查、权重下载/校验、Drive 备份。默认 False 不下载大模型。只有全部步骤成功才输出准备完成；预检查不为 READY 或下载校验失败均会停止。
+
+该流程默认生成 `runs/prepared/g1/config.json`。已有冻结配置会复用，权重仍重新校验，文件不会被覆盖；若准备目录有失败残留且没有完整配置，保留原目录，设置新的 `CELLQUANT_PILOT_CONFIG`（文件名为 `config.json`），并确保 01 使用相同路径。另一个 notebook kernel 不继承当前 kernel 临时设置的环境变量，非默认路径需分别配置。
+
+也可手动分步运行相同脚本：先准备版本与真实校准数据，再独立下载并核验模型：
 
 ```python
 logged_command([sys.executable, "scripts/prepare_experiment.py",
@@ -120,6 +124,8 @@ logged_command([sys.executable, "-m", "cellquant.experiment",
 ```
 
 查看真实 `preflight.json`；只有 READY 才在 notebook 01 设置实际配置并显式启动 G1，或运行同一命令去掉 `--preflight`。preflight 的进程正常退出并不代表 READY，缺证据/资源仍是 BLOCKED。
+
+01 会打印实际使用的配置路径。在 `RUN_REAL_MODEL=True` 时，准备配置缺失会直接报告目标路径及 workspace 准备入口，不再回退到 `configs/colab_pilot.json` 草案；只有默认不执行模型的模式才允许用草案做诊断。若准备配置存在但预检查仍 BLOCKED，执行单元会列出具体缺失项，保留原门槛。
 
 每阶段结束、停止下载和训练后保存：
 

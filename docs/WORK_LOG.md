@@ -103,3 +103,10 @@
 - 读取用户粘贴的错误附件，根因是 403/GatedRepoError，服务端明确提示当前账号不在 Llama-2-7b-hf 授权名单；force_download 又将它包装为泛化 ValueError。该错误不说明需要更换 Python，也不能靠改变令牌输入方式授予权限。
 - 按请求在 workspace 顶部添加空字符串全局 HF_TOKEN，替换 getpass 登录单元；统一设置进程环境和 VM 登录缓存，显示当前账号，调用 huggingface_hub 0.36.2 实际存在的 HfApi.auth_check，再读取配置文件。保留真实 401/403，不进行权限绕过或自动重试；文件中未填写真实令牌。
 - 修改前 notebook 归档于 `evidence/hf_token_variable_20261116/`，归档脚本检查并按需脱敏 hf_ 令牌模式。仅清除被修改代码单元的旧输出，其他用户配置、单元和输出保留。Schema/所有代码语法/空 token 联网前阻止/未改动单元保留检查通过，没有实际登录 HF 或执行新模型实验。门槛不变，真实 G1 仍未运行。
+
+## 2026-11-16 — 修复权限检查与真实模型输入准备之间的缺口
+
+- 读取用户最新 notebook：auth_check 成功并读取 609 字节 config.json，保存的 workspace 尚未包含真实数据准备或完整权重校验步骤；01 的 RUN_REAL_MODEL=True，但预检查仍缺固定 revisions、分片元数据、两 seed tokens 和 dtype。依据这些记录可确认输入准备未就绪，不能据用户“模型下载好了”就移除 guard。
+- workspace 顶部增加 PREPARE_G1_INPUTS=False；HF 登录后新增调度单元，依次调用现有 prepare_experiment、preflight、cache_model 和 Drive backup。完整配置存在则保持冻结内容并复核权重；失败残留不覆盖，任何失败都不会打印准备完成。01 显示实际配置，真实执行时缺准备文件直接报错，不再回退草案；BLOCKED 错误列出具体原因。用户 RUN_REAL_MODEL=True、HF 配置和未改动输出均保留。
+- 新增 notebook 调度回归检查，与 workspace 测试合计 **22 passed in 8.93s**。首次有 1 项失败：测试用不唯一的 if RUN_REAL_MODEL 字符串选中了预检查单元，已改用执行单元唯一标记；不是通过修改产品行为或科学门槛修复。原日志保留为 pytest_initial_cell_selector_failure.log。pytest 缓存目录权限提示通过将测试缓存放在 runs 下解决，不改变系统 ACL。
+- 两本 notebook schema、全部代码语法、未改动单元及用户配置保留、gate_rules SHA 未变检查通过；记录位于 `evidence/g1_input_preparation_20261116/`，归档按需脱敏凭据。测试为本地控制流/存储 fixtures，未运行真实下载、云端模型或新科学实验。下一步：用户在 workspace 显式打开准备开关、完成准备/权重校验/Drive 备份，再在 01 重跑真实预检查与 G1。

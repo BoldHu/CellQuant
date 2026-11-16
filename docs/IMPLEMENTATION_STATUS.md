@@ -75,3 +75,11 @@ G0 来自实测合成数学案例，为 PASS。G1–G4 没有完整真实证据�
 01 的缺失项从 8 项减为 7 项，SpinQuant overlay 已不再缺失；剩余为模型/tokenizer/dataset 固定 revisions、模型分片元数据、seed 11/23 的真实 fit/dev tokens、明确 dtype。RUN_REAL_MODEL 仍为 False，真实 G1 NOT_RUN/INSUFFICIENT_EVIDENCE。下一步是 HF 授权、prepare_experiment、cache_model、Drive 备份，再以 READY 配置启动真实 G1；小随机模型检查不替代真实 7B 面板效果。
 
 HF 权限反馈（2026-11-16）：用户附件明确为 Llama-2-7b-hf 的 403/GatedRepoError，服务端提示当前账号不在 authorized list。按用户要求，workspace notebook 顶部增加空值全局 `HF_TOKEN`，登录与下载统一使用该变量；显示账号名称、先执行真实 auth_check，并保留权限异常。模型访问仍未获验证，不能把修改 token 输入方式标为解除阻塞。Notebook schema/语法、空 token 阻止联网、其他单元与输出保留检查通过；归档与记录见 `evidence/hf_token_variable_20261116/`。
+
+## 将真实 G1 输入准备接入 notebook（2026-11-16）
+
+用户最新 workspace 输出显示模型 auth_check 和 609 字节 config.json 读取成功；保存的 notebook 中尚无 prepare_experiment/cache_model 执行或 WEIGHTS_VERIFIED 记录。01 已改为 RUN_REAL_MODEL=True，但仍缺 7 项准备信息，说明没有读到完整的准备配置。旧逻辑在准备文件缺失时会回退草案，且执行错误只显示通用 BLOCKED。
+
+workspace 新增默认 False 的 PREPARE_G1_INPUTS 和完整调度单元，串联既有真实数据准备、预检查、权重下载校验与 models/datasets/runs Drive 备份；复用冻结配置，不覆盖失败残留。01 在真实执行时要求准备配置存在，显示实际路径和具体缺项。保留用户已有执行开关；不修改科学门槛或把模型配置文件当权重。
+
+相关测试 **22 passed in 8.93s**，覆盖缺配置禁止启动模型、草案仅供不执行模式、准备/校验失败不备份、执行开关、冻结配置复用与原存储完整性检查。两本 notebook schema/语法及未改动单元保留检查通过。记录与脱敏前版本归档见 `evidence/g1_input_preparation_20261116/`。本机未执行真实 HF 权重下载或 Colab G1；仍须用户在云端显式运行新增准备单元后再启动 01。

@@ -27,3 +27,19 @@
 没有预训练 7B/8B G1、完整模型 GPTQ 质量、C4/六任务真实评估、Blackwell 扩展实测、正式时间/显存对比、近期强基线或论文消融。原因是当前 GPU 4GiB、CPU 可用 RAM 约 2GiB，不满足实现的模型/面板工作集；模型/data revisions 尚需在目标运行中真实解析。下一步执行 [运行手册](docs/RUNBOOK.md) 的真实数据准备与 G1 命令；不得用这里的 CPU/tiny PASS 代替真实 gate。
 
 最终增加了在 Q 已写入、factor/log 尚未发布时注入 KeyboardInterrupt 的回归测试：恢复使用最后一个完整原子事务，最终 Q 与连续运行逐项一致。源代码/数据指纹相关定向检查另有 28 项通过，见 final_provenance_tests.log。
+
+## 2026-11-16 工作流增补验证
+
+新增 GitHub/VS Code/Colab 初始化、Drive 文件快照与独立权重缓存入口。历史构建记录保持原样；本轮接手已存在根 Git checkout，master 初始 commit `9a53bf7`，本次验证包含未提交的工作树变更。
+
+| 实际检查 | 记录 | 结果与边界 |
+|---|---|---|
+| 完整 pytest | `evidence/workspace_20261116/pytest.log` | 125 passed in 20.19s |
+| CLI 选项收尾后相关测试 | `evidence/workspace_20261116/final_targeted.log` | 25 passed in 7.01s |
+| 六本 notebook 默认路径 | `evidence/workspace_20261116/execution.json` 与 `notebooks/` | 全部退出码 0，IPython inprocess；初始化 notebook 离线模式，未 clone/挂载 |
+| CLI 备份/恢复 | `evidence/workspace_20261116/cli_roundtrip.json` | 6 条命令成功、二次传输 0 bytes、恢复文件逐字节一致；本地目录 fixture |
+| G0 | `evidence/workspace_20261116/G0.json` | 数学 notebook 真实重算 PASS，不代表 G1 |
+
+新测试覆盖内容去重、版本保留、哈希损坏、路径逃逸、原子传输中断、源变化、冲突、缓存路径和固定模型下载/分片校验入口。模型入口使用本地 safetensors fixture 并替换网络下载，不算真实模型下载或质量实验。记录/代码 hash 索引见 `evidence/workspace_20261116/index.json`。
+
+真实 Google 登录、Drive FUSE、VS Code 云端 kernel、大模型下载/缓存吞吐与 Colab GPU G1 **NOT_RUN**；需在用户实际会话中运行 [初始化 notebook](notebooks/00_Colab_GitHub_Workspace.ipynb)。科学 gate 文件哈希与 2026-11-15 相同。

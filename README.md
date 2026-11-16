@@ -4,13 +4,15 @@
 
 2026-11-15 已从 CPU 参考扩展到生产事件求解器、匹配对照、真实模型实验入口、SpinQuant/GPTQ 适配、数据与评估流程。**当前通过的是数学与小模型结构验证；真实 LLaMA-2 7B / LLaMA-3 8B 的 G1–G4 尚无合格证据。**
 
-- 已复现原有 62 项测试；当前 116 项测试通过，包含本机可执行的 CUDA 检查。
+- 已复现原有 62 项测试；2026-11-15 构建 116 项通过，新增工作流后全套 125 项通过，包含本机可执行的 CUDA 检查。
 - 合成 G0：3 seeds、24 cases，真实计算为 PASS；完整 d=4096、FFN=11008 工程 smoke 已运行，使用少 tokens/窄角域。
 - 随机小 LLaMA 的 FP 融合/旋转、GPTQ、RTN 恢复、MHA/GQA、R1/R2 训练和恢复已实际执行。
-- 五本 notebook 默认路径全部运行成功；不会自动下载模型或启动 sweep。
+- 五本阶段 notebook 和新增 GitHub/Colab 初始化 notebook 的默认路径均在本地运行成功；不会自动下载模型或启动 sweep。
 - 本机只有 RTX 3050 Laptop 4GiB、约 2GiB 可用 CPU RAM；FHT/FlashAttention/Triton 未安装。7B/8B 和 96GB Blackwell 项目保持 NOT_RUN。
 
 ## 开始运行
+
+GitHub → VS Code/Colab → Drive 工作流：先打开 [初始化 notebook](notebooks/00_Colab_GitHub_Workspace.ipynb)，按 [操作说明](docs/COLAB_VSCODE.md) 连接官方 Colab 扩展、挂载 Drive 和 clone 本仓库 `master`。代码在本地编辑后 push，云端 pull 并重启 kernel；模型、数据和运行记录通过带 SHA-256 的版本快照持久化到 Drive，计算时读取 Colab 本地盘。
 
 ```bash
 python -m pip install -e '.[dev]'
@@ -33,7 +35,7 @@ Windows 当前项目解释器为 `.venv/Scripts/python.exe`；不要依赖不可
 | `spinquant_adapter.py`, `spinquant_train.py` | 上游 overlay、R1=Q.T 与全部 R2、CE/SGDG、GPTQ、恢复 |
 | `data.py`, `experiment.py` | 固定 revisions、独立文档划分、权重完整性、统一实验后端 |
 | `evaluation.py`, `analysis.py`, `evidence.py` | WikiText/C4 NLL、六任务逐题输出、配对 CI、实测门槛 |
-| `runtime.py`, `runner.py`, `migration.py` | 日志/心跳/中断、指纹、作业计划与可迁移 G1 证据 |
+| `runtime.py`, `runner.py`, `migration.py`, `workspace.py` | 日志/心跳/中断、指纹、作业计划、G1 迁移与 Drive 缓存备份 |
 
 Notebook 00 数学；01 真实层 G1；02 迁移/canary/G2；03 G3 后正式矩阵；04 真实日志分析。配置草案位于 `configs/`；`prepare_experiment.py` / `prepare_matrix.py` 生成新的固定协议配置，不能手填虚构 SHA。
 

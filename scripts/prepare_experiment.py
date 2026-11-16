@@ -7,7 +7,7 @@ from pathlib import Path
 import argparse
 import copy
 import os
-from cellquant.runtime import atomic_json,read_json,sha256_file,environment_report,config_hash
+from cellquant.runtime import atomic_json,read_json,sha256_file,environment_report,config_hash,huggingface_cache_paths
 from cellquant.data import (resolve_revision,wikitext_documents,tokenize_documents,split_train_blocks,
                             save_token_manifest,verify_disjoint,immutable_revision)
 from cellquant.gates import evaluate_file
@@ -19,8 +19,7 @@ def prepare(config_path,output,*,include_tests=False):
     output.mkdir(parents=True,exist_ok=True)
     data=config['data'];model_id=config.get('model_id',config.get('formal_pilot',{}).get('model_id'))
     token=os.environ.get('HF_TOKEN') or None
-    cache=Path(config.get('runtime',{}).get('cache_dir',Path('.cache/huggingface').resolve())).resolve()
-    os.environ['HF_HOME']=str(cache)
+    cache,dataset_cache=huggingface_cache_paths(config.get('runtime'))
     from transformers import AutoTokenizer
     from datasets import load_dataset
     config['model_revision']=resolve_revision(model_id,config.get('model_revision'),token=token)
@@ -50,14 +49,14 @@ def prepare(config_path,output,*,include_tests=False):
     config['model_source_manifest_sha256']=sha256_file(model_manifest)
     tokenizer=AutoTokenizer.from_pretrained(model_id,revision=config['tokenizer_revision'],cache_dir=str(cache),token=token,
                                            add_bos_token=False,add_eos_token=False)
-    ds=load_dataset(data['calibration_dataset'],data['dataset_config'],split='train',revision=config['dataset_revision'],cache_dir=str(cache/'datasets'),token=token)
+    ds=load_dataset(data['calibration_dataset'],data['dataset_config'],split='train',revision=config['dataset_revision'],cache_dir=str(dataset_cache),token=token)
     context=config.get('formal_pilot',{}).get('context_length',data['sequence_length'])
     blocks=tokenize_documents(wikitext_documents(ds),tokenizer,context)
     env=environment_report();dtype=config['runtime']['dtype']
     if dtype=='auto_detect_and_record':
         if not env['cuda'].get('available'):raise ValueError('No GPU for choosing actual model dtype; set explicit dtype for target platform')
         dtype='bfloat16' if env['cuda'].get('bf16_supported') else 'float16'
-    config['runtime'].update(dtype=dtype,cache_dir=str(cache))
+    config['runtime'].update(dtype=dtype,cache_dir=str(cache),dataset_cache_dir=str(dataset_cache))
     manifests={};formal=config.get('formal_pilot',{})
     tests={}
     if include_tests:
@@ -65,7 +64,7 @@ def prepare(config_path,output,*,include_tests=False):
         if not Path(g2).exists() or evaluate_file('G2',g2)['status']!='PASS':raise ValueError('Current G2 evidence required before preparing formal test tokens')
         if config.get('protocol_status')!='FROZEN':raise ValueError('Freeze model and evaluation protocol before formal test access')
         eval_config=config['evaluation']
-        wiki=load_dataset(data['calibration_dataset'],data['dataset_config'],split='test',revision=config['dataset_revision'],cache_dir=str(cache/'datasets'),token=token)
+        wiki=load_dataset(data['calibration_dataset'],data['dataset_config'],split='test',revision=config['dataset_revision'],cache_dir=str(dataset_cache),token=token)
         tests['wikitext2_test']=tokenize_documents(wikitext_documents(wiki),tokenizer,context)
         c4=eval_config['c4']
         if not immutable_revision(c4['revision']):raise ValueError('C4 revision must be frozen, not resolved after test access')

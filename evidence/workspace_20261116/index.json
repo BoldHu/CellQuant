@@ -1,0 +1,176 @@
+{
+  "schema_version": "1.0",
+  "created_at_utc": "2026-11-16T07:38:30.216594+00:00",
+  "run_kind": "workspace_workflow_local_validation",
+  "base_git_commit": "9a53bf728db71997ffd52c9433cbb4b93967b4ed",
+  "working_tree_changes_tested": true,
+  "full_suite": "125 passed in 20.19s",
+  "final_targeted": "25 passed in 7.01s",
+  "notebooks": "6 default paths, IPython inprocess; source cells match executed copies",
+  "cli": "6 local fixture commands; no real Drive involved",
+  "cloud_gpu_status": "NOT_RUN",
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "files": [
+    {
+      "path": "00_Colab_GitHub_Workspace.log",
+      "original": "runs/workspace_20261116/00_Colab_GitHub_Workspace.log",
+      "size_bytes": 122,
+      "sha256": "3895acd16b6513fd6ba75584955c3c6da17fd3c6257bce870391b8114d05b9bc"
+    },
+    {
+      "path": "00_Colab_Preflight_and_Math.log",
+      "original": "runs/workspace_20261116/00_Colab_Preflight_and_Math.log",
+      "size_bytes": 124,
+      "sha256": "667cad3583cca2d2617700a5d241c89064437d7d8fa94ceac1ab69599ae1f4ca"
+    },
+    {
+      "path": "01_Colab_Real_Layer_Pilot.log",
+      "original": "runs/workspace_20261116/01_Colab_Real_Layer_Pilot.log",
+      "size_bytes": 122,
+      "sha256": "846c9e51c4e943881817e0c5aa1358ab5444e5f363a89b056fc3babb5c2a3f70"
+    },
+    {
+      "path": "02_AutoDL_Migration_and_Canary.log",
+      "original": "runs/workspace_20261116/02_AutoDL_Migration_and_Canary.log",
+      "size_bytes": 127,
+      "sha256": "d3e65fe374b42487c77ad8033bea6370e5daea6c602f10c03a85d3b3cbb17577"
+    },
+    {
+      "path": "03_Full_Experiments.log",
+      "original": "runs/workspace_20261116/03_Full_Experiments.log",
+      "size_bytes": 116,
+      "sha256": "358a8617baea4d559dd672f177138ccbd33eb985c848db84048b0f1df0eb0777"
+    },
+    {
+      "path": "04_Paper_Analysis.log",
+      "original": "runs/workspace_20261116/04_Paper_Analysis.log",
+      "size_bytes": 114,
+      "sha256": "8c3b5c2bc3137e15d0114f098dc1cc67e36ec27a4ec1eff746dc6b10792936e5"
+    },
+    {
+      "path": "final_targeted.log",
+      "original": "runs/workspace_20261116/final_targeted.log",
+      "size_bytes": 204,
+      "sha256": "b6ae92b0a5bf20bda97ee31acc13d18d9db97c34267a9861eb42804bb4ca272a"
+    },
+    {
+      "path": "pytest.log",
+      "original": "runs/workspace_20261116/pytest.log",
+      "size_bytes": 184,
+      "sha256": "9e874a5d8eac7423c0dad9310cb3df082406c638eae90f031dc078a8f8cccd06"
+    },
+    {
+      "path": "execution.json",
+      "original": "runs/workspace_20261116/execution.json",
+      "size_bytes": 5070,
+      "sha256": "d5df5d6d82e0ed5a4344c1911d5a59e0550245470c4e7a55ca41ca0f380aa68f"
+    },
+    {
+      "path": "cli_roundtrip.json",
+      "original": "runs/workspace_20261116/cli_roundtrip.json",
+      "size_bytes": 8237,
+      "sha256": "06c7677d0e5c00a0c52ab4108232c220847576b151e4e695454c6acb4663aeb9"
+    },
+    {
+      "path": "notebooks/00_Colab_GitHub_Workspace.ipynb",
+      "original": "runs/workspace_20261116/notebooks/00_Colab_GitHub_Workspace.ipynb",
+      "size_bytes": 9387,
+      "sha256": "c02c1e516b11d70b1e82d236beae54dedd8d4ffadd46fccb2197af807cf4f168"
+    },
+    {
+      "path": "notebooks/00_Colab_Preflight_and_Math.ipynb",
+      "original": "runs/workspace_20261116/notebooks/00_Colab_Preflight_and_Math.ipynb",
+      "size_bytes": 11431,
+      "sha256": "a1e9dd4bd1d880ae6b4a54f3b65545210e96452f54c1ce7ed51c53ac553ab1d4"
+    },
+    {
+      "path": "notebooks/01_Colab_Real_Layer_Pilot.ipynb",
+      "original": "runs/workspace_20261116/notebooks/01_Colab_Real_Layer_Pilot.ipynb",
+      "size_bytes": 13819,
+      "sha256": "c687ef32fee61c9acb2a4b0fc018a35c74340ba658eaaef710ea5eff404f3101"
+    },
+    {
+      "path": "notebooks/02_AutoDL_Migration_and_Canary.ipynb",
+      "original": "runs/workspace_20261116/notebooks/02_AutoDL_Migration_and_Canary.ipynb",
+      "size_bytes": 13283,
+      "sha256": "3e2d5480fb80b494e64a82956de30eccb9caa6bf680e338f5cf03d9ebe057e83"
+    },
+    {
+      "path": "notebooks/03_Full_Experiments.ipynb",
+      "original": "runs/workspace_20261116/notebooks/03_Full_Experiments.ipynb",
+      "size_bytes": 11021,
+      "sha256": "7afa6ce02ff8c9bcdb638fd6ba8d4b3f6211724cfe346a4909a333b0e4621788"
+    },
+    {
+      "path": "notebooks/04_Paper_Analysis.ipynb",
+      "original": "runs/workspace_20261116/notebooks/04_Paper_Analysis.ipynb",
+      "size_bytes": 12203,
+      "sha256": "e1de2e79bc493b5ad7edfe2296fd41a0abc677973a25580dc6be6008c3d67a89"
+    },
+    {
+      "path": "G0.json",
+      "original": "runs/00_math/production/G0.json",
+      "size_bytes": 5811,
+      "sha256": "184acae46c616ac65d72fcd7e6e5565c8ecdf50e9b18f36999f39a507cb9651d"
+    },
+    {
+      "path": "G0_evidence.json",
+      "original": "runs/00_math/production/G0_evidence.json",
+      "size_bytes": 4583,
+      "sha256": "869822eac26c3dcfd7fb86f9a8d96194fd8338f83b3252d1c70d202c0a989599"
+    }
+  ],
+  "code_and_notebook_sha256": {
+    "src/cellquant/analysis.py": "71c5b00a42fabb4466dafaf0c50b224bbf7447c034c479b2e596c02a430a7c7a",
+    "src/cellquant/baselines.py": "f2a99886e5910183ce76b483f37a354e68321d52530ad20e53729b17ccb87842",
+    "src/cellquant/capture.py": "7c1792ce738959e7c159d4fc93b9f0e5b99db1b292f0c68fa71cef51f2000fe2",
+    "src/cellquant/data.py": "c384bafd051e9dc00bc7dc2daf2beb178da49f7bb7d8b98b4242e920eced2a6d",
+    "src/cellquant/evaluation.py": "976cb59a6a7be574f8fd099e8352480453f16a7697f5e65f8f2586ee74977c56",
+    "src/cellquant/events.py": "0a59416b92d6d9f58e7948e7700e3e2d592b871074c6bc4d02e88a314f18fecf",
+    "src/cellquant/evidence.py": "e5dc3628240910c45ee51ccb01c1484138acce4ff6704fb48bc2170e0e05c311",
+    "src/cellquant/experiment.py": "0f672193b9c821b5c97b5d5ff17bdcf73576a361aec84bab910804bff1e9250c",
+    "src/cellquant/gates.py": "4f364a0889bcdab93e7d54a0b3ca178ee58212be3b12e74e5a307da79b54f5bf",
+    "src/cellquant/hadamard.py": "1de23beb64fe6a265168b14a0e6aff603df44afd7d0513c41c1a6446d71cdc1f",
+    "src/cellquant/math_reference.py": "bf1beef49d392ca2a7d3a6c937f953ff6248de5c5f28a7a37764a9c4c31ee7f1",
+    "src/cellquant/metrics.py": "61ec871c9bf67e96e4e2aa0eea4a8e173208ca0ff39b58615f13a7f2fd008a96",
+    "src/cellquant/migration.py": "58a86b89aa3c9414a3a2a8597a4840d436b0c959439867f11b22ad075fb12653",
+    "src/cellquant/panels.py": "41d3908247a43c6ee2618b7d60e5ca1e740bf78db273bce2b227b8d420e3d4c6",
+    "src/cellquant/pilot.py": "5cdd92cbff624ee7c08d97dd00b473314db4f5591caada659f46d63b0e44fa6c",
+    "src/cellquant/quantization.py": "74d18d69311b98a7e552f82d59bf2bd8735778c07a4c112a26835c04c65b2d4b",
+    "src/cellquant/resources.py": "5f11f5088774873a698bb5f6f7e8b2b1fabcec9f65aacebb08948eebf75442a9",
+    "src/cellquant/runner.py": "980bd2518e8dfe7f0c87b80d0a8d73599c5457f8e8ed920b91f7805a79e21d47",
+    "src/cellquant/runtime.py": "26bb4c3ffb1326f45ed5df0e90fcc0d611a3f78eea65b0bc5e6e73822fc4b43d",
+    "src/cellquant/solver.py": "9b6ccaf3a0ecc9b1d7f0ee9be6a7c493404b3077df074c33f7dcf8d22d27edc9",
+    "src/cellquant/spinquant_adapter.py": "6d88a8ebed1409bceb1b94610e39e288c9b2a7db963c483b5e68344a6407d11d",
+    "src/cellquant/spinquant_train.py": "2f0d9cb7d0617f453d4ece82b1cb1690b12d4b1d5279235fde2bcdd933074bd1",
+    "src/cellquant/triton_probe.py": "c7a5aeff4faf9138cf66b5b0c9d24eab3cc2009b13afb9de46ebb24be88e2b8e",
+    "src/cellquant/workspace.py": "2e786d7c1a08665bcb0874e4ece797c1d6ed1f9ce4f72067636efa4a9e1a4d4f",
+    "scripts/cache_model.py": "d74b367d7e9e9d18a7f1088af6ea327671d2997d900f0ccd7e5b123973672be1",
+    "scripts/check_fp32_port.py": "4acd0a660d8b2d597acd84811a419e6aba125eb5f09bd81636f8b7fafbf3338d",
+    "scripts/prepare_experiment.py": "eee7cae038a266d4434d9f89fc58d79789a8c8aa108f074994402dbf2e382a96",
+    "scripts/prepare_matrix.py": "44a5d73fb6ae2891efb8d51b578e4e811c1271a0ac8eeb065c5db4650658f3f9",
+    "scripts/prepare_spinquant.py": "a4fbf254d0b536427e86a86e71afeece2239c6882d75ca70c40c3c902debb055",
+    "scripts/run_harness_smoke.py": "a1fe98accd9eac334685edb443b0177804bc09a0d5248655941536d777ed6cae",
+    "scripts/run_math_checks.py": "afd504b72757cfe68e47988ecb89b9761d79ae6a6a21086e171394793f0da366",
+    "scripts/run_notebook.py": "d727b705b9d5429ef6d877525c52c1c1be4b1de1ba698c0af43a484753f86038",
+    "scripts/run_production_checks.py": "6381cf993e77aa797ce6a99a2f08ed6e0a0017db1f908687eea1b14790f95fcf",
+    "scripts/run_spinquant_smoke.py": "1fd38b0aa1f84d328b1246ce0e6b087351ddbdd02994a3a1ea8dba0ba900aade",
+    "scripts/run_spinquant_training_smoke.py": "a8c28371603675b6307e81ba7b9f8b91be020f39a0bf4dad2a97142d45a73b4d",
+    "scripts/sync_agent_alias.py": "3087d749de09cde38eb83425eca74b4b4d8655e28df37cec37de0a712c40433e",
+    "tests/test_analysis.py": "d3eb4d5d5532f783be5568062a60593b741bbd64ce22e9ba6ac058fb3fa874ee",
+    "tests/test_gates.py": "8c031859c72d767dac3b31029ce70be160951333c32fb8278c9c3e41e145e60c",
+    "tests/test_math_reference.py": "3ae9e2bf42babc0c52e306e9f549760ee927ea56581af605b08c042219f27d6f",
+    "tests/test_metrics.py": "237373f813b224b7bda462aac727994f39b5ccfcc8581d6fcc368e9551f949af",
+    "tests/test_pipeline.py": "37e2af8dbf40ccf86b1bf002a21a662fa84b81315e26961dfa7a53e5b8aa9d09",
+    "tests/test_production.py": "6ee354fd3f2d7f0f0f8935ab7070e149fdb8c68ba453112f7ca56ac34780210d",
+    "tests/test_provenance.py": "a8eb32c380fe745015cf7704f2e5c39117b58cf638dcd7cb68f4ef6e1673a4d2",
+    "tests/test_runtime.py": "c0f7cb0929709faea924e954206eeeb9f026e08c37850b5f355ef3ffcf89c9cf",
+    "tests/test_workspace.py": "56d87a9023a9c0b2de0859ecf0da0a1827f389dfa9e55ab0cb89d29c16e31e6a",
+    "notebooks/00_Colab_GitHub_Workspace.ipynb": "d966d7d0f74e5dd361a09a215032f9f11f9f4814f8c982f6ecc956a11de0f76c",
+    "notebooks/00_Colab_Preflight_and_Math.ipynb": "1980f20c7e252cbf24ffd7ee16421bd337fdae36f95fc813a830c05e6981881b",
+    "notebooks/01_Colab_Real_Layer_Pilot.ipynb": "f59942b370fc979ddd12d759f77c4d8ade7690ff6bf4cc4abd26f16c8c901898",
+    "notebooks/02_AutoDL_Migration_and_Canary.ipynb": "12ac3fe803ebc08ee2c8444d52afb2495cfe0e555f6d7aa2a51a902a07df759e",
+    "notebooks/03_Full_Experiments.ipynb": "9c7b0d910c1bb422433d76e20a190cb565091225fcd0acddf70a94c1babefbc0",
+    "notebooks/04_Paper_Analysis.ipynb": "745eaeab957ba5e82af2f4faf868cc3faae04316f451e772e1355bdded8445b9"
+  }
+}

@@ -33,9 +33,19 @@
 - 修复实际测试暴露的问题：Transformers 4.44.2 API、GPTQ catcher/seq length/global RoPE、逐层恢复参数、Torch 2.6 RNG pickle 默认限制；Trainer 改用安全 tensor/primitive RNG 与文件 hash，恢复参数逐项一致。
 - M5：固定 harness commit、六任务 metric 和 dataset revision；本地 fixtures 真实执行六任务。修复任务扫描开销、Windows 多进程 bootstrap 兼容与 dtype 序列化；由自己的 paired document/item bootstrap 提供 CI。逐题 choice 与 harness metric 一致性执行校验。
 - M6–M7：统一 experiment contract、分片 SHA 校验、独立文档划分、全矩阵 provenance、G2/G3 实测证据构造、G1 portable bundle、日志/心跳/资源采样。完整 SpinQuant 保留 100×8 CE 预算，使用排除 dev 的完整训练池，不复用小 fit 池冒充完整训练数据。800 是 microbatch 预算；按上游 Trainer 语义可遍历整个池跨 epoch，独立 blocks 数另报。
-- 最终 116 项测试通过，五本 notebook 默认路径执行成功；原始日志、环境与结果在 runs/build_final，归档在 evidence/build_20261116。门槛文件 hash 与初始包相同，G1–G4 仍无真实通过证据。
+- 最终 116 项测试通过，五本 notebook 默认路径执行成功；原始日志、环境与结果在 runs/build_final，归档在 evidence/build_20261115。门槛文件 hash 与初始包相同，G1–G4 仍无真实通过证据。
 - 剩余：预训练 7B/8B、Colab G1、Blackwell/FHT、正式 GPTQ/下游/效率、近期 2026 强基线、消融与新颖性全文/代码审查；全 GPU 增量事件 kernel、grid/STE 中途 optimizer 恢复未实现。下一步命令与硬件需求见 RUNBOOK。
 
 - 收尾核对发现 Agent.md 同步副本缺失，已运行 scripts/sync_agent_alias.py 恢复，确认与未改动的 AGENTS.md 逐字节一致；原 gate_rules.json 的初始包 SHA 复核一致。正式运行增加 clean 根代码 commit 检查，当前仅 source snapshot，不编造 commit。
 
 - 最终中断一致性审查：修复 Q 更新与 factor/log 之间被中断时可能保存不一致 checkpoint 的窗口；新增注入中断回归，完整套件现为 116 项通过。
+
+## 2026-11-16 — GitHub / VS Code / Colab / Drive 工作流
+
+- 接手检查：用户已建立根 Git checkout，origin=`https://github.com/BoldHu/CellQuant.git`，master 初始 commit `9a53bf7`，开始时工作树干净。按请求本地实现工作流，本轮未自动提交或 push。
+- 查阅 Google 官方 Colab 扩展指南与 Marketplace：使用远程 notebook kernel 和扩展的 Drive 挂载命令；terminal/server mounting 的实验状态保留。新增初始化 notebook 与扩展推荐，原五本 notebook 支持 clone 路径及独立 kernel 的路径恢复，保留 ZIP 入口。
+- 新增 `cellquant.workspace`：本地 HF hub/datasets/runs 分区、白名单环境变量、独立凭据路径；内容寻址的 Drive 对象、版本索引、原子传输、恢复 SHA-256、冲突/路径逃逸拒绝、源文件变化/中断不发布成功索引。阶段备份须停止写入，不宣称实时保存或 checkpoint 一致性证明。
+- `prepare_experiment.py` 与模型后端统一解析缓存路径，不再将 HF_HOME 改成 model cache 子目录；显式冻结路径仍优先。新增 `cache_model.py`，复用已有分片校验器，只下载固定 revision、检查大小/哈希/header，不加载 LLM、不生成 gate。
+- 实际验证：全套 **125 passed in 20.19s**；CLI 最终补充默认配置读取与旧快照选择后，相关 **25 passed in 7.01s**。6 本 notebook 默认路径用 IPython inprocess 运行成功；6 条 CLI 在本地目录完成初始化、两次去重备份、指定快照恢复和状态查询。数学 notebook 重新计算 G0 为 PASS，G1–G4 未获得新的真实证据。
+- 开发检查曾发现一处 cache 参数括号错误，已在测试前修正。修正旧记录中归档目录日期笔误为 evidence/build_20261115；不改变历史数据。`configs/gate_rules.json` SHA-256 仍为 `5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e`。
+- 运行记录位于 `runs/workspace_20261116/`，小型验证包位于 `evidence/workspace_20261116/`。Google 登录、Drive FUSE 挂载/吞吐、VS Code 远程会话、真实模型下载和云端 GPU G1 均 NOT_RUN；本地文件 fixture 不能替代它们。

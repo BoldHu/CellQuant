@@ -2,6 +2,8 @@
 
 更新：2026-11-15。以下命令必须在项目根目录执行。Windows 本地使用 `.venv/Scripts/python.exe` 替换 `python`。这是可执行路径说明；真实 G1–G4 尚未运行或通过。
 
+2026-11-16 新增 [GitHub / VS Code / Colab / Drive 工作流](COLAB_VSCODE.md)：以 `00_Colab_GitHub_Workspace.ipynb` 初始化 `/content/CellQuant`，clone/pull `BoldHu/CellQuant` 的 `master`。模型/数据/运行记录在阶段边界持久化到 Drive，下次 runtime 校验后恢复本地盘。原来的五本阶段 notebook 和 ZIP 入口继续可用。
+
 ## 环境与固定上游
 
 保留宿主 PyTorch，先记录 `python -c "from cellquant.runtime import environment_report; print(environment_report())"`。本机实际为 Python 3.11.18、Torch 2.6.0+cu118、RTX 3050 Laptop 4GiB；这套 CUDA 构建不是 Blackwell 环境锁。目标机器必须使用其已验证的 CUDA/Torch，不能照搬本机轮子。
@@ -43,11 +45,14 @@ python scripts/run_harness_smoke.py --output runs/local_harness_fixture
 
 ```bash
 python scripts/prepare_experiment.py --config configs/colab_pilot.json --output runs/prepared/g1
+python scripts/cache_model.py --config runs/prepared/g1/config.json
 python -m cellquant.experiment --config runs/prepared/g1/config.json --preflight
 python -m cellquant.experiment --config runs/prepared/g1/config.json
 ```
 
 准备脚本读取 HF_TOKEN 环境变量或现有 HF 授权，不输出 token；解析 immutable model/tokenizer/WikiText revisions，保存 HF 权重分片的 LFS SHA-256/大小、实际 tokens 与文档划分，不下载基础权重。真正模型阶段会先校验完整分片再加载。
+
+可先用新增 `cache_model.py` 独立下载与校验分片，在不加载 LLM 时备份模型和数据，再启动真实阶段；此步骤本身不提供科学门槛证据。上面两条真实执行命令之间必须审查 preflight 中的 READY/BLOCKED 状态。
 
 默认 3 层 × q/up/down、2 种子；每个 seed 的五个方法使用相同冻结面板、Q0、pair schedule、墙钟上限、风险预算及固定 R2/R3/R4。q/up 允许抽输出行；down 保留完整 hidden×FFN。实际结果在唯一 `runs/experiments/<run_id>`，其中的 `G1_evidence.json` 来自原始 held-out 记录。设置 notebook 01 的 `CELLQUANT_PILOT_CONFIG` 和 `CELLQUANT_G1_EVIDENCE` 指向这些真实文件。
 
@@ -108,4 +113,4 @@ python -m cellquant.analysis --runs runs/prepared/full/results --output runs/pap
 
 结果必须有原始文件且 hash 一致。CI 按 paired seed/document/item 重采样，PPL 用总 NLL/token；空结果不生成图或数字。已存在真实表格时要求新输出目录。G4 仍缺近期 2026 强基线、消融、完整成本分析、真实主表和新颖性复核，保持 INSUFFICIENT_EVIDENCE。
 
-正式模型运行还要求项目自身存在 clean、已提交的 Git checkout；本次交付目录没有 .git，因此记录 source snapshot 和 code_commit=null，不伪造 commit。发布研究协议前先将当前代码纳入你自己的版本库并提交，再在目标环境重新冻结 plan/fingerprint。仅有上游 SpinQuant commit 不等于本项目代码已版本化。
+正式模型运行还要求项目自身存在 clean、已提交的 Git checkout。2026-11-15 归档没有 .git，历史记录保持 source snapshot 和 code_commit=null；2026-11-16 已核对本地存在 `BoldHu/CellQuant` 的 `master` checkout（初始 commit `9a53bf7`）。本轮变更提交并 push 后，在目标环境重新冻结 plan/fingerprint。仅有上游 SpinQuant commit 不等于本项目代码已版本化。

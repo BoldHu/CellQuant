@@ -1,0 +1,95 @@
+{
+  "source_type": "unit_test_fixture",
+  "status": "LOCAL_CLI_ROUNDTRIP_PASS",
+  "records": [
+    {
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "-m",
+        "cellquant.workspace",
+        "init",
+        "--drive-root",
+        "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\cli_fixture_c7ae20fb\\drive"
+      ],
+      "cwd": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\cli_fixture_c7ae20fb\\source",
+      "returncode": 0,
+      "stdout": "{\n  \"schema_version\": \"1.0\",\n  \"created_at_utc\": \"2026-11-16T07:34:52.788976+00:00\",\n  \"environment\": {\n    \"CELLQUANT_PROJECT_ROOT\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\source\",\n    \"CELLQUANT_RUN_ROOT\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\source\\\\runs\",\n    \"CELLQUANT_CACHE_DIR\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\source\\\\.cache\\\\huggingface\\\\hub\",\n    \"HF_HOME\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\source\\\\.cache\\\\huggingface\",\n    \"HF_HUB_CACHE\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\source\\\\.cache\\\\huggingface\\\\hub\",\n    \"HF_DATASETS_CACHE\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\source\\\\.cache\\\\huggingface\\\\datasets\",\n    \"HF_TOKEN_PATH\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\source\\\\.cache\\\\huggingface\\\\token\",\n    \"PYTHONUTF8\": \"1\",\n    \"CELLQUANT_DRIVE_ROOT\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\drive\"\n  },\n  \"code\": {\n    \"commit\": null,\n    \"branch\": null,\n    \"dirty\": null\n  },\n  \"source_type\": \"not_run\",\n  \"status\": \"CONFIGURED\",\n  \"note\": \"No models downloaded, experiments run, or scientific gates passed\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "-m",
+        "cellquant.workspace",
+        "init",
+        "--drive-root",
+        "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\cli_fixture_c7ae20fb\\drive"
+      ],
+      "cwd": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\cli_fixture_c7ae20fb\\restored",
+      "returncode": 0,
+      "stdout": "{\n  \"schema_version\": \"1.0\",\n  \"created_at_utc\": \"2026-11-16T07:34:53.076681+00:00\",\n  \"environment\": {\n    \"CELLQUANT_PROJECT_ROOT\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\restored\",\n    \"CELLQUANT_RUN_ROOT\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\restored\\\\runs\",\n    \"CELLQUANT_CACHE_DIR\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\restored\\\\.cache\\\\huggingface\\\\hub\",\n    \"HF_HOME\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\restored\\\\.cache\\\\huggingface\",\n    \"HF_HUB_CACHE\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\restored\\\\.cache\\\\huggingface\\\\hub\",\n    \"HF_DATASETS_CACHE\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\restored\\\\.cache\\\\huggingface\\\\datasets\",\n    \"HF_TOKEN_PATH\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\restored\\\\.cache\\\\huggingface\\\\token\",\n    \"PYTHONUTF8\": \"1\",\n    \"CELLQUANT_DRIVE_ROOT\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\drive\"\n  },\n  \"code\": {\n    \"commit\": null,\n    \"branch\": null,\n    \"dirty\": null\n  },\n  \"source_type\": \"not_run\",\n  \"status\": \"CONFIGURED\",\n  \"note\": \"No models downloaded, experiments run, or scientific gates passed\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "-m",
+        "cellquant.workspace",
+        "backup",
+        "--areas",
+        "runs"
+      ],
+      "cwd": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\cli_fixture_c7ae20fb\\source",
+      "returncode": 0,
+      "stdout": "[\n  {\n    \"status\": \"BACKED_UP\",\n    \"area\": \"runs\",\n    \"files\": 1,\n    \"transferred_bytes\": 56,\n    \"snapshot\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\drive\\\\snapshots\\\\runs\\\\20261116T073453432864Z_6deb6a0b.json\",\n    \"note\": \"Existing objects are hash-verified on restore\"\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "-m",
+        "cellquant.workspace",
+        "backup",
+        "--areas",
+        "runs"
+      ],
+      "cwd": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\cli_fixture_c7ae20fb\\source",
+      "returncode": 0,
+      "stdout": "[\n  {\n    \"status\": \"BACKED_UP\",\n    \"area\": \"runs\",\n    \"files\": 1,\n    \"transferred_bytes\": 0,\n    \"snapshot\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\drive\\\\snapshots\\\\runs\\\\20261116T073453721614Z_e9e04599.json\",\n    \"note\": \"Existing objects are hash-verified on restore\"\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "-m",
+        "cellquant.workspace",
+        "restore",
+        "--areas",
+        "runs",
+        "--snapshot",
+        "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\cli_fixture_c7ae20fb\\drive\\snapshots\\runs\\20261116T073453432864Z_6deb6a0b.json"
+      ],
+      "cwd": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\cli_fixture_c7ae20fb\\restored",
+      "returncode": 0,
+      "stdout": "[\n  {\n    \"status\": \"RESTORED\",\n    \"area\": \"runs\",\n    \"files\": 1,\n    \"snapshot\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\drive\\\\snapshots\\\\runs\\\\20261116T073453432864Z_6deb6a0b.json\",\n    \"note\": \"No gate or resume eligibility inferred from storage integrity\"\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "-m",
+        "cellquant.workspace",
+        "status",
+        "--areas",
+        "models",
+        "datasets",
+        "runs"
+      ],
+      "cwd": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\cli_fixture_c7ae20fb\\restored",
+      "returncode": 0,
+      "stdout": "{\n  \"code\": {\n    \"commit\": null,\n    \"branch\": null,\n    \"dirty\": null\n  },\n  \"areas\": {\n    \"models\": {\n      \"local\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\restored\\\\.cache\\\\huggingface\\\\hub\",\n      \"snapshots\": []\n    },\n    \"datasets\": {\n      \"local\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\restored\\\\.cache\\\\huggingface\\\\datasets\",\n      \"snapshots\": []\n    },\n    \"runs\": {\n      \"local\": \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\restored\\\\runs\",\n      \"snapshots\": [\n        \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\drive\\\\snapshots\\\\runs\\\\20261116T073453432864Z_6deb6a0b.json\",\n        \"D:\\\\python_project\\\\quant-llm\\\\runs\\\\workspace_20261116\\\\cli_fixture_c7ae20fb\\\\drive\\\\snapshots\\\\runs\\\\20261116T073453721614Z_e9e04599.json\"\n      ]\n    }\n  }\n}\n",
+      "stderr": ""
+    }
+  ],
+  "limitations": "Local directories only; no Google Drive/Colab service exercised"
+}

@@ -8,3 +8,7 @@ third_party/
 .cache/
 *.partial
 /artifacts/
+.ipynb_checkpoints/
+.env
+.env.*
+!.env.example

@@ -78,6 +78,15 @@ def read_json(path: str | Path) -> dict:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
+def huggingface_cache_paths(runtime: dict | None = None) -> tuple[Path, Path]:
+    """Resolve caches without moving credentials or overriding a frozen config."""
+    runtime = runtime or {}
+    home = Path(os.environ.get("HF_HOME", Path.cwd() / ".cache/huggingface"))
+    models = runtime.get("cache_dir") or os.environ.get("CELLQUANT_CACHE_DIR") or os.environ.get("HF_HUB_CACHE") or home / "hub"
+    datasets = runtime.get("dataset_cache_dir") or os.environ.get("HF_DATASETS_CACHE") or home / "datasets"
+    return Path(models).resolve(), Path(datasets).resolve()
+
+
 def _package_version(name: str):
     try:
         return importlib.metadata.version(name)

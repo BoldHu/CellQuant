@@ -17,7 +17,7 @@ import os
 import time
 import uuid
 import numpy as np
-from .runtime import atomic_json,read_json,sha256_file,config_hash,environment_report,utc_now
+from .runtime import atomic_json,read_json,sha256_file,config_hash,environment_report,utc_now,huggingface_cache_paths
 from .data import immutable_revision,load_token_manifest,verify_disjoint
 from .gates import evaluate_file
 
@@ -109,7 +109,7 @@ def _load_model(config,*,training=False):
     else:Model=LlamaForCausalLM
     model_id=config.get('model_id',config.get('formal_pilot',{}).get('model_id'))
     token=os.environ.get('HF_TOKEN') or None
-    cache=config.get('runtime',{}).get('cache_dir',str(Path('.cache/huggingface').resolve()))
+    cache=str(huggingface_cache_paths(config.get('runtime'))[0])
     model=Model.from_pretrained(model_id,revision=config['model_revision'],token=token,cache_dir=cache,
         torch_dtype=getattr(torch,config['runtime']['dtype']),low_cpu_mem_usage=True,attn_implementation='eager',
         local_files_only=config.get('runtime',{}).get('local_cache_only',False))
@@ -126,7 +126,7 @@ def _verify_weight_files(config,output):
     model_id=config.get('model_id',config.get('formal_pilot',{}).get('model_id'))
     directory=Path(snapshot_download(model_id,revision=config['model_revision'],local_files_only=config.get('runtime',{}).get('local_cache_only',False),
         allow_patterns=['*.safetensors','*.safetensors.index.json'],token=os.environ.get('HF_TOKEN') or None,
-        cache_dir=config.get('runtime',{}).get('cache_dir',str(Path('.cache/huggingface').resolve()))))
+        cache_dir=str(huggingface_cache_paths(config.get('runtime'))[0])))
     files=[]
     source=read_json(config['model_source_manifest_path'])
     if source['revision']!=config['model_revision']:raise ExperimentBlocked('Weight source revision mismatch')

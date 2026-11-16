@@ -1,6 +1,6 @@
 # 实现状态与证据边界
 
-更新：2026-11-15。以下“已实现”描述代码；实验结论单独列出。整个研究尚未完成。
+更新：2026-11-16。以下“已实现”描述代码；实验结论单独列出。整个研究尚未完成。
 
 | 组件 | 代码状态 | 已执行的证据与限制 |
 |---|---|---|
@@ -30,4 +30,10 @@ G0 来自实测合成数学案例，为 PASS。G1–G4 没有完整真实证据�
 
 本机实际可见 GPU 约 4GiB、可用 CPU RAM 约 2GiB；未加载预训练 7B/8B，未下载其权重，未测真实 PPL/下游任务收益。高 RAM Colab / 目标 AutoDL 上所需命令见 [RUNBOOK.md](RUNBOOK.md)。端到端正式协议、资源预算和真实恢复仍待目标运行审查。
 
-完整运行记录见 [VALIDATION_REPORT.md](../VALIDATION_REPORT.md)，本轮归档索引见 `evidence/build_20261116/`；工作目录 `runs/` 还保留原始 checkpoint、失败尝试及完整日志。没有根 Git 仓库，不能编造代码 commit；交付以逐文件 source snapshot SHA-256 标识。
+2026-11-15 构建记录见 [VALIDATION_REPORT.md](../VALIDATION_REPORT.md)，对应归档索引为 `evidence/build_20261115/`；工作目录 `runs/` 还保留原始 checkpoint、失败尝试及完整日志。当时交付目录无根 Git，历史证据继续使用逐文件 source snapshot，不追填 commit。2026-11-16 接手已核对根 checkout 为 `BoldHu/CellQuant`、`master`、初始 commit `9a53bf7`。
+
+## 2026-11-16：GitHub / VS Code / Colab / Drive
+
+新增 `00_Colab_GitHub_Workspace.ipynb`、`cellquant.workspace`、`scripts/cache_model.py` 和 [工作流说明](COLAB_VSCODE.md)。模型与数据先缓存到 `/content/CellQuant` 本地盘，按 SHA-256 去重、版本化备份到用户配置的 Drive 根目录；恢复校验文件并拒绝冲突，凭据不包含在缓存区域中。权重可单独按固定 revision 下载和校验，再备份、加载并进入真实 G1。五本原阶段 notebook 会识别 Git clone 和每个 kernel 的缓存配置。
+
+本地全套 125 项测试通过，最终增补 CLI 选项后相关 25 项再次通过；六本 notebook 的 IPython inprocess 默认路径及 6 条 CLI 初始化/备份/恢复命令实际执行成功。Google 登录、Drive FUSE、VS Code 云端 kernel、真实模型下载、Colab GPU G1 为 **NOT_RUN**，需要用户账号和远程 runtime。正式运行前需要提交本次源码并重新冻结相应指纹；Git 更新不会赋予旧 checkpoint 或旧 G3 新的资格。实际日志和 notebook 执行记录见 `runs/workspace_20261116/`，可携带记录见 `evidence/workspace_20261116/`。门槛不变。

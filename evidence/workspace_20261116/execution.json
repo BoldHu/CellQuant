@@ -1,0 +1,128 @@
+{
+  "created_at_utc": "2026-11-16T07:33:33.585757+00:00",
+  "source_type": "unit_test_fixture",
+  "records": [
+    {
+      "name": "pytest",
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "returncode": 0,
+      "wall_seconds": 21.5,
+      "log": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\pytest.log",
+      "log_sha256": "9e874a5d8eac7423c0dad9310cb3df082406c638eae90f031dc078a8f8cccd06"
+    },
+    {
+      "name": "00_Colab_GitHub_Workspace",
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "scripts/run_notebook.py",
+        "D:\\python_project\\quant-llm\\notebooks\\00_Colab_GitHub_Workspace.ipynb",
+        "--engine",
+        "inprocess",
+        "--output",
+        "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\notebooks\\00_Colab_GitHub_Workspace.ipynb",
+        "--timeout",
+        "600"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.0310000000026776,
+      "log": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\00_Colab_GitHub_Workspace.log",
+      "log_sha256": "3895acd16b6513fd6ba75584955c3c6da17fd3c6257bce870391b8114d05b9bc"
+    },
+    {
+      "name": "00_Colab_Preflight_and_Math",
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "scripts/run_notebook.py",
+        "D:\\python_project\\quant-llm\\notebooks\\00_Colab_Preflight_and_Math.ipynb",
+        "--engine",
+        "inprocess",
+        "--output",
+        "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\notebooks\\00_Colab_Preflight_and_Math.ipynb",
+        "--timeout",
+        "600"
+      ],
+      "returncode": 0,
+      "wall_seconds": 12.546999999991385,
+      "log": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\00_Colab_Preflight_and_Math.log",
+      "log_sha256": "667cad3583cca2d2617700a5d241c89064437d7d8fa94ceac1ab69599ae1f4ca"
+    },
+    {
+      "name": "01_Colab_Real_Layer_Pilot",
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "scripts/run_notebook.py",
+        "D:\\python_project\\quant-llm\\notebooks\\01_Colab_Real_Layer_Pilot.ipynb",
+        "--engine",
+        "inprocess",
+        "--output",
+        "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\notebooks\\01_Colab_Real_Layer_Pilot.ipynb",
+        "--timeout",
+        "600"
+      ],
+      "returncode": 0,
+      "wall_seconds": 4.077999999994063,
+      "log": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\01_Colab_Real_Layer_Pilot.log",
+      "log_sha256": "846c9e51c4e943881817e0c5aa1358ab5444e5f363a89b056fc3babb5c2a3f70"
+    },
+    {
+      "name": "02_AutoDL_Migration_and_Canary",
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "scripts/run_notebook.py",
+        "D:\\python_project\\quant-llm\\notebooks\\02_AutoDL_Migration_and_Canary.ipynb",
+        "--engine",
+        "inprocess",
+        "--output",
+        "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\notebooks\\02_AutoDL_Migration_and_Canary.ipynb",
+        "--timeout",
+        "600"
+      ],
+      "returncode": 0,
+      "wall_seconds": 4.187000000005355,
+      "log": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\02_AutoDL_Migration_and_Canary.log",
+      "log_sha256": "d3e65fe374b42487c77ad8033bea6370e5daea6c602f10c03a85d3b3cbb17577"
+    },
+    {
+      "name": "03_Full_Experiments",
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "scripts/run_notebook.py",
+        "D:\\python_project\\quant-llm\\notebooks\\03_Full_Experiments.ipynb",
+        "--engine",
+        "inprocess",
+        "--output",
+        "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\notebooks\\03_Full_Experiments.ipynb",
+        "--timeout",
+        "600"
+      ],
+      "returncode": 0,
+      "wall_seconds": 4.547000000005937,
+      "log": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\03_Full_Experiments.log",
+      "log_sha256": "358a8617baea4d559dd672f177138ccbd33eb985c848db84048b0f1df0eb0777"
+    },
+    {
+      "name": "04_Paper_Analysis",
+      "argv": [
+        "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+        "scripts/run_notebook.py",
+        "D:\\python_project\\quant-llm\\notebooks\\04_Paper_Analysis.ipynb",
+        "--engine",
+        "inprocess",
+        "--output",
+        "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\notebooks\\04_Paper_Analysis.ipynb",
+        "--timeout",
+        "600"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.75,
+      "log": "D:\\python_project\\quant-llm\\runs\\workspace_20261116\\04_Paper_Analysis.log",
+      "log_sha256": "8c3b5c2bc3137e15d0114f098dc1cc67e36ec27a4ec1eff746dc6b10792936e5"
+    }
+  ],
+  "cloud_validation": "NOT_RUN; Windows local process and IPython inprocess only"
+}

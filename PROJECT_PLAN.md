@@ -4,6 +4,8 @@
 
 2026-11-15 构建更新：生产事件求解、匹配对照、SpinQuant/GPTQ 与评估代码已落地；数学与 tiny 结构验证已执行，真实 G1–G4 未通过。当前事实以 [实现状态](docs/IMPLEMENTATION_STATUS.md)、[验证报告](VALIDATION_REPORT.md) 和 [运行手册](docs/RUNBOOK.md) 为准，以下研究目标和门槛不变。
 
+2026-11-16 工作流更新：新增 GitHub clone/pull、官方 VS Code Colab 扩展入口、Drive 模型/数据/运行快照和独立权重下载校验。操作见 [COLAB_VSCODE.md](docs/COLAB_VSCODE.md)。本地存储/入口验证不替代真实云端 GPU 或 G1 证据。
+
 ## 一、项目目标与最小论文问题
 
 在固定整数码本、量化分组和 Transformer 等价约束下，研究正交旋转对权重与激活动态尺度、整数编码及矩阵乘法误差的共同影响。主线是精确利用一维旋转轨道上的量化分段结构，而不是换一种固定正交矩阵。

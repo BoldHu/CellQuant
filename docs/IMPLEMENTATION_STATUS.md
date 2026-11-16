@@ -61,3 +61,17 @@ G0 来自实测合成数学案例，为 PASS。G1–G4 没有完整真实证据�
 最新保存的输出显示云端 clean commit `45b2a8659b33d130653030e8165537692b399212`，Drive 已挂载且 runs 恢复返回 `RESTORED_SEPARATELY`，数学 notebook 的参考检查、G0 和归档完整性均显示 PASS。01 仍为 `RUN_REAL_MODEL=False`、preflight BLOCKED（8 项缺失）、真实模型 NOT_RUN、G1 INSUFFICIENT_EVIDENCE。环境仍为 L4 / Python 3.13.16 / Torch 2.14.1+cu130 / Transformers 5.22.1，FHT 未安装。
 
 三本原始 notebook 及观察记录归档于 `evidence/colab_after_restore_20261116/`；这是用户提供的会话输出，未在本机直接访问云端文件独立重算。下一步为备份当前 runs、切换兼容 Python 3.12 运行时并安装固定依赖，再准备固定 SpinQuant/FHT、模型访问与真实校准数据。具体步骤已补充到 `docs/COLAB_VSCODE.md`；尚不进入 AutoDL canary。
+
+## Python 3.12 环境准备反馈（2026-11-16）
+
+用户最新保存的三本 notebook 显示运行环境已切换为 Python 3.12.13、Torch 2.11.0+cu128、Transformers 4.44.2、datasets 2.20.0、tokenizers 0.19.1；NVIDIA L4 约 22.03GiB，BF16 可用。云端代码为 clean commit `4732c827891d012a776bc18e09ce890ebf20e88b`，Drive 挂载/原路径恢复已执行，G0 与归档完整性显示 PASS。无需再次要求切换 Python。
+
+01 仍为 RUN_REAL_MODEL=False、preflight BLOCKED（8 项缺失）、真实 G1 NOT_RUN/INSUFFICIENT_EVIDENCE；FHT 未安装，固定 SpinQuant overlay、模型/tokenizer/dataset revisions、两 seed 真实数据与明确 dtype 尚缺。下一步先固定上游并实测 FHT/tiny 接口，再准备 HF 权限、真实输入、下载与 Drive 备份，最后执行 G1。观察归档见 `evidence/colab_python312_20261116/`。pip 同时报告预装 gradio/gcsfs 的依赖冲突，保留原始记录，不宣称整个 Colab 软件环境无冲突或已验证真实模型。
+
+## 用户 Colab 后端兼容检查（2026-11-16）
+
+最新 workspace 输出已显示 fast-hadamard-transform 1.1.0 安装完成、`CUDA/FHT: PASS`；固定 SpinQuant 小随机模型返回 `PASS_TINY_STRUCTURE_ONLY`，融合相对 RMS `1.068972578044603e-07`，旋转相对 RMS `1.7605411237572577e-07`，GPTQ 为 `EXECUTED_FINITE`，该子进程退出码 0。L4 / Python 3.12.13 / Torch 2.11.0+cu128 / Transformers 4.44.2。原始三本 notebook 与观察摘要位于 `evidence/colab_backend_20261116/`；这些是用户保存的输出，未独立读取远程 report.json 或重算。
+
+01 的缺失项从 8 项减为 7 项，SpinQuant overlay 已不再缺失；剩余为模型/tokenizer/dataset 固定 revisions、模型分片元数据、seed 11/23 的真实 fit/dev tokens、明确 dtype。RUN_REAL_MODEL 仍为 False，真实 G1 NOT_RUN/INSUFFICIENT_EVIDENCE。下一步是 HF 授权、prepare_experiment、cache_model、Drive 备份，再以 READY 配置启动真实 G1；小随机模型检查不替代真实 7B 面板效果。
+
+HF 权限反馈（2026-11-16）：用户附件明确为 Llama-2-7b-hf 的 403/GatedRepoError，服务端提示当前账号不在 authorized list。按用户要求，workspace notebook 顶部增加空值全局 `HF_TOKEN`，登录与下载统一使用该变量；显示账号名称、先执行真实 auth_check，并保留权限异常。模型访问仍未获验证，不能把修改 token 输入方式标为解除阻塞。Notebook schema/语法、空 token 阻止联网、其他单元与输出保留检查通过；归档与记录见 `evidence/hf_token_variable_20261116/`。

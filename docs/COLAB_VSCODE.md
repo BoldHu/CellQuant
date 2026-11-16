@@ -74,14 +74,27 @@ python scripts/prepare_spinquant.py
 
 已有 SpinQuant checkout 时核对 commit/clean tree，不重复 clone。FHT 在目标 torch/CUDA 下安装和探测，具体要求见 [运行手册](RUNBOOK.md)。基础安装不会伪称 FHT 已支持。
 
-LLaMA 需要 HF 账号已获模型访问权。新 kernel 中可通过隐藏输入设置 token，只留内存：
+LLaMA 需要 HF 账号已获模型访问权。按用户当前偏好，workspace notebook 顶部配置单元统一提供全局变量；只在该处填写真实值：
 
 ```python
-from getpass import getpass
-os.environ["HF_TOKEN"] = getpass("Hugging Face token: ")
+HF_TOKEN = ""  # 在本地填写令牌，提交 notebook 前恢复为空字符串
 ```
 
-VS Code 扩展环境不依赖浏览器 Colab Secrets API。不要把实际 token 放进字符串或打印环境。`logged_command` 子进程继承该 token；另开的 terminal 不会继承 notebook 的进程环境，下载命令优先在 notebook 中运行。
+先运行顶部配置，再运行 notebook 中的 HF 登录单元。它将同一令牌写入当前进程的 `HF_TOKEN` 环境变量，`logged_command` 子进程会继承；不打印令牌。VS Code 扩展环境不依赖浏览器 Colab Secrets API。另开的 terminal 不会继承 notebook 的进程环境，下载命令优先在 notebook 中运行。含真实令牌的 notebook 不提交到 GitHub。
+
+若准备数据在 workspace notebook，而真实执行在 01 的另一个 kernel，可在工作区初始化后用以下方式登录：
+
+```python
+from huggingface_hub import login
+if not HF_TOKEN.strip():
+    raise ValueError("先填写并运行顶部 HF_TOKEN 配置")
+os.environ["HF_TOKEN"] = HF_TOKEN.strip()
+login(token=os.environ["HF_TOKEN"], add_to_git_credential=False)
+```
+
+该方式在当前进程设置令牌，并将登录凭据保存到当前 VM 的 `.cache/huggingface/token` / `stored_tokens`，供同一服务器中完成工作区初始化的其他 kernel 使用；不会写入 Git 凭据，也不进入项目的 Drive 快照。销毁 VM 后需重新登录。HF 账号必须已获目标模型访问权，令牌登录本身不授予 gated model 权限。登录失败时先处理权限，不进入模型下载。
+
+登录单元会显示账号名称并执行 `HfApi.auth_check`，再下载小配置文件。若返回 403 且明确提示账号不在 `authorized list` 中，需到目标模型页面申请访问或使用已获权限账号的令牌；改变 token 输入方式不能消除该权限限制。保留真实 HTTP 异常，不再用 `force_download=True` 将它包装成泛化的下载失败。
 
 先准备版本与真实校准数据，再独立下载并核验模型：
 

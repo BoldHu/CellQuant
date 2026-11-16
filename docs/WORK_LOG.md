@@ -83,3 +83,23 @@
 - 01 仍是默认不执行模型的模式，8 项准备缺失，包括固定 revisions、权重来源元数据、两种子真实 tokens、明确 dtype、SpinQuant overlay；真实 G1 NOT_RUN/INSUFFICIENT_EVIDENCE。Python 3.13.16 / Transformers 5.22.1 还未切换，FHT 未安装。
 - 原始三本 notebook 未改动，逐字节复制到 `evidence/colab_after_restore_20261116/` 并记录 SHA 和实际缺失项。查阅 Colab 官方 runtime FAQ 与 VS Code 扩展 PR #424，补充备份、选择 2026.07/Python 3.12、确认版本和固定依赖的操作顺序。
 - 本轮仅归档观察和更新操作文档，没有修改核心算法、notebook、门槛或运行新 CPU/GPU 实验。下一步在用户 Colab 服务器准备兼容环境和真实 G1，G1 合格后才进入 AutoDL canary。
+
+## 2026-11-16 — Python 3.12 与固定 HF 依赖已在用户 Colab 安装
+
+- 读取最新三本 notebook 输出，确认 Python 3.12.13 / Torch 2.11.0+cu128 / Transformers 4.44.2 / datasets 2.20.0 / tokenizers 0.19.1；仍是 L4，G0 PASS。云端 clean commit `4732c827891d012a776bc18e09ce890ebf20e88b`，恢复返回 RESTORED，pip 安装退出 0。保留 gradio 与 huggingface_hub、gcsfs 与 fsspec 的冲突提示，不自动升级破坏固定依赖。
+- 真实 G1 尚未运行，01 仍报告 8 项前置缺失及 RUN_REAL_MODEL=False。三本 notebook 未修改，原字节和 SHA 归档于 `evidence/colab_python312_20261116/`。
+- 核对 Dao-AILab/fast-hadamard-transform 官方 v1.1.0 tag，实际 commit 为 `1cc807efbd6cc001df359822d60bf6052dd66859`；阅读该版本 setup.py/README，提供从固定 Git 源码安装、保留宿主 torch、CUDA/FHT 实测和固定 SpinQuant tiny smoke 的下一步命令。此 FHT 在当前 L4/Torch 组合尚未安装或实测，不能从上游支持列表推断兼容通过。
+- 本轮没有修改求解器或门槛，没有代用户运行云端 GPU；接下来应先运行后端兼容检查，再授权/准备并缓存真实模型与数据，最后在 01 显式执行真实 G1。
+
+## 2026-11-16 — 用户 Colab CUDA/FHT 与 tiny SpinQuant/GPTQ 通过
+
+- 检查用户最新三本 notebook 输出：FHT 1.1.0 安装完成，CUDA/FHT PASS；tiny SpinQuant 返回 PASS_TINY_STRUCTURE_ONLY，融合相对 RMS 1.068972578044603e-07、旋转相对 RMS 1.7605411237572577e-07、GPTQ EXECUTED_FINITE，退出码 0。记录为用户保存的 GPU/合成结构验证，不冒充在本机重新执行或预训练 7B 结果。
+- 01 仍使用未准备的草案配置且 RUN_REAL_MODEL=False；当前 7 项缺失，overlay 已就绪，真实 G1 仍 NOT_RUN/INSUFFICIENT_EVIDENCE。下一步准备 immutable revisions、真实 fit/dev tokens 和权重，备份到 Drive，再运行真实 G1。
+- 原始 notebook 未修改，逐字节归档至 `evidence/colab_backend_20261116/` 并记录 SHA；保留此前尚未提交的 Python 3.12 状态记录。补充跨 notebook kernel 的 HF 登录方式，核对本地 huggingface_hub 0.36.2 的 login 与 HF_TOKEN_PATH 行为；凭据保留在 VM 本地，不进入 Drive 快照。
+- 本轮仅读取和归档结果、更新状态及后续操作说明；没有运行新的 CPU/GPU 算法实验，没有改动任何科学门槛。
+
+## 2026-11-16 — 全局 HF_TOKEN 与明确的模型权限检查
+
+- 读取用户粘贴的错误附件，根因是 403/GatedRepoError，服务端明确提示当前账号不在 Llama-2-7b-hf 授权名单；force_download 又将它包装为泛化 ValueError。该错误不说明需要更换 Python，也不能靠改变令牌输入方式授予权限。
+- 按请求在 workspace 顶部添加空字符串全局 HF_TOKEN，替换 getpass 登录单元；统一设置进程环境和 VM 登录缓存，显示当前账号，调用 huggingface_hub 0.36.2 实际存在的 HfApi.auth_check，再读取配置文件。保留真实 401/403，不进行权限绕过或自动重试；文件中未填写真实令牌。
+- 修改前 notebook 归档于 `evidence/hf_token_variable_20261116/`，归档脚本检查并按需脱敏 hf_ 令牌模式。仅清除被修改代码单元的旧输出，其他用户配置、单元和输出保留。Schema/所有代码语法/空 token 联网前阻止/未改动单元保留检查通过，没有实际登录 HF 或执行新模型实验。门槛不变，真实 G1 仍未运行。

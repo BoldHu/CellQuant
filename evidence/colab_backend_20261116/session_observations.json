@@ -1,0 +1,104 @@
+{
+  "observed_at_utc": "2026-11-16T09:15:42.784188+00:00",
+  "evidence_kind": "USER_SUPPLIED_NOTEBOOK_EXECUTION_LOGS",
+  "source_type": "synthetic_math",
+  "scope": "User-saved G0/CUDA/FHT/random tiny-model logs; not pretrained 7B evidence or independent remote artifact verification",
+  "files": [
+    {
+      "notebook": "00_Colab_GitHub_Workspace.ipynb",
+      "sha256": "99f09f49636a808659fd2f651cab47c7fedab3b945eef6648ea2a84bde26d97c"
+    },
+    {
+      "notebook": "00_Colab_Preflight_and_Math.ipynb",
+      "sha256": "4d184b7ba85c891ab2760f1e048eeee27ccbfd46fcd4338e361cfafc80e6a825"
+    },
+    {
+      "notebook": "01_Colab_Real_Layer_Pilot.ipynb",
+      "sha256": "b6d9e97977a9d4a92e0b678d0878570e2b2604d5341935eb03fadaed22b85bad"
+    }
+  ],
+  "workspace": {
+    "project": "/content/CellQuant",
+    "code": {
+      "commit": "4732c827891d012a776bc18e09ce890ebf20e88b",
+      "branch": "master",
+      "dirty": false
+    }
+  },
+  "g0_status_in_saved_output": "PASS",
+  "cuda_fht_status_in_saved_output": "PASS",
+  "spinquant_tiny_output": {
+    "status": "PASS_TINY_STRUCTURE_ONLY",
+    "fusion": {
+      "relative_rms": 1.068972578044603e-07,
+      "max_absolute": 5.960464477539063e-08
+    },
+    "rotation": {
+      "relative_rms": 1.7605411237572577e-07,
+      "max_absolute": 7.450580596923828e-08
+    },
+    "gptq_status": "EXECUTED_FINITE"
+  },
+  "real_model_execution_in_saved_output": "NOT_RUN",
+  "g1_status_in_saved_output": "INSUFFICIENT_EVIDENCE",
+  "g1_preflight": {
+    "status": "BLOCKED",
+    "missing": [
+      "Missing immutable model_revision; run scripts/prepare_experiment.py",
+      "Missing immutable tokenizer_revision; run scripts/prepare_experiment.py",
+      "Missing immutable dataset_revision; run scripts/prepare_experiment.py",
+      "Pinned model shard size/SHA-256 metadata missing",
+      "Missing real fit/dev token manifest for seed 11",
+      "Missing real fit/dev token manifest for seed 23",
+      "Record an explicit actual model dtype; no silent fallback"
+    ],
+    "environment": {
+      "schema_version": "1.0",
+      "created_at_utc": "2026-11-16T09:10:35.185187+00:00",
+      "python": "3.12.13",
+      "executable": "/usr/bin/python3",
+      "platform": "Linux-6.6.159+-x86_64-with-glibc2.35",
+      "machine": "x86_64",
+      "packages": {
+        "numpy": "2.0.2",
+        "scipy": "1.16.3",
+        "torch": "2.11.0+cu128",
+        "transformers": "4.44.2",
+        "datasets": "2.20.0",
+        "accelerate": "0.34.2",
+        "safetensors": "0.8.0",
+        "nbformat": "5.10.4",
+        "nbclient": "0.10.4",
+        "fast-hadamard-transform": "1.1.0",
+        "flash-attn": null,
+        "triton": "3.6.0",
+        "lm_eval": null,
+        "tokenizers": "0.19.1",
+        "huggingface-hub": "0.36.2",
+        "pyarrow": "18.1.0",
+        "psutil": "5.9.5"
+      },
+      "cuda": {
+        "available": true,
+        "torch_cuda_build": "12.8",
+        "status": "DEVICE_DETECTED",
+        "devices": [
+          {
+            "index": 0,
+            "name": "NVIDIA L4",
+            "total_gib": 22.0343017578125,
+            "compute_capability": [
+              8,
+              9
+            ]
+          }
+        ],
+        "bf16_supported": true,
+        "nvidia_smi": "NVIDIA L4, 580.82.07, 23034 MiB, 8.9"
+      },
+      "compatibility_claim": "CPU tooling only; GPU kernels require target-device tests"
+    },
+    "stage": "G1",
+    "scope": "Execution prerequisites only; no new scientific evidence"
+  }
+}

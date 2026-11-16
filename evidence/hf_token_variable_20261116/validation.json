@@ -1,0 +1,15 @@
+{
+  "source_type": "unit_test_fixture",
+  "status": "PASS",
+  "checks": [
+    "notebook schema",
+    "all code cells compile",
+    "global HF_TOKEN saved empty",
+    "empty token rejected before network calls",
+    "unmodified cells and outputs preserved"
+  ],
+  "unchanged_code_cells": 7,
+  "notebook_sha256": "8abedd231789c60a7b297b586c498ce96039da2865178619086e8cfbe77fdef5",
+  "actual_hf_login": "NOT_RUN",
+  "g1": "NOT_RUN"
+}

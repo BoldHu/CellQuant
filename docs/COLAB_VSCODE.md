@@ -116,11 +116,22 @@ logged_command([sys.executable, "-m", "cellquant.workspace", "backup",
 ```python
 INSTALL_BASE_DEPENDENCIES = True
 RESTORE_AREAS = ["models", "datasets", "runs"]
+RESTORE_RUNS_CONFLICT = "separate"
 RUN_G0 = False
 BACKUP_AREAS = []
 ```
 
-恢复发生在新实验之前。没有该区域的快照会报告 NOT_FOUND；本地已有同路径不同内容会拒绝覆盖。每个区域默认恢复最新完成快照。需要旧版本时用 `restore_area(..., snapshot=明确索引路径)`；索引可由 `python -m cellquant.workspace status --areas models datasets runs` 列出。
+恢复发生在新实验之前。没有该区域的快照会报告 NOT_FOUND。每个区域默认恢复最新完成快照。需要旧版本时用 `restore_area(..., snapshot=明确索引路径)`；索引可由 `python -m cellquant.workspace status --areas models datasets runs` 列出。
+
+重启 kernel 会保留当前 VM 的本地文件；已有 checkout 不一定是空目录。若 `runs/00_math/environment.json` 等文件与备份不同，直接恢复会拒绝覆盖。初始化 notebook 的 `RESTORE_RUNS_CONFLICT="separate"` 会保留现有 `runs`，将 Drive 中的**整个快照**另存为项目根目录的 `restored_snapshots/runs/<快照哈希>/`，打印 `RESTORED_SEPARATELY` 和实际 `destination`。该目录排除在 Git 外，位于活动 `runs` 之外，避免被结果分析递归扫描；Drive 中的原始快照仍保留。这份历史副本不自动成为活动运行目录；其中的配置绝对路径与旧 gate 不改写、不自动用于续跑。重复恢复同一快照会校验同一个目录，若历史副本被改动则继续拒绝覆盖。
+
+没有冲突时仍恢复到原路径。模型/数据缓存保持严格冲突检查，独立命令行默认也拒绝所有冲突；需要保留两份 runs 时显式执行：
+
+```bash
+python -m cellquant.workspace restore --areas runs --runs-conflict separate
+```
+
+如果只是继续使用当前 VM 中已有的结果，无须从 Drive 恢复，可设 `RESTORE_AREAS=[]`。恢复前停止写入相关目录的作业。新版 `logged_command` 会将日志末尾的实际异常及退出码带入 notebook 报错，完整日志仍保存在 `.cache/workspace_logs/`。
 
 重新安装真实阶段的可选依赖和固定上游。基础模型不会因 runtime 丢失而必须重新从 HF 下载，但缓存恢复仍需要从 Drive 复制到本地。HF 授权凭据需要重新提供。恢复保持文件原字节，**不重写配置中的绝对路径或放行旧 gate**；保持相同本地路径，跨 AutoDL 路径使用项目迁移流程。
 

@@ -67,3 +67,12 @@
 - 用户报告 00 到 01 三本 notebook 执行成功；检查实际保存的输出，确认显示 Drive 已挂载、runs 已备份、G0 PASS；01 的执行开关仍为 False，preflight BLOCKED、真实模型 NOT_RUN、G1 INSUFFICIENT_EVIDENCE。正常结束的 notebook 不等于真实 G1 通过。
 - 环境记录为 L4 / Python 3.13.16 / Torch 2.14.1+cu130 / Transformers 5.22.1；FHT 缺失、模型与数据 revisions 未准备。适配器要求 Transformers 4.44.2；PyPI 上固定 tokenizers 0.19.1 提供 cp312 wheel，未列出 cp313 wheel。查阅 Colab 官方 runtime FAQ，2026.07 提供 Python 3.12.13，可作为下一步依赖安装的候选环境，GPU/完整依赖仍需实测。
 - 三本用户执行 notebook 与观察摘要保存在 `evidence/colab_first_session_20261116/`，保持原始输出和哈希，不修改其 source 或执行结果；未从 stdout 生成 G1 通过证据。下一步先备份当前 runs，再准备兼容环境、固定 SpinQuant/FHT 和真实数据。
+
+## 2026-11-16 — 恢复现有 runs 时保留两份记录
+
+- 从用户保存的 workspace notebook stdout 确认真实原因：已有 `runs/00_math/environment.json` 与 Drive 快照不同，触发 `FileExistsError`，并非缺少云盘目录。开始时仅该 notebook 有用户改动，根 commit 为 `8eb21e72a3396c7462ac45917553f3711a21cae6`。修改前逐字节归档，保留未修改代码单元的输出及用户执行开关。
+- `restore_area(..., on_conflict="separate")` 与 CLI `--runs-conflict separate` 只适用于 runs：冲突时完整快照另存到哈希命名目录，默认策略与模型/数据缓存仍拒绝覆盖；重跑校验原副本，损坏文件/路径逃逸仍报错。当前结果与历史快照不混合，不重写配置或授予续跑资格。Notebook 新增选项与说明，失败信息附真实子进程日志尾部和退出码。
+- 执行 `.venv/Scripts/python.exe -m pytest -q tests/test_workspace.py --basetemp runs/restore_conflict_tests_01`：**12 passed in 6.41s**。首次测试命令的临时目录父目录不存在，12 项均在 fixture setup 报错，未执行测试主体；原日志单独保留，改用现有 runs 下的新临时目录后通过。
+- 执行 `evidence/workspace_restore_conflict_20261116/validate_workflow.py`：notebook schema/语法、用户配置与未改动单元保留、默认冲突拒绝、实际 notebook 恢复调用、两份原字节、失败详情传播、多区域 CLI 均通过。本地存储 fixture，不连接 Google Drive，不运行 GPU 模型。原始反馈、执行日志与 hash 归档在同名 evidence 目录。
+- 门槛 SHA 保持 `5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e`。用户最新 pip 日志仍为 Python 3.13，兼容环境切换与真实 G1 继续待执行。本轮未提交/push，修复需要同步到云端 checkout 后重跑。
+- 收尾审查发现分析 CLI 会递归扫描 `runs`，将另存目录放到项目根目录的 `restored_snapshots/runs/<快照哈希>/` 并加入 `.gitignore`，防止历史结果被收集进活动分析。调整后以 `--basetemp runs/restore_conflict_tests_02` 重跑，**12 passed in 4.26s**；notebook/CLI fixture 再次通过。调整前日志保留于 `before_runs_isolation/`，当前验证清单记录最终源码 hash。

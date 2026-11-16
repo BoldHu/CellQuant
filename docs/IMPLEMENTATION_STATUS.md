@@ -47,3 +47,11 @@ G0 来自实测合成数学案例，为 PASS。G1–G4 没有完整真实证据�
 已读取用户保存的三本 00–01 notebook 输出并逐字节归档到 `evidence/colab_first_session_20261116/`。记录显示 Drive 已挂载、runs 快照 BACKED_UP、G0 输出 PASS；01 仅执行预检查，状态为 BLOCKED，`RUN_REAL_MODEL=False`，真实模型 NOT_RUN，G1 为 INSUFFICIENT_EVIDENCE。这里是用户会话输出归档，未在本机独立访问远程文件重算 gate。
 
 该会话为 NVIDIA L4（约 22.03GiB）、Python 3.13.16、Torch 2.14.1+cu130、Transformers 5.22.1，FHT 未安装。尚缺固定模型/tokenizer/dataset revisions、真实 fit/dev tokens、明确 dtype 和 SpinQuant overlay。下一步先准备与固定 Transformers 4.44.2/tokenizers 0.19.1 匹配的运行环境，再安装/实测 FHT、准备真实 G1；不能仅打开执行开关便进入 G1 或 AutoDL canary。
+
+## 重复恢复 runs 的冲突处理（2026-11-16）
+
+读取用户第二次保存的 workspace notebook，实际子进程异常为 `FileExistsError`：`/content/CellQuant/runs/00_math/environment.json` 与 Drive 快照不同。原恢复器拒绝覆盖的保护行为正常；外层报错仅显示日志路径，操作引导不足。该次 pip 输出仍指向 Python 3.13，不能据此记录已切换为 Python 3.12。
+
+新增显式 `--runs-conflict separate`：整份冲突快照另存至项目根目录的 `restored_snapshots/runs/<快照哈希>/`，返回 `RESTORED_SEPARATELY` 和目标路径，保留当前结果。历史目录位于活动 `runs` 外，避免递归分析重复收集，且已排除在 Git 外。初始化 notebook 通过 `RESTORE_RUNS_CONFLICT` 调用该选项，并在异常中附日志尾部和退出码。CLI 默认拒绝覆盖；模型/数据缓存、校验和、路径检查及 gate 均未放宽。另存副本不自动赋予 resume 资格。
+
+12 项 workspace 测试通过；实际执行 notebook 的安装/恢复单元（关闭 pip，使用本地存储 fixture），验证冲突另存、保留两套字节、失败诊断和多区域 CLI。原始用户 notebook、日志和源码 hash 位于 `evidence/workspace_restore_conflict_20261116/`。本轮云端 Drive 重跑与真实模型 GPU 为 NOT_RUN；本地检查不构成 G1 证据。

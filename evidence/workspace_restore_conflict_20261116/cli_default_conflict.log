@@ -1,0 +1,21 @@
+Traceback (most recent call last):
+  File "D:\python_project\quant-llm\src\cellquant\workspace.py", line 262, in restore_area
+    by_path = _validate_restore_plan(local, drive, entries)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\python_project\quant-llm\src\cellquant\workspace.py", line 223, in _validate_restore_plan
+    raise FileExistsError(f"Local file differs; refusing to overwrite: {dest}")
+FileExistsError: Local file differs; refusing to overwrite: D:\python_project\quant-llm\runs\restore_cli_bv65fals\target\runs\00_math\environment.json
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\python_project\quant-llm\src\cellquant\workspace.py", line 348, in <module>
+    main()
+  File "D:\python_project\quant-llm\src\cellquant\workspace.py", line 343, in main
+    result.append(fn(args.project_root, args.drive_root, area, **kw))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\python_project\quant-llm\src\cellquant\workspace.py", line 266, in restore_area
+    raise FileExistsError(f"{exc}{hint}") from exc
+FileExistsError: Local file differs; refusing to overwrite: D:\python_project\quant-llm\runs\restore_cli_bv65fals\target\runs\00_math\environment.json For runs, use --runs-conflict separate to keep both copies.

@@ -4,6 +4,7 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 runs/
+restored_snapshots/
 third_party/
 .cache/
 *.partial

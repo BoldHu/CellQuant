@@ -1,0 +1,30 @@
+{
+  "checks": [
+    "notebook schema and code syntax",
+    "user configuration and unchanged outputs preserved",
+    "CLI default conflict rejection",
+    "actual notebook separate restore call",
+    "both original and historical bytes intact",
+    "error contains child diagnostic and exit code",
+    "multi-area option only applies to runs"
+  ],
+  "code": {
+    "branch": "master",
+    "commit": "8eb21e72a3396c7462ac45917553f3711a21cae6",
+    "dirty": true
+  },
+  "colab_drive_retest": "NOT_RUN",
+  "fixture_directory": "D:\\python_project\\quant-llm\\runs\\restore_cli_bv65fals",
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "python": "3.11.18 | packaged by Anaconda, Inc. | (main, Oct 26 2026, 18:13:29) [MSC v.1942 64 bit (AMD64)]",
+  "real_model_gpu": "NOT_RUN",
+  "source_sha256": {
+    "notebooks\\00_Colab_GitHub_Workspace.ipynb": "a2947b4b7fbfd4489070854ff26d52a75cf9eb116134cf2f878a209779f3e249",
+    "src\\cellquant\\workspace.py": "7ecb8e108016d51eb61f09a68af20e31b87de266d4815d3cde99f0519431c614",
+    "tests\\test_workspace.py": "7ea591d115135915e18c2236576b759f2333735bf61b6ac6561bc948eb385b6e"
+  },
+  "source_type": "unit_test_fixture",
+  "status": "PASS",
+  "unchanged_code_cells": 4,
+  "user_notebook_sha256": "51932ec2b9a118e91681a2c4a1e6d7b55172b8cb4159942b5a3be0aa657d08c3"
+}

@@ -63,6 +63,82 @@ def test_corrupted_object_and_manifest_cannot_restore(tmp_path):
         restore_area(target, drive, "runs")
 
 
+def test_runs_conflict_restores_whole_snapshot_separately_without_overwriting(tmp_path):
+    source, target = checkout(tmp_path / "source"), checkout(tmp_path / "target")
+    drive = tmp_path / "drive"
+    configure_workspace(source, drive, apply=False)
+    configure_workspace(target, drive, apply=False)
+    for root, data in ((source, b"old environment"), (target, b"current environment")):
+        path = root / "runs/00_math/environment.json"
+        path.parent.mkdir()
+        path.write_bytes(data)
+    (source / "runs/00_math/result.json").write_bytes(b"old result fixture")
+    (target / "runs/current.txt").write_bytes(b"new local result")
+    snapshot = backup_area(source, drive, "runs")["snapshot"]
+    with pytest.raises(FileExistsError, match="--runs-conflict separate"):
+        restore_area(target, drive, "runs")
+    assert not (target / "runs/00_math/result.json").exists()
+    result = restore_area(target, drive, "runs", on_conflict="separate")
+    assert result["status"] == "RESTORED_SEPARATELY" and result["snapshot"] == snapshot
+    separate = Path(result["destination"])
+    assert separate.is_relative_to(target / "restored_snapshots/runs")
+    assert not separate.is_relative_to(target / "runs")
+    assert (separate / "00_math/environment.json").read_bytes() == b"old environment"
+    assert (separate / "00_math/result.json").read_bytes() == b"old result fixture"
+    assert (target / "runs/00_math/environment.json").read_bytes() == b"current environment"
+    assert (target / "runs/current.txt").read_bytes() == b"new local result"
+    assert not (target / "runs/00_math/result.json").exists()  # No mixing of old/new runs.
+    again = restore_area(target, drive, "runs", on_conflict="separate")
+    assert again["destination"] == result["destination"]
+    # Neither corrupt separate copies nor remote objects may be silently replaced.
+    (separate / "00_math/result.json").write_bytes(b"changed historical result")
+    with pytest.raises(FileExistsError, match="refusing to overwrite"):
+        restore_area(target, drive, "runs", on_conflict="separate")
+
+
+def test_separate_runs_restore_still_checks_checksums_and_all_paths(tmp_path):
+    source, target = checkout(tmp_path / "source"), checkout(tmp_path / "target")
+    drive = tmp_path / "drive"
+    configure_workspace(source, drive, apply=False)
+    configure_workspace(target, drive, apply=False)
+    (source / "runs/a.json").write_bytes(b"old")
+    (target / "runs/a.json").write_bytes(b"current")
+    manifest = Path(backup_area(source, drive, "runs")["snapshot"])
+    record = json.loads(manifest.read_text())
+    entry = record["payload"]["files"][0]
+    obj = drive / "objects" / entry["sha256"][:2] / entry["sha256"]
+    obj.write_bytes(b"bad")  # Same length, wrong SHA.
+    with pytest.raises(ValueError, match="Checksum mismatch"):
+        restore_area(target, drive, "runs", on_conflict="separate")
+    assert (target / "runs/a.json").read_bytes() == b"current"
+    assert not list((target / "restored_snapshots/runs").rglob("a.json"))
+    obj.write_bytes(b"old")
+    # The first original destination conflicts, but validation must still reach
+    # later invalid entries before copying any part of the separate snapshot.
+    record["payload"]["files"].append({**entry, "path": "../escape"})
+    record["sha256"] = config_hash(record["payload"])
+    atomic_json(manifest, record)
+    with pytest.raises(ValueError, match="Unsafe snapshot"):
+        restore_area(target, drive, "runs", on_conflict="separate")
+    assert not list((target / "restored_snapshots/runs").rglob("a.json"))
+    assert not (target / "runs/escape").exists()
+
+
+def test_separate_policy_keeps_fresh_restores_in_place_and_rejects_cache_redirects(tmp_path):
+    source, target = checkout(tmp_path / "source"), checkout(tmp_path / "target")
+    drive = tmp_path / "drive"
+    configure_workspace(source, drive, apply=False)
+    (source / "runs/result.json").write_bytes(b"fixture")
+    backup_area(source, drive, "runs")
+    result = restore_area(target, drive, "runs", on_conflict="separate")
+    assert result["status"] == "RESTORED" and Path(result["destination"]) == target / "runs"
+    assert (target / "runs/result.json").read_bytes() == b"fixture"
+    assert not (target / "restored_snapshots").exists()
+    for area in ("models", "datasets"):
+        with pytest.raises(ValueError, match="only supported for runs"):
+            restore_area(target, drive, area, on_conflict="separate")
+
+
 def test_interrupted_copy_never_commits_snapshot(tmp_path, monkeypatch):
     import cellquant.workspace as workspace
     source = checkout(tmp_path / "source")

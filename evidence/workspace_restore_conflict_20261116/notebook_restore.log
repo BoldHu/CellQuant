@@ -1,0 +1,12 @@
+Dependency installation NOT_RUN; existing torch is preserved
+[
+  {
+    "status": "RESTORED_SEPARATELY",
+    "area": "runs",
+    "files": 1,
+    "snapshot": "D:\\python_project\\quant-llm\\runs\\restore_cli_bv65fals\\drive\\snapshots\\runs\\20261116T082609282556Z_a1b4a9eb.json",
+    "destination": "D:\\python_project\\quant-llm\\runs\\restore_cli_bv65fals\\target\\restored_snapshots\\runs\\83ffc57c216573c63e67c834dc6517330c4b87570a1bebd87fc948f7f34dac41",
+    "conflict": "Local file differs; refusing to overwrite: D:\\python_project\\quant-llm\\runs\\restore_cli_bv65fals\\target\\runs\\00_math\\environment.json",
+    "note": "Existing runs remain active; separate copies are historical only. No gate or resume eligibility inferred from storage integrity"
+  }
+]

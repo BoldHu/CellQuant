@@ -199,17 +199,7 @@ def backup_area(project_root, drive_root, area: str) -> dict:
             "snapshot": str(manifest), "note": "Existing objects are hash-verified on restore"}
 
 
-def restore_area(project_root, drive_root, area: str, *, snapshot: str | Path | None = None) -> dict:
-    local, drive = _paths(project_root, drive_root, area)
-    candidates = sorted((drive / "snapshots" / area).glob("*.json"))
-    if snapshot is None and not candidates:
-        return {"status": "NOT_FOUND", "area": area, "files": 0}
-    manifest = Path(snapshot) if snapshot is not None else candidates[-1]
-    record = read_json(manifest)
-    payload = record["payload"]
-    if config_hash(payload) != record["sha256"] or payload.get("schema_version") != "1.0" or payload.get("area") != area:
-        raise ValueError("Snapshot manifest checksum/schema/area mismatch")
-    entries = payload["files"]
+def _validate_restore_plan(local: Path, drive: Path, entries: list[dict]) -> dict:
     by_path = {r["path"]: r for r in entries}
     if len(by_path) != len(entries):
         raise ValueError("Duplicate snapshot paths")
@@ -223,12 +213,14 @@ def restore_area(project_root, drive_root, area: str, *, snapshot: str | Path | 
             raise ValueError(f"Restore destination is a symlink or escapes local storage: {dest}")
         if any(p.is_symlink() for p in dest.parents if p.is_relative_to(local)):
             raise ValueError(f"Restore parent must not be a symlink: {dest}")
+        if any(p.exists() and not p.is_dir() for p in dest.parents if p.is_relative_to(local)):
+            raise FileExistsError(f"Local parent differs; expected a directory: {dest}")
         if rec["kind"] == "file":
             _object(drive, rec["sha256"])
             if not isinstance(rec["size_bytes"], int) or rec["size_bytes"] < 0:
                 raise ValueError("Invalid snapshot size")
             if dest.exists() and (not dest.is_file() or sha256_file(dest) != rec["sha256"]):
-                raise FileExistsError(f"Local file differs; restore into a fresh checkout: {dest}")
+                raise FileExistsError(f"Local file differs; refusing to overwrite: {dest}")
         elif rec["kind"] == "symlink":
             _relative(rec["target"])
             if rec["target"] not in by_path or by_path[rec["target"]]["kind"] != "file":
@@ -241,6 +233,50 @@ def restore_area(project_root, drive_root, area: str, *, snapshot: str | Path | 
                     raise FileExistsError(f"Local link destination differs: {dest}")
         else:
             raise ValueError("Unknown snapshot file type")
+    return by_path
+
+
+def restore_area(project_root, drive_root, area: str, *, snapshot: str | Path | None = None,
+                 on_conflict: str = "error") -> dict:
+    """Restore original bytes; optionally keep a conflicting runs snapshot separately.
+
+    A separate copy is historical storage, not the active run directory or an
+    automatic resume. Models/datasets must retain their normal cache layout.
+    """
+    if on_conflict not in {"error", "separate"}:
+        raise ValueError("on_conflict must be 'error' or 'separate'")
+    if on_conflict == "separate" and area != "runs":
+        raise ValueError("Separate conflict recovery is only supported for runs")
+    local, drive = _paths(project_root, drive_root, area)
+    candidates = sorted((drive / "snapshots" / area).glob("*.json"))
+    if snapshot is None and not candidates:
+        return {"status": "NOT_FOUND", "area": area, "files": 0}
+    manifest = Path(snapshot) if snapshot is not None else candidates[-1]
+    record = read_json(manifest)
+    payload = record["payload"]
+    if config_hash(payload) != record["sha256"] or payload.get("schema_version") != "1.0" or payload.get("area") != area:
+        raise ValueError("Snapshot manifest checksum/schema/area mismatch")
+    entries = payload["files"]
+    conflict = None
+    try:
+        by_path = _validate_restore_plan(local, drive, entries)
+    except FileExistsError as exc:
+        if on_conflict == "error":
+            hint = " For runs, use --runs-conflict separate to keep both copies." if area == "runs" else ""
+            raise FileExistsError(f"{exc}{hint}") from exc
+        conflict = str(exc)
+        # Keep historical copies outside runs: analysis/evidence tools scan
+        # runs recursively and must not collect these files as active results.
+        root = Path(project_root).resolve()
+        separate = root / "restored_snapshots" / area / record["sha256"]
+        if separate.resolve() != separate or any(
+            p.is_symlink() for p in (separate, *separate.parents) if p.is_relative_to(root)
+        ):
+            raise ValueError(f"Separate restore directory must not contain symlinks: {separate}")
+        # Recheck the entire manifest at the new destination before writing.
+        # A repeat restores/verifies the same copy; it never replaces differing bytes.
+        local = separate
+        by_path = _validate_restore_plan(local, drive, entries)
     for rec in entries:
         if rec["kind"] != "file":
             continue
@@ -265,8 +301,11 @@ def restore_area(project_root, drive_root, area: str, *, snapshot: str | Path | 
                 # Windows often cannot create symlinks without elevated rights.
                 meta = by_path[rec["target"]]
                 _copy_verified(target, dest, meta["sha256"], meta["size_bytes"])
-    return {"status": "RESTORED", "area": area, "files": len(entries), "snapshot": str(manifest),
-            "note": "No gate or resume eligibility inferred from storage integrity"}
+    return {"status": "RESTORED_SEPARATELY" if conflict else "RESTORED", "area": area,
+            "files": len(entries), "snapshot": str(manifest), "destination": str(local),
+            "conflict": conflict,
+            "note": "Existing runs remain active; separate copies are historical only. "
+                    "No gate or resume eligibility inferred from storage integrity"}
 
 
 def main():
@@ -276,6 +315,8 @@ def main():
     parser.add_argument("--drive-root", default=os.environ.get("CELLQUANT_DRIVE_ROOT"))
     parser.add_argument("--areas", nargs="+", choices=list(AREAS), default=["runs"])
     parser.add_argument("--snapshot", help="Restore one explicitly selected older snapshot (one area only)")
+    parser.add_argument("--runs-conflict", choices=["error", "separate"], default="error",
+                        help="On runs conflicts, stop (default) or restore the whole snapshot separately; never overwrite")
     args = parser.parse_args()
     if not args.drive_root:
         saved = Path(args.project_root) / ".cache/colab_workspace.json"
@@ -285,6 +326,8 @@ def main():
         parser.error("Set --drive-root or CELLQUANT_DRIVE_ROOT to your mounted durable directory")
     if args.snapshot and (args.action != "restore" or len(args.areas) != 1):
         parser.error("--snapshot requires restore and exactly one --areas value")
+    if args.runs_conflict != "error" and (args.action != "restore" or "runs" not in args.areas):
+        parser.error("--runs-conflict separate requires restore with runs in --areas")
     if args.action == "init":
         result = configure_workspace(args.project_root, args.drive_root, apply=False)
     elif args.action == "status":
@@ -294,8 +337,10 @@ def main():
             result["areas"][area] = {"local": str(local), "snapshots": sorted(str(p) for p in (drive / "snapshots" / area).glob("*.json"))}
     else:
         fn = backup_area if args.action == "backup" else restore_area
-        kw = {"snapshot": args.snapshot} if args.action == "restore" else {}
-        result = [fn(args.project_root, args.drive_root, area, **kw) for area in args.areas]
+        result = []
+        for area in args.areas:
+            kw = {"snapshot": args.snapshot, "on_conflict": args.runs_conflict if area == "runs" else "error"} if args.action == "restore" else {}
+            result.append(fn(args.project_root, args.drive_root, area, **kw))
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

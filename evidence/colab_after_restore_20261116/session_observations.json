@@ -1,0 +1,107 @@
+{
+  "observed_at_utc": "2026-11-16T08:30:28.111765+00:00",
+  "evidence_kind": "USER_SUPPLIED_NOTEBOOK_EXECUTION_LOGS",
+  "source_type": "not_run",
+  "scope": "Saved user notebook outputs; remote files were not independently read or recomputed",
+  "files": [
+    {
+      "notebook": "00_Colab_GitHub_Workspace.ipynb",
+      "sha256": "912504b2ba622508c0b3b088968d6bba65f61f53d3e2f2a8f3ef49c73198f31c",
+      "saved_errors": []
+    },
+    {
+      "notebook": "00_Colab_Preflight_and_Math.ipynb",
+      "sha256": "8ba71282a7d4e0c9553e20ecaebdb0baf494b3a7894acf6864d0ff3673b40869",
+      "saved_errors": []
+    },
+    {
+      "notebook": "01_Colab_Real_Layer_Pilot.ipynb",
+      "sha256": "66253b31569f9b5fd984da9167851923bd2d9bddf542d85f00ee988d20b5c968",
+      "saved_errors": []
+    }
+  ],
+  "workspace": {
+    "project": "/content/CellQuant",
+    "code": {
+      "commit": "45b2a8659b33d130653030e8165537692b399212",
+      "branch": "master",
+      "dirty": false
+    }
+  },
+  "restore": [
+    {
+      "status": "RESTORED_SEPARATELY",
+      "area": "runs",
+      "files": 5,
+      "snapshot": "/content/drive/MyDrive/CellQuant/snapshots/runs/20261116T075752803471Z_4ec2b9fe.json",
+      "destination": "/content/CellQuant/restored_snapshots/runs/affe5e9c65ba7ae702619c2bb66ef8d6e09ea16ff1d42b671629b3700f23e481",
+      "conflict": "Local file differs; refusing to overwrite: /content/CellQuant/runs/00_math/environment.json",
+      "note": "Existing runs remain active; separate copies are historical only. No gate or resume eligibility inferred from storage integrity"
+    }
+  ],
+  "g0_status_in_saved_output": "PASS",
+  "real_model_switch_in_saved_source": false,
+  "real_model_execution_in_saved_output": "NOT_RUN",
+  "g1_status_in_saved_output": "INSUFFICIENT_EVIDENCE",
+  "g1_preflight": {
+    "status": "BLOCKED",
+    "missing": [
+      "Missing immutable model_revision; run scripts/prepare_experiment.py",
+      "Missing immutable tokenizer_revision; run scripts/prepare_experiment.py",
+      "Missing immutable dataset_revision; run scripts/prepare_experiment.py",
+      "Pinned model shard size/SHA-256 metadata missing",
+      "Missing real fit/dev token manifest for seed 11",
+      "Missing real fit/dev token manifest for seed 23",
+      "Record an explicit actual model dtype; no silent fallback",
+      "Audited SpinQuant overlay missing"
+    ],
+    "environment": {
+      "schema_version": "1.0",
+      "created_at_utc": "2026-11-16T08:28:37.396627+00:00",
+      "python": "3.13.16",
+      "executable": "/usr/bin/python3",
+      "platform": "Linux-6.6.159+-x86_64-with-glibc2.39",
+      "machine": "x86_64",
+      "packages": {
+        "numpy": "2.4.6",
+        "scipy": "1.16.3",
+        "torch": "2.14.1+cu130",
+        "transformers": "5.22.1",
+        "datasets": "4.8.5",
+        "accelerate": "1.15.0",
+        "safetensors": "0.8.0",
+        "nbformat": "5.11.1",
+        "nbclient": "0.10.4",
+        "fast-hadamard-transform": null,
+        "flash-attn": null,
+        "triton": "3.8.0",
+        "lm_eval": null,
+        "tokenizers": "0.23.3",
+        "huggingface-hub": "1.33.0",
+        "pyarrow": "23.0.1",
+        "psutil": "5.9.5"
+      },
+      "cuda": {
+        "available": true,
+        "torch_cuda_build": "13.0",
+        "status": "DEVICE_DETECTED",
+        "devices": [
+          {
+            "index": 0,
+            "name": "NVIDIA L4",
+            "total_gib": 22.0343017578125,
+            "compute_capability": [
+              8,
+              9
+            ]
+          }
+        ],
+        "bf16_supported": true,
+        "nvidia_smi": "NVIDIA L4, 580.82.07, 23034 MiB, 8.9"
+      },
+      "compatibility_claim": "CPU tooling only; GPU kernels require target-device tests"
+    },
+    "stage": "G1",
+    "scope": "Execution prerequisites only; no new scientific evidence"
+  }
+}

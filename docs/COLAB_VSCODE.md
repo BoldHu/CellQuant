@@ -55,6 +55,14 @@ Drive 中 `objects/<前两位>/<SHA-256>` 保存文件内容，`snapshots/models
 
 ## 3. 准备真实模型，先持久化再运行
 
+先看 notebook 01 的实际输出。`RUN_REAL_MODEL=False`、preflight `BLOCKED`、G1 `INSUFFICIENT_EVIDENCE` 表示真实 G1 尚未开始；所有单元正常结束只说明默认流程执行完成。
+
+2026-11-16 用户当前会话仍为 Python 3.13.16 / Transformers 5.22.1。适配器明确要求 Transformers 4.44.2，项目固定 tokenizers 0.19.1；先准备 Python 3.12 环境，再安装 `requirements/hf_optional.txt`。不要在正在使用的 Colab 系统 Python 中执行降级 Python 的命令。
+
+切换前，在已初始化的 workspace notebook 执行 `logged_command([sys.executable, "-m", "cellquant.workspace", "backup", "--areas", "runs"], "backup_before_runtime_change")`，确认输出 `BACKED_UP`。然后在 VS Code 的 Colab kernel 选择器新建服务器，选择 GPU、可用的高 RAM 配置，并在 `Select a runtime version` 选择 `2026.07`；该版本官方列出的 Python 为 3.12.13。版本选择由扩展支持，是否显示取决于服务器提供的版本列表；如果没有该项，先更新扩展，仍没有时可使用浏览器的 Runtime → Change runtime type → Runtime Version 选择并在浏览器完成这一阶段。[Colab 官方版本说明](https://research.google.com/colaboratory/runtime-version-faq.html)、[官方扩展版本选择实现](https://github.com/googlecolab/colab-vscode/pull/424)
+
+在新服务器重跑 workspace 初始化，设置 `RESTORE_AREAS=["runs"]`、`RESTORE_RUNS_CONFLICT="separate"`、`RUN_G0=False`、`BACKUP_AREAS=[]`。执行 `import sys; print(sys.version)` 确认实际为 3.12；重启 kernel 本身不会改变 Python 版本。然后通过 `logged_command([sys.executable, "-m", "pip", "install", "-r", "requirements/hf_optional.txt"], "install_real_model", 1800)` 安装固定依赖，保留宿主 torch。安装后重启 kernel、重跑工作区初始化与数学 notebook，记录实际环境；FHT、完整模型和性能仍需后续单独实测。
+
 以下命令在云端项目根目录执行。后面的 Python 命令放在初始化 notebook 中，使用它定义的 `logged_command([...], "标签")`；如使用扩展的 Colab terminal，先运行 `cd /content/CellQuant`。普通 VS Code 本地 terminal 仍是你的 Windows 电脑。
 
 ```bash

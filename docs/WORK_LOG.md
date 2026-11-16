@@ -76,3 +76,10 @@
 - 执行 `evidence/workspace_restore_conflict_20261116/validate_workflow.py`：notebook schema/语法、用户配置与未改动单元保留、默认冲突拒绝、实际 notebook 恢复调用、两份原字节、失败详情传播、多区域 CLI 均通过。本地存储 fixture，不连接 Google Drive，不运行 GPU 模型。原始反馈、执行日志与 hash 归档在同名 evidence 目录。
 - 门槛 SHA 保持 `5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e`。用户最新 pip 日志仍为 Python 3.13，兼容环境切换与真实 G1 继续待执行。本轮未提交/push，修复需要同步到云端 checkout 后重跑。
 - 收尾审查发现分析 CLI 会递归扫描 `runs`，将另存目录放到项目根目录的 `restored_snapshots/runs/<快照哈希>/` 并加入 `.gitignore`，防止历史结果被收集进活动分析。调整后以 `--basetemp runs/restore_conflict_tests_02` 重跑，**12 passed in 4.26s**；notebook/CLI fixture 再次通过。调整前日志保留于 `before_runs_isolation/`，当前验证清单记录最终源码 hash。
+
+## 2026-11-16 — 确认云端恢复与 G0，定位真实 G1 前置项
+
+- 用户报告前三本 notebook 均通过；读取最新保存输出，确认此前修复已在云端 commit `45b2a8659b33d130653030e8165537692b399212` 生效：Drive 已挂载、RESTORED_SEPARATELY 返回历史路径，G0 与归档完整性 PASS。
+- 01 仍是默认不执行模型的模式，8 项准备缺失，包括固定 revisions、权重来源元数据、两种子真实 tokens、明确 dtype、SpinQuant overlay；真实 G1 NOT_RUN/INSUFFICIENT_EVIDENCE。Python 3.13.16 / Transformers 5.22.1 还未切换，FHT 未安装。
+- 原始三本 notebook 未改动，逐字节复制到 `evidence/colab_after_restore_20261116/` 并记录 SHA 和实际缺失项。查阅 Colab 官方 runtime FAQ 与 VS Code 扩展 PR #424，补充备份、选择 2026.07/Python 3.12、确认版本和固定依赖的操作顺序。
+- 本轮仅归档观察和更新操作文档，没有修改核心算法、notebook、门槛或运行新 CPU/GPU 实验。下一步在用户 Colab 服务器准备兼容环境和真实 G1，G1 合格后才进入 AutoDL canary。

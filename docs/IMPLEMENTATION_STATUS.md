@@ -55,3 +55,9 @@ G0 来自实测合成数学案例，为 PASS。G1–G4 没有完整真实证据�
 新增显式 `--runs-conflict separate`：整份冲突快照另存至项目根目录的 `restored_snapshots/runs/<快照哈希>/`，返回 `RESTORED_SEPARATELY` 和目标路径，保留当前结果。历史目录位于活动 `runs` 外，避免递归分析重复收集，且已排除在 Git 外。初始化 notebook 通过 `RESTORE_RUNS_CONFLICT` 调用该选项，并在异常中附日志尾部和退出码。CLI 默认拒绝覆盖；模型/数据缓存、校验和、路径检查及 gate 均未放宽。另存副本不自动赋予 resume 资格。
 
 12 项 workspace 测试通过；实际执行 notebook 的安装/恢复单元（关闭 pip，使用本地存储 fixture），验证冲突另存、保留两套字节、失败诊断和多区域 CLI。原始用户 notebook、日志和源码 hash 位于 `evidence/workspace_restore_conflict_20261116/`。本轮云端 Drive 重跑与真实模型 GPU 为 NOT_RUN；本地检查不构成 G1 证据。
+
+## 用户重跑前三本 notebook（2026-11-16）
+
+最新保存的输出显示云端 clean commit `45b2a8659b33d130653030e8165537692b399212`，Drive 已挂载且 runs 恢复返回 `RESTORED_SEPARATELY`，数学 notebook 的参考检查、G0 和归档完整性均显示 PASS。01 仍为 `RUN_REAL_MODEL=False`、preflight BLOCKED（8 项缺失）、真实模型 NOT_RUN、G1 INSUFFICIENT_EVIDENCE。环境仍为 L4 / Python 3.13.16 / Torch 2.14.1+cu130 / Transformers 5.22.1，FHT 未安装。
+
+三本原始 notebook 及观察记录归档于 `evidence/colab_after_restore_20261116/`；这是用户提供的会话输出，未在本机直接访问云端文件独立重算。下一步为备份当前 runs、切换兼容 Python 3.12 运行时并安装固定依赖，再准备固定 SpinQuant/FHT、模型访问与真实校准数据。具体步骤已补充到 `docs/COLAB_VSCODE.md`；尚不进入 AutoDL canary。

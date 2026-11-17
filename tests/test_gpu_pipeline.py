@@ -63,7 +63,8 @@ def test_prepared_gpu_pilot_outputs_are_fixtures_and_not_gate_evidence(tmp_path,
         pilot.build_g1_evidence(rows,tmp_path/'rejected',g0_evidence_path='unused')
 
 
-def test_pair_profile_reuses_full_panels_but_cannot_form_g1(tmp_path):
+@pytest.mark.parametrize('pair_count',[1,8])
+def test_pair_profile_reuses_full_panels_but_cannot_form_g1(tmp_path,pair_count):
     from cellquant import pilot
     from cellquant.solver import CalibrationPanel,pair_schedule
     from cellquant.quantization import QuantSpec
@@ -74,16 +75,24 @@ def test_pair_profile_reuses_full_panels_but_cannot_form_g1(tmp_path):
         CalibrationPanel('fixture.down','output',torch.tensor(rng.normal(size=(4,8)),device='cuda'),
         torch.tensor(rng.normal(size=(8,2)),device='cuda'),metadata={'source_type':'unit_test_fixture'})]
     prepared={'hidden_size':4,'seeds':{11:{'fit':panels,'specs':QuantSpec(group_size=4)}}}
-    config={'seeds':[11,23],'solver':{'backend':'torch','device':'cuda','pair_budget':3,
+    config={'seeds':[11,23],'solver':{'backend':'torch','device':'cuda','pair_budget':128,
         'theta_limit':.01,'seconds_per_pair':60,'wall_seconds_per_method':120}}
-    result=pilot.profile_prepared_pair(config,prepared,tmp_path,execution_fingerprint='fixture')
+    before=json.dumps(config,sort_keys=True)
+    result=pilot.profile_prepared_pair(config,prepared,tmp_path,execution_fingerprint='fixture',pair_count=pair_count)
+    assert json.dumps(config,sort_keys=True)==before
     assert result['status']=='PROFILE_COMPLETE' and result['evidence_kind']=='PAIR_PROFILE_ONLY'
     assert result['source_type']=='unit_test_fixture' and len(result['profile_results'])==2
+    assert result['profile_pair_count']==pair_count
+    assert result['budget_analysis']['method_budget_seconds']==120
+    assert result['budget_analysis']['full_run_readiness']=='NOT_ESTABLISHED_BY_PROFILE'
     assert not list(tmp_path.rglob('pilot_result.json')) and not (tmp_path/'G1_evidence.json').exists()
     for path in result['profile_results']:
         row=read_json(path)
-        assert row['configured_pair_count']==3 and row['solver']['requested_pairs']==1
-        assert row['profiled_pair']==list(pair_schedule(4,3,11)[0])
+        assert row['configured_pair_count']==128 and row['solver']['requested_pairs']==pair_count
+        assert row['profiled_pairs']==[list(p) for p in pair_schedule(4,128,11)[:pair_count]]
+        assert [r['pair'] for r in row['solver']['log']]==row['profiled_pairs']
+        assert row['solver']['completed_pairs']==pair_count
+        assert row['profiled_pair']==list(pair_schedule(4,128,11)[0])
         row['source_type']='real_layer'
         rejection=atomic_json(tmp_path/'rejected_profile.json',row)
         with pytest.raises(ValueError,match='Pair profiles cannot form G1'):

@@ -1,0 +1,104 @@
+{
+  "source_type": "real_layer",
+  "evidence_kind": "PAIR_PROFILE_ONLY",
+  "provenance": "Parsed user-saved notebook output; remote profile_result.json and code revision not independently fetched.",
+  "source_notebook_sha256": "a8f01a8eb69561a3be47322d9944969b10d25d71313a6f0a550e6c75a37c64d9",
+  "status": "PROFILE_COMPLETE",
+  "run_dir": "/content/CellQuant/runs/experiments/2026-11-17T114339.123212_0000_991980b138",
+  "finished_at_utc": "2026-11-17T11:46:01.988217+00:00",
+  "elapsed_seconds": 140.93,
+  "model_placement": {
+    "parameter_bytes_by_device": {
+      "cuda:0": 13476831232
+    },
+    "all_parameters_cuda": true,
+    "cpu_offload": false
+  },
+  "methods": [
+    {
+      "method": "fixed_scale_search_matched",
+      "status": "COMPLETE",
+      "wall_budget_seconds": 1440.0,
+      "verification_start": {
+        "seed": 11,
+        "method": "fixed_scale_search_matched",
+        "pair_index": 0,
+        "pair": [
+          547,
+          526
+        ],
+        "groups_enumerated": 1158,
+        "event_incidences": 149012,
+        "event_count": 148903,
+        "cells_completed": 148902,
+        "cell_count": 148902,
+        "timings": {
+          "event_generation": 2.215883771001245,
+          "sort": 0.005614750998574891,
+          "cell_coefficients_and_boundaries": 1.1126907449997816,
+          "candidate_search": 5.59400160199948,
+          "verification": 0.0
+        },
+        "panel_id": null,
+        "group_id": null,
+        "group_count": null,
+        "local_cell_index": null,
+        "local_cell_count": null,
+        "output_row": null,
+        "cell_index": 148480,
+        "seconds": 9.747842528999172,
+        "search_phase": "verification"
+      },
+      "method_phase_span_seconds": 19.620000000000005,
+      "method_phase_span_scope": "Includes save overhead; not the solver result exact seconds."
+    },
+    {
+      "method": "cellquant",
+      "status": "COMPLETE",
+      "wall_budget_seconds": 1440.0,
+      "verification_start": {
+        "seed": 11,
+        "method": "cellquant",
+        "pair_index": 0,
+        "pair": [
+          547,
+          526
+        ],
+        "groups_enumerated": 1158,
+        "event_incidences": 152050,
+        "event_count": 151941,
+        "cells_completed": 151940,
+        "cell_count": 151940,
+        "timings": {
+          "event_generation": 2.3299733769999875,
+          "sort": 0.005373157000576612,
+          "cell_coefficients_and_boundaries": 11.493705496000985,
+          "candidate_search": 5.366875691999667,
+          "verification": 0.0
+        },
+        "panel_id": null,
+        "group_id": null,
+        "group_count": null,
+        "local_cell_index": null,
+        "local_cell_count": null,
+        "output_row": null,
+        "cell_index": 151552,
+        "seconds": 19.760236713998893,
+        "search_phase": "verification"
+      },
+      "method_phase_span_seconds": 29.469999999999985,
+      "method_phase_span_scope": "Includes save overhead; not the solver result exact seconds."
+    }
+  ],
+  "scientific_gate_status": "INSUFFICIENT_EVIDENCE",
+  "resource_projection": {
+    "assumption": "If the remaining scheduled pairs have the same search time as the first. This is not a guaranteed runtime or a confidence interval.",
+    "configured_pair_count": 128,
+    "cellquant_first_pair_seconds_before_verification": 19.760236713998893,
+    "projected_search_seconds_before_verification": 2529.3102993918583,
+    "method_budget_seconds": 1440,
+    "required_average_seconds_per_pair_before_other_overhead": 11.25,
+    "configured_pair_count_source": "Current repository Colab protocol (128); latest remote config.json not independently read."
+  },
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e"
+}

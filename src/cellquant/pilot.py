@@ -1,6 +1,7 @@
 """Real-layer shared-Q pilot and G1 aggregation from measured artifacts only."""
 from __future__ import annotations
 from dataclasses import asdict
+import math
 from pathlib import Path
 import time
 import numpy as np
@@ -79,10 +80,58 @@ def prepare_pilot_inputs(config,model,*,graph_identity,progress=None):
             'model_parameter_billions':sum(p.numel() for p in model.parameters())/1e9}
 
 
-def profile_prepared_pair(config,prepared,output,*,execution_fingerprint,progress=None):
+def pilot_method_budget(config):
+    return config['solver'].get('wall_seconds_per_method',
+        min(2400.,config.get('gpu_hour_budget',4)*3600/len(METHODS)/len(config['seeds'])))
+
+
+def validate_profile_pair_count(config,pair_count):
+    configured=config['solver']['pair_budget']
+    if isinstance(pair_count,bool) or not isinstance(pair_count,int) or not 1<=pair_count<=configured:
+        raise ValueError(f'Profile pair count must be an integer in [1, {configured}]')
+    return pair_count
+
+
+def analyze_profile_budget(records,configured_pairs,method_budget):
+    """Conditional throughput projection, never a gate or full-run qualification.
+
+    Pair search times exclude initialization, accepted-Q refresh and checkpoint
+    overhead. Their extrapolation can expose a budget concern but cannot prove
+    that the whole method will fit, even when the estimated component fits.
+    """
+    if configured_pairs<1 or not math.isfinite(method_budget) or method_budget<=0:
+        raise ValueError('Positive configured pair count and method budget required')
+    rows=[]
+    for record in records:
+        solver=record.get('solver',{});log=solver.get('log',[])
+        completed=solver.get('completed_pairs',len(log));requested=solver.get('requested_pairs')
+        seconds=[entry.get('seconds') for entry in log]
+        row={'method':record.get('method'),'profile_status':record.get('status'),
+             'completed_pairs':completed,'requested_profile_pairs':requested,
+             'observed_method_seconds':solver.get('seconds'),'mean_pair_search_seconds':None,
+             'projected_full_search_seconds':None,'assessment':'INCOMPLETE_PROFILE'}
+        if record.get('status')=='COMPLETE' and completed==requested==len(log) and completed>0:
+            if not all(isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v) and v>0 for v in seconds):
+                row['assessment']='MISSING_VALID_TIMINGS'
+            else:
+                mean=sum(seconds)/completed;projection=mean*configured_pairs
+                row.update(mean_pair_search_seconds=mean,min_pair_search_seconds=min(seconds),
+                    max_pair_search_seconds=max(seconds),projected_full_search_seconds=projection,
+                    assessment='PROJECTED_SEARCH_EXCEEDS_METHOD_BUDGET' if projection>method_budget else 'SEARCH_COMPONENT_ESTIMATE_WITHIN_BUDGET')
+        rows.append(row)
+    return {'configured_pair_count':configured_pairs,'method_budget_seconds':method_budget,
+            'budget_seconds_per_configured_pair_before_other_overhead':method_budget/configured_pairs,
+            'methods':rows,'full_run_readiness':'NOT_ESTABLISHED_BY_PROFILE',
+            'assumption':'Remaining pairs have the same mean search time as this prefix; this is neither a runtime guarantee nor a confidence interval.',
+            'excluded_costs':'Initialization, accepted-Q refresh and checkpoint overhead; their time is included only in observed_method_seconds.',
+            'scope':'Engineering resource diagnosis only; no held-out result or G1 qualification.'}
+
+
+def profile_prepared_pair(config,prepared,output,*,execution_fingerprint,progress=None,pair_count=1):
     """Bounded real-panel diagnosis; never writes G1 evidence or evaluates held-out."""
     from .tensor_solver import hadamard_rotation as tensor_hadamard
     if config['solver'].get('backend')!='torch':raise ValueError('Pair profiling requires the torch solver')
+    pair_count=validate_profile_pair_count(config,pair_count)
     output=Path(output);seed=config['seeds'][0];ready=prepared['seeds'][seed]
     panels,specs=ready['fit'],ready['specs']
     sources={p.metadata.get('source_type') for p in panels}
@@ -92,7 +141,7 @@ def profile_prepared_pair(config,prepared,output,*,execution_fingerprint,progres
     q0=tensor_hadamard(prepared['hidden_size'],seed,device)
     schedule=pair_schedule(len(q0),settings['pair_budget'],seed)
     if not schedule:raise ValueError('A nonempty pair schedule is required')
-    method_budget=settings.get('wall_seconds_per_method',min(2400.,config.get('gpu_hour_budget',4)*3600/len(METHODS)/len(config['seeds'])))
+    method_budget=pilot_method_budget(config)
     records=[];paths=[]
     for method in ['fixed_scale_search_matched','cellquant']:
         def emit(phase,**details):report(progress,'profile.'+phase,seed=seed,method=method,**details)
@@ -102,13 +151,14 @@ def profile_prepared_pair(config,prepared,output,*,execution_fingerprint,progres
             compute_dtype=settings.get('compute_dtype','float64'),event_limit_per_pair=settings.get('event_limit_per_pair',200000),
             seconds_per_pair=settings.get('seconds_per_pair',300.),wall_seconds=method_budget,
             checkpoint_path=str(dest/'rotation_state.pt'),execution_fingerprint=execution_fingerprint)
-        emit('solve.start',wall_budget_seconds=method_budget,seconds_per_pair=cfg.seconds_per_pair)
-        result=fit_baseline(method,panels,q0,specs,schedule[:1],cfg,progress=emit)
+        emit('solve.start',wall_budget_seconds=method_budget,seconds_per_pair=cfg.seconds_per_pair,profile_pair_count=pair_count)
+        result=fit_baseline(method,panels,q0,specs,schedule[:pair_count],cfg,progress=emit)
         q=result.pop('q');atomic_npz(dest/'Q.npz',Q=q)
         row={'source_type':next(iter(sources)),'evidence_kind':'PAIR_PROFILE_ONLY',
              'seed':seed,'method':method,'status':result['status'],'solver':result,
              'configured_pair_count':len(schedule),'profiled_pair':list(schedule[0]),
-             'scope':'First scheduled pair on unchanged full fit panels. No held-out scoring or G1 qualification.'}
+             'profiled_pair_count':pair_count,'profiled_pairs':[list(p) for p in schedule[:pair_count]],
+             'scope':'Scheduled prefix with continuous Q updates on unchanged full fit panels. No held-out scoring or G1 qualification.'}
         path=atomic_json(dest/'profile_result.json',row);paths.append(str(path));records.append(row)
         emit('method.saved',solver_status=result['status'],solver_reason=result.get('reason'),result_path=str(path))
     incomplete=[{'method':r['method'],'reason':r['solver'].get('reason'),
@@ -116,7 +166,8 @@ def profile_prepared_pair(config,prepared,output,*,execution_fingerprint,progres
     summary={'source_type':next(iter(sources)),'evidence_kind':'PAIR_PROFILE_ONLY',
         'status':'RESOURCE_BLOCKED' if incomplete else 'PROFILE_COMPLETE',
         'reason':'; '.join(f"{r['method']}: {r['reason']}" for r in incomplete) or None,
-        'incomplete_methods':incomplete,'profile_results':paths,'seed':seed,
+        'incomplete_methods':incomplete,'profile_results':paths,'seed':seed,'profile_pair_count':pair_count,
+        'budget_analysis':analyze_profile_budget(records,len(schedule),method_budget),
         'scope':'Engineering diagnosis only; not a full rotation fit or G1 evidence.'}
     atomic_json(output/'pair_profile.json',summary)
     return summary
@@ -158,7 +209,7 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
             raise ValueError('Pilot panels must share an explicit real-layer or test-fixture source')
         source_type=next(iter(sources))
         schedule=pair_schedule(len(q0),config['solver']['pair_budget'],seed)
-        method_budget=config['solver'].get('wall_seconds_per_method',min(2400.,config.get('gpu_hour_budget',4)*3600/len(METHODS)/len(config['seeds'])))
+        method_budget=pilot_method_budget(config)
         for method in formal['methods']:
             def method_progress(phase,**details):emit(phase,method=method,**details)
             method_progress('solve.start',device=config['solver'].get('device','cpu'),wall_budget_seconds=method_budget)

@@ -176,3 +176,13 @@ seed 11 的 Hadamard、STE、网格报告 COMPLETE；固定尺度搜索与 CellQ
 - 新增 `scripts/profile_tensor_cells.py`，可记录 CUDA 完整维度合成性能并与归档旧模块比较。旧版完整输出在 30 秒处理 911/48725 区间后 RESOURCE_BLOCKED；最终新版本完整输出 6.7458 秒完成单对，含初始化/更新 13.9898 秒。六输入加一个完整输出的动态案例 78.6332 秒完成单对（总 86.4086 秒），固定尺度案例 6.9593 秒（总 14.3403 秒）。均是随机张量、identity Q、同一 RTX 3050；没有真实九面板/7B 加速结论。最终源码前后 hash 一致，实测峰值分配约 2.77–2.88 GiB。
 - 保留中间混合案例 30 秒超时、初次失败测试、早期版本的 GPU 诊断与最终结果，见 `evidence/batched_cells_20261117/`。最终比较以带源码前后校验的 `*_final.json` 为准。动态输入和少量 QR 仍有明显串行成本，128 对是否符合原总预算未得到证明；不让工程单对 COMPLETE 替代 G1。
 - CPU `scripts/run_math_checks.py --output runs/batched_cells_20261117/math_reference` 通过；空 G1 按预期 INSUFFICIENT_EVIDENCE；gate_rules 与 Colab 原科学/资源配置未修改。`git diff --check` 通过，仅有正常 LF/CRLF 提示。更新数学说明、README、状态和同服务器 kernel 重启/引擎核验流程。新版真实 L4/7B、AutoDL 96GB、正式 GPTQ/评估未运行，代码未提交/push。
+
+## 2026-11-17 — 读取用户首对成功结果，增加连续 8 对诊断
+
+用户最新 01 的 run `2026-11-17T114339.123212_0000_991980b138` 已 PROFILE_COMPLETE，整轮 140.93 秒。固定尺度和 CellQuant 首对均完成，后者处理 151940 区间、19.7602 秒进入最终复核；实际方法总预算 1440 秒。仅按首对搜索速度和仓库 128 对正式协议外推约 42.16 分钟，不能保证全量在 24 分钟方法预算内完成。这里不是远程完整结果 JSON 的独立重算；原始 notebook、210 条结构化事件和观察摘要保存在 `evidence/colab_profile_complete_20261117/`，不生成 G1 成绩。
+
+新增 CLI `--profile-pairs N`、API 计数及 notebook `PROFILE_PAIR_COUNT`。连续执行原 schedule 的前 N 对、同一个 Q 不重置；仍只诊断第一个 seed 的两个事件方法，不读取 held-out 分数。保留正式 pair_budget、单对与方法总预算，参数必须为 1 到正式对数之间的整数。原 `--profile-pair` 保持一对兼容。统一既有方法预算计算，未改变其公式。结果记录 requested/completed/profiled pairs，预算摘要按实测搜索均值作条件性外推，明确遗漏初始化/更新/checkpoint 等开销，不颁发科学 PASS 或全量 READY。
+
+01 设置下一步前 8 对；原附加诊断单元中的旧 run 路径替换为本次 `PILOT_RUN_DIR` 的只读摘要。改动的五个单元及旧输出有脱敏归档，其他单元保持。34 项针对性检查通过；最终全套 257 passed, 1 warning in 62.50s（Windows pytest 缓存权限，退出码 0）。其中实际 CUDA 小面板连续 8 对，验证 schedule、配置不变、完成数和 G1 拒绝；参数/CLI/旧路径修复/非法时长与不完整诊断均覆盖。六本 notebook schema 和代码语法通过。
+
+本轮未改数学引擎、量化配置、科学门槛或正式预算，未执行真实 L4 的新 8 对、完整 G1、AutoDL/G2–G4。下一步在同一服务器同步代码并重启 kernel，01 保持 RUN_REAL_MODEL=True、RUN_PAIR_PROFILE=True，PROFILE_PAIR_COUNT=8，再运行原执行单元与末尾摘要。先看连续吞吐，再决定完整 G1；当前不进入 02。本轮修改未提交/push。

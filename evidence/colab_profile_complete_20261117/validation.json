@@ -1,0 +1,58 @@
+{
+  "status": "LOCAL_WORKFLOW_TESTS_PASSED_REAL_PREFIX8_NOT_RUN",
+  "source_type": "unit_test_fixture",
+  "actual_user_run_observation": "observation.json",
+  "observed_run_source_type": "real_layer",
+  "observed_result_scope": "First scheduled pair only; PROFILE_COMPLETE is not G1 PASS",
+  "implementation": "Scheduled prefix profiling and conditional resource extrapolation; math engine, original pair schedule and formal budget unchanged",
+  "commands": [
+    {
+      "command": ".venv/Scripts/python.exe -m pytest -q tests/test_profile_budget.py tests/test_gpu_pipeline.py tests/test_notebook_g1_inputs.py",
+      "passed": 34,
+      "warnings": 1,
+      "seconds": 19.23,
+      "log": "targeted_tests.log"
+    },
+    {
+      "command": ".venv/Scripts/python.exe -m pytest -q",
+      "passed": 257,
+      "warnings": 1,
+      "seconds": 62.5,
+      "log": "pytest_final.log"
+    },
+    {
+      "command": ".venv/Scripts/python.exe -m cellquant.experiment --help",
+      "status": "EXECUTED",
+      "observed_option": "--profile-pairs PROFILE_PAIRS"
+    }
+  ],
+  "warning": "Windows pytest cache write permission; test commands exited 0",
+  "gpu_scope": "Actual CUDA small fixture profiles of 1 and 8 continuous scheduled pairs; no real model or gate evidence",
+  "notebook_schema_and_syntax": "six notebooks verified",
+  "notebook_preservation": {
+    "changed_cells": [
+      "g1-pair-profile-guide",
+      "2b0a9038",
+      "9e3551d3",
+      "1dc998bd",
+      "5199c9d6"
+    ],
+    "other_cells_preserved": true,
+    "archive_sanitized": true
+  },
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "source_hashes": {
+    "src/cellquant/pilot.py": "d4507ff5a8baa2e4ac6d8f332fae251e23e9b723c7b4b0b2495088012d253c34",
+    "src/cellquant/experiment.py": "c6b97324428fb7c03ee119f8fe9c80b3833633b35f14573f094d541f8eccb08f",
+    "tests/test_profile_budget.py": "22deca5e1e2cf60685bd83edd0c980fe28794dc8eac5b3b6fe9a9dc16d7cbd5d",
+    "tests/test_gpu_pipeline.py": "719d9c466f2033371ac9d2620c0787c2fbf9a5eaef422b9a129291555efc4f12",
+    "tests/test_notebook_g1_inputs.py": "168089c37a26a3b95cbda5fdb384d0da8f1bd8ec8cbb72103badbda7a8e82168",
+    "notebooks/01_Colab_Real_Layer_Pilot.ipynb": "318a2e7054a7a238d27f54d4d33d20524b52408394cab4cbc2df3597e9cee3dd"
+  },
+  "not_run": [
+    "new 8-pair real Colab prefix",
+    "full 128-pair G1 and held-out results",
+    "AutoDL G2-G4"
+  ],
+  "commit_or_push_performed": false
+}

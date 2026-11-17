@@ -123,7 +123,33 @@ print(CELL_ENGINE_VERSION)
 assert CELL_ENGINE_VERSION == "torch_batched_output_prefix_v1"
 ```
 
-继续保持 `RUN_REAL_MODEL=True`、`RUN_PAIR_PROFILE=True`，用原执行单元启动新 run。日志将显示 `batched_output_coefficients`、`batched_constant_scale_input`、`input_coefficients`、`batched_candidates`。`local_cell_index/local_cell_count` 表示当前面板的系数进度，`cells_completed/cell_count` 表示合并后的候选搜索进度；前者运行时后者可能仍为零。最新本地检查见 `evidence/batched_cells_20261117/`，真实 L4 的新版首对和完整 128 对尚待执行；不要把合成案例或单对完成当成完整 G1 合格。
+继续保持 `RUN_REAL_MODEL=True`、`RUN_PAIR_PROFILE=True`，用原执行单元启动新 run。日志将显示 `batched_output_coefficients`、`batched_constant_scale_input`、`input_coefficients`、`batched_candidates`。`local_cell_index/local_cell_count` 表示当前面板的系数进度，`cells_completed/cell_count` 表示合并后的候选搜索进度；前者运行时后者可能仍为零。最新本地检查见 `evidence/batched_cells_20261117/`。2026-11-17 用户新版 L4 首对已完成（下文），完整 128 对仍未验证；不要把合成案例或单对完成当成完整 G1 合格。
+
+### 首对完成后：连续 8 对的预算诊断
+
+用户 run `2026-11-17T114339.123212_0000_991980b138` 已返回 `PROFILE_COMPLETE`，总耗时 140.93 秒；固定尺度与 CellQuant 首对均完成。CellQuant 在 19.76 秒处理完 151940 个区间并进入最终复核。这是运行可行性的进展，未运行正式两种子五方法的完整拟合或 held-out 评估，01 显示 G1 `NOT_RUN` 正确，尚不能进入 02。
+
+该次日志的有效方法总预算为 **1440 秒**，正式配置仍为 128 对。仅按首对搜索速度外推约 42.16 分钟，超过 24 分钟预算，而且尚未包含最终复核、接受更新和 checkpoint 等开销。该外推不保证后续每对同速；下一步测前 8 对的连续行为，不改正式 pair_budget 或预算。
+
+同步本次源码与 01 notebook 后，在同一服务器重启 kernel，重跑初始化/预检查，在 01 配置单元设置：
+
+```python
+RUN_REAL_MODEL = True
+RUN_PAIR_PROFILE = True
+PROFILE_PAIR_COUNT = 8
+```
+
+运行原执行单元，再运行最后的“当前运行”摘要。等价 CLI：
+
+```bash
+python -u -m cellquant.experiment --config runs/prepared/g1_gpu/config.json --profile-pairs 8
+```
+
+这会对第一个 seed、两个事件方法执行原 schedule 的前 8 对，Q 连续更新，保留正式 128 对配置、每对 300 秒和每方法原 1440 秒上限。`--profile-pair` 仍兼容旧的首对诊断。报告保存 `profiled_pairs`、实际完成数、每对搜索时间和 `budget_analysis`；新执行使用独立 run，不能恢复旧首对 checkpoint 冒充连续原协议。
+
+`PROJECTED_SEARCH_EXCEEDS_METHOD_BUDGET` 表示按这段前缀均速外推的搜索部分超预算；`SEARCH_COMPONENT_ESTIMATE_WITHIN_BUDGET` 也不证明总方法能完成，因为尚有其他开销和后续坐标差异。两者均不授予 G1。正式 G1 完整执行并通过门槛后，才进入 02 的 AutoDL canary。
+
+原附加诊断单元曾写死 08:10 的旧 run，现在统一读取 `PILOT_RUN_DIR`。末尾摘要应打印本次目录；不要用旧目录下的 `RESOURCE_BLOCKED` 判断新运行。
 
 ## 4. 长作业诊断、结束和备份
 

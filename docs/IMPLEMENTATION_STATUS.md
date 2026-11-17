@@ -4,13 +4,13 @@
 
 | 组件 | 代码状态 | 已执行的证据与限制 |
 |---|---|---|
-| 原 CPU 参考与基础设施 | 保留并修正零组物理 scale 风险 | 原 62 项测试复现；当前全套 241 项通过（含实际 CPU/CUDA 数值对照） |
+| 原 CPU 参考与基础设施 | 保留并修正零组物理 scale 风险 | 原 62 项测试复现；当前全套 257 项通过（含实际 CPU/CUDA 数值对照与连续前缀诊断） |
 | 共享 global Q、多面板输入侧 WQ.T/QX、输出侧 QB | IMPLEMENTED | FP64 增量胞元系数、风险约束、实际边界 rounding；3 seeds/24 cases 合成 G0 PASS |
-| 完整维度 | SYNTHETIC_PAIR_COMPLETE / REAL_G1_BLOCKED | 新批量引擎在 4096×11008、128 tokens、±π/4 的单输出合成案例完整处理 48725 区间，单对约 6.75 秒；六输入加一输出合成混合单对约 78.63 秒。真实九面板新版尚未验证 |
+| 完整维度 | REAL_FIRST_PAIR_COMPLETE / FULL_G1_NOT_RUN | 用户新版 L4 九面板首对已完成全部 151940 个 CellQuant 区间；完整 128 对预算和质量尚未验证。本地完整输出及混合合成记录另列 |
 | 筛选与事件增量 | IMPLEMENTED_CPU_REFERENCE / TORCH_CUDA | 输入稳定组筛选、输出完整行 GPU support envelope；事件排序、增量系数和 QR 数值根均在张量设备计算，小例已与 CPU 对照 |
-| CUDA dense GEMM/量化/求解 | BATCHED_PYTORCH_ENGINEERING_VALIDATED / REAL_G1_NOT_RUN_WITH_NEW_ENGINE | 输出编码投影前缀和、稳定/固定尺度输入秩二更新、完整行输入边界点值更新及批量候选筛选已验证；不稳定输入和 QR 仍有串行成本，完整 128 对预算尚未证明 |
+| CUDA dense GEMM/量化/求解 | BATCHED_PYTORCH / REAL_FIRST_PAIR_COMPLETE | 输出前缀和、输入增量及批量候选在真实首对完成；CellQuant 在 19.76 秒进入最终复核。按首对外推存在超过 24 分钟方法总预算的风险，下一步连续 8 对诊断 |
 | Hadamard / angle-grid / Givens STE / fixed-scale | IMPLEMENTED | 相同面板、坐标预算、约束、墙钟上限；小矩阵验证。grid/STE 中途 optimizer 恢复 NOT_IMPLEMENTED |
-| 真实层采集与 Colab G1 | GPU_RESIDENT_RUN / RESOURCE_BLOCKED | 用户 L4 日志确认全模型 CUDA、两 seed 采集完成；Hadamard/STE/grid 完成，CellQuant/fixed-scale 均首对 300 秒超时；G1 证据不足。新单对诊断模式不生成 G1 |
+| 真实层采集与 Colab G1 | GPU_RESIDENT_RUN / PROFILE_COMPLETE / G1_INSUFFICIENT | 最新首对诊断中 CellQuant/fixed-scale 均完成，整轮 140.93 秒；该 run 未执行完整五方法或 held-out 评估。旧版完整运行结果保留，不能与新版混为一套协议 |
 | SpinQuant 固定上游 / overlay / R.bin | IMPLEMENTED | commit 8f47aa3… 已核对、tracked tree clean；禁 embedding centering、保 gamma，导出全部 R2 |
 | FP 旋转 / GPTQ W4A4KV4 | IMPLEMENTED / TINY_CUDA_VALIDATED | MHA/GQA 小模型 FP 相对误差约 1e-7；GPTQ 有限输出、逐层恢复与连续运行参数差 0 |
 | 完整 R1+R2 CE/SGDG baseline | IMPLEMENTED / TINY_CUDA_VALIDATED | 实际两步训练与 Trainer 恢复一致；正式 100 步×8 的完整 CE 训练池尚未运行，distinct blocks 数另报 |
@@ -18,7 +18,7 @@
 | 固定数据与实验后端 | IMPLEMENTED / REAL_PIPELINE_NOT_RUN | contract 1.0、revision/token/源码/环境指纹、唯一 run_id、完整分片 SHA、原子结果、资源采样 |
 | WikiText/C4 与六任务 | IMPLEMENTED / INTERFACE_VALIDATED | 固定 harness commit+六任务 revision/metric；六任务 local fixtures 实际跑通；真实分数 NOT_RUN |
 | 配对分析 / G2–G4 构造 | IMPLEMENTED | token 加权 NLL 与 paired seed/document/item bootstrap；空结果准确不足，不生成表/图 |
-| 六本 notebook | DEFAULT_PATH_EXECUTED / COLAB_G1_DIAGNOSED | 用户 Colab 旧引擎的 G1 与单对诊断已执行并超时；新版 G1 和 AutoDL 云端会话尚未验证 |
+| 六本 notebook | DEFAULT_PATH_EXECUTED / COLAB_PAIR_PROFILE_COMPLETE | 新版 01 首对诊断已完成；增加前 8 对连续诊断及读取当前 run 的预算摘要，正式 G1 与 AutoDL 尚待执行 |
 | 目标 RTX PRO 6000 Blackwell / 优化 FHT | NOT_RUN / BLOCKED | 本机 RTX 3050 Laptop 4GiB；FHT、FlashAttention、Triton 缺失 |
 | 2026 强基线、正式消融、论文主表 | NOT_IMPLEMENTED / NOT_RUN | 不能由官方论文数字或本地 fixtures 补填 |
 
@@ -167,3 +167,15 @@ seed 11 的 Hadamard、STE、网格报告 COMPLETE；固定尺度搜索与 CellQ
 峰值分配显存约 2.77/2.88/2.88 GiB。串行旧版在同一输出案例的 30 秒诊断上限仅完成 911/48725 区间，没有完成耗时，故不报告完整搜索加速比。中间版本的混合案例在额外设置的 30 秒诊断上限阻塞，保留该失败记录；正式 300 秒上限未改变。最终动态混合案例仍偏慢，不能将单对完成推断成全部 128 对符合方法预算，更不能推出真实质量或效率收益。
 
 命令、失败和成功日志、源文件前后 hash、完整报告见 `evidence/batched_cells_20261117/validation.json`。最终三项 GPU 运行前后源码一致。真实 L4/7B 新版首对、完整 G1、AutoDL 96GB 与 G2–G4 **NOT_RUN**；本机显存不足以加载 7B，且未直接连接用户 Colab。更新源码后按 `docs/COLAB_GPU_FROM_SCRATCH.md` 重启同一 kernel，以 `RUN_PAIR_PROFILE=True` 或 `python -u -m cellquant.experiment --config runs/prepared/g1_gpu/config.json --profile-pair` 测真实首对。Notebook 配置/输出未修改，代码未提交/push。
+
+## 2026-11-17 — 用户真实首对完成，进入连续前缀预算诊断
+
+最新保存的 01 为首对诊断。run `2026-11-17T114339.123212_0000_991980b138` 于 11:46:01 UTC（北京时间 19:46:01）返回 `PROFILE_COMPLETE`，总耗时 140.93 秒。固定尺度完整处理 148902 区间，CellQuant 完整处理 151940 区间，两者均 COMPLETE；模型全参数 CUDA、无 CPU offload。来源为用户 notebook 输出，未独立读取云端 profile_result.json 或重算成绩。
+
+CellQuant 在 19.7602 秒进入最终复核；阶段耗时为事件生成 2.3300 秒、排序 0.0054 秒、系数及边界 11.4937 秒、候选搜索 5.3669 秒。这不包含最后的复核/接受更新。有效方法预算由本次日志确认是 1440 秒。按仓库正式 128 对协议及首对搜索时间外推约 42.16 分钟，超过 24 分钟且尚未包含其他开销；这是条件性外推，不是确定运行时间或置信区间。最新远程 config.json 未独立读取，128 来源为仓库正式协议。PROFILE_COMPLETE 不等于 G1 PASS，尚不进入 02。
+
+新增 `--profile-pairs N` 和 01 的 `PROFILE_PAIR_COUNT`，当前建议 8：对第一个 seed、两个事件方法连续执行原 schedule 的前 8 对，同一个 Q 连续更新；正式 pair_budget、方法/单对预算、面板、角域和门槛均不改。结果保留 `PAIR_PROFILE_ONLY`，多对完成也被 G1 聚合器拒绝。`budget_analysis` 报告实测均值、搜索部分条件性外推和遗漏开销，不产生 full-run READY 或科学 PASS。非法计数在模型/预检查工作前拒绝。
+
+01 末尾附加诊断原来固定引用 08:10 的旧失败 run，现改为只读 `PILOT_RUN_DIR` 的本次摘要。原 notebook 已脱敏归档；仅修改相关配置、调度、摘要和说明单元，其他单元保留。实际 34 项针对性测试通过；全套 **257 passed, 1 warning in 62.50s**，警告仅 Windows pytest 缓存权限。真实 CUDA 小面板的连续 8 对已执行，验证原 schedule、配置不变及 G1 拒绝；六本 notebook schema/语法通过。
+
+记录见 `evidence/colab_profile_complete_20261117/`。新的真实 L4 连续 8 对及完整 G1 尚未运行，本机无法独立加载 7B；同步源码后在同一服务器重启 kernel 并初始化 01，设置 `RUN_REAL_MODEL=True`、`RUN_PAIR_PROFILE=True`、`PROFILE_PAIR_COUNT=8`，运行原执行单元及最后的当前运行摘要。无需重建服务器或重新下载缓存。本轮修改未提交/push；G1–G4 仍缺正式合格证据。

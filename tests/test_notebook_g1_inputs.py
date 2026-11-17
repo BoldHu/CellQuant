@@ -183,7 +183,7 @@ def test_notebook_reports_saved_failure_and_profile_never_scores_g1(tmp_path,pro
         commands.append(argv)
         atomic_json(argv[argv.index('--result-index')+1],{'run_dir':str(run)})
         return {'returncode':returncode}
-    ns.update(OUT=out,RUN_REAL_MODEL=True,RUN_PAIR_PROFILE=profile,PILOT_CONFIG_PATH=tmp_path/'config.json',
+    ns.update(OUT=out,RUN_REAL_MODEL=True,RUN_PAIR_PROFILE=profile,PROFILE_PAIR_COUNT=8,PILOT_CONFIG_PATH=tmp_path/'config.json',
         PILOT_RUN_DIR=None,preflight={'readiness':{'status':'READY','missing':[]}},
         stream_command=command,read_json=read_json,atomic_json=atomic_json)
     script=cell('01_Colab_Real_Layer_Pilot.ipynb','process = stream_command(')
@@ -192,9 +192,27 @@ def test_notebook_reports_saved_failure_and_profile_never_scores_g1(tmp_path,pro
         assert str(run) in str(error.value)
     else:exec(script,ns)
     assert ('--profile-pair' in commands[0])==profile
+    if profile:assert commands[0][commands[0].index('--profile-pairs')+1]=='8'
     assert ns['PILOT_RUN_DIR']==run
     if profile:
         def forbidden(*args,**kwargs):raise AssertionError('Pair profile must not score G1')
         ns['evaluate_file']=forbidden
         exec(cell('01_Colab_Real_Layer_Pilot.ipynb','default_evidence = PILOT_RUN_DIR'),ns)
         assert 'NOT_RUN' in capsys.readouterr().out and not (out/'G1.json').exists()
+
+
+def test_notebook_summary_uses_current_profile_run_and_reads_only(tmp_path,capsys):
+    from cellquant.runtime import atomic_json
+    run=tmp_path/'current_profile'
+    atomic_json(run/'config.json',{'seeds':[11,23],'solver':{'pair_budget':128}})
+    atomic_json(run/'pair_profile.json',{'source_type':'unit_test_fixture','status':'PROFILE_COMPLETE'})
+    atomic_json(run/'pair_profile/seed_11/cellquant/profile_result.json',{
+        'source_type':'unit_test_fixture','method':'cellquant','status':'COMPLETE',
+        'solver':{'seconds':170,'requested_pairs':8,'completed_pairs':8,'log':[{'seconds':20}]*8}})
+    ns=context(tmp_path);ns['PILOT_RUN_DIR']=run
+    before={p:p.read_bytes() for p in run.rglob('*') if p.is_file()}
+    exec(cell('01_Colab_Real_Layer_Pilot.ipynb','budget_report = analyze_profile_budget('),ns)
+    output=capsys.readouterr().out
+    assert str(run) in output and 'PROJECTED_SEARCH_EXCEEDS_METHOD_BUDGET' in output
+    assert '2026-11-17T081006' not in output
+    assert before=={p:p.read_bytes() for p in run.rglob('*') if p.is_file()}

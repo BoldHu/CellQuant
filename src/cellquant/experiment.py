@@ -194,8 +194,13 @@ def _verify_weight_files(config,output):
     atomic_json(Path(output)/'weights_manifest.json',{'revision':config['model_revision'],'files':files})
 
 
-def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False):
+def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False,profile_pairs=None):
     config=read_json(config) if isinstance(config,(str,Path)) else copy.deepcopy(config)
+    profile_pair=profile_pair or profile_pairs is not None
+    profile_count=1 if profile_pairs is None else profile_pairs
+    if profile_pair:
+        from .pilot import validate_profile_pair_count
+        validate_profile_pair_count(config,profile_count)
     root=Path(project_root or Path.cwd()).resolve()
     run_id=utc_now().replace(':','').replace('+','_')+'_'+uuid.uuid4().hex[:10]
     output=root/'runs'/'experiments'/run_id;output.mkdir(parents=True)
@@ -208,6 +213,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     base={'schema_version':'1.0','run_id':run_id,'created_at_utc':utc_now(),'run_dir':str(output),
           'config_sha256':config_hash(config),'source_type':'not_run','status':'BLOCKED',
           'execution_mode':'pair_profile_only' if profile_pair else 'experiment'}
+    if profile_pair:base['profile_pair_count']=profile_count
     if preflight_only or ready['status']!='READY':
         result={**base,'readiness':ready,'status':'PREFLIGHT_ONLY' if preflight_only else 'BLOCKED'}
         atomic_json(output/'result.json',result);return result
@@ -284,7 +290,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                 progress.step('g1.model_released',reason='all seed panels captured; panels remain on CUDA')
             if profile_pair:
                 from .pilot import profile_prepared_pair
-                summary=profile_prepared_pair(config,prepared,output,execution_fingerprint=fingerprint['sha256'],progress=progress.step)
+                summary=profile_prepared_pair(config,prepared,output,execution_fingerprint=fingerprint['sha256'],progress=progress.step,pair_count=profile_count)
                 result={**base,**summary,'timings':timings}
             else:
                 paths=run_pilot(config,model,output,graph_identity=graph_identity,execution_fingerprint=fingerprint['sha256'],progress=progress.step,prepared=prepared)
@@ -460,13 +466,17 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',required=True);parser.add_argument('--preflight',action='store_true')
     parser.add_argument('--result-index',help='New pointer file for this invocation, without changing its frozen config')
     parser.add_argument('--profile-pair',action='store_true',help='Engineering diagnosis: first G1 pair on full fit panels for both event methods; no G1 evidence')
+    parser.add_argument('--profile-pairs',type=int,help='Engineering diagnosis of the first N scheduled pairs with continuous Q updates; original method budget; no G1 evidence')
     args=parser.parse_args()
     if args.result_index and Path(args.result_index).exists():raise FileExistsError('Result index already exists; choose a unique path')
-    result=run_experiment(args.config,preflight_only=args.preflight,profile_pair=args.profile_pair)
+    result=run_experiment(args.config,preflight_only=args.preflight,profile_pair=args.profile_pair,profile_pairs=args.profile_pairs)
     if args.result_index:atomic_json(args.result_index,{k:result[k] for k in ['run_id','run_dir','status']})
-    print(json.dumps({'status':result['status'],'run_dir':result['run_dir'],'reason':result.get('reason'),
+    display={'status':result['status'],'run_dir':result['run_dir'],'reason':result.get('reason'),
                       'incomplete_methods':result.get('incomplete_methods',[]),
-                      'missing':result.get('readiness',{}).get('missing',[])},ensure_ascii=False,indent=2))
+                      'missing':result.get('readiness',{}).get('missing',[])}
+    if 'profile_pair_count' in result:display['profile_pair_count']=result['profile_pair_count']
+    if 'budget_analysis' in result:display['budget_analysis']=result['budget_analysis']
+    print(json.dumps(display,ensure_ascii=False,indent=2))
     return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY','PROFILE_COMPLETE'} else 2
 
 

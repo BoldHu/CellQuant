@@ -151,6 +151,20 @@ python -u -m cellquant.experiment --config runs/prepared/g1_gpu/config.json --pr
 
 原附加诊断单元曾写死 08:10 的旧 run，现在统一读取 `PILOT_RUN_DIR`。末尾摘要应打印本次目录；不要用旧目录下的 `RESOURCE_BLOCKED` 判断新运行。
 
+### 8 对已完成：动态输入批处理后的复测
+
+最新用户 run `2026-11-17T120623.229443_0000_083c7593b5` 返回 `PROFILE_COMPLETE`，耗时 354.38 秒。两个方法均完成 8 对；固定尺度搜索均值 8.74 秒，CellQuant 为 20.33 秒。CellQuant 的 128 对搜索部分外推为 2601.85 秒（43.36 分钟），超过 1440 秒原方法预算，不能直接进入 02 或承诺完整 128 对可完成。
+
+已定位并修改动态输入组的逐事件调度瓶颈。新版本 `torch_batched_bilateral_prefix_v2` 保留全部通道、事件、双侧交叉项、FP64 和原预算；不稳定完整行分组使用批量编码差前缀投影，其他分组保留原增量算法。本地完整维度合成案例有实测改善，真实 L4 尚未执行新版。
+
+下一步仍在当前服务器的 **01**：
+
+1. 在本地提交/push 本轮源码，在 Colab 项目目录执行 `git pull --ff-only`。本轮 Codex 没有自动提交或 push。
+2. 重启同一个 kernel，重新运行 01 初始化和预检查。无需释放服务器、重建环境或重新下载模型。
+3. 保持 `RUN_REAL_MODEL=True`、`RUN_PAIR_PROFILE=True`、`PROFILE_PAIR_COUNT=8`，运行原执行单元和“当前运行”摘要。日志中动态组应出现 `batched_dynamic_input`；完整行分组以外的输入仍可能显示 `input_coefficients`。这次重测是验证新算法实现对已知瓶颈的作用，不是增加到 16/32 对来重复诊断。
+4. 只有新记录的搜索时间与初始化/接受更新等开销留有预算余量，才将 `RUN_PAIR_PROFILE=False`，在同一本 01 发起新的正式 G1；原配置仍为两种子、五方法、128 对。前缀外推不保证后续坐标同速，正式结果决定是否完成。
+5. 正式运行后运行 G1 门槛单元，再用已有 Drive 备份单元保存结果。仅真实 `G1=PASS` 后进入 02 的 AutoDL canary；`PROFILE_COMPLETE`、`COMPLETE` 和进程退出码 0 都不能替代 G1。
+
 ## 4. 长作业诊断、结束和备份
 
 若预检查报告 `GPU-resident capture estimates ... insufficient`，先区分总容量、配置预算与当前空闲量。新版本将它们写入 `preflight["readiness"]["gpu_memory"]` 和错误文本。`currently_free` 表示当前空闲不足；`configured_budget` 表示预算上限不足；`total_capacity` 表示整卡容量不足。这个估计不是实测峰值，也不是 G1 成绩。

@@ -20,16 +20,22 @@ def main():
     parser.add_argument('--method',choices=['cellquant','fixed_scale_search_matched'],default='cellquant')
     parser.add_argument('--seconds-per-pair',type=float,default=30.)
     parser.add_argument('--pairs',type=int,default=1)
+    parser.add_argument('--input-engine',choices=['auto','incremental'],default='auto',
+                        help='Synthetic comparison only: force the pre-batching input path')
     parser.add_argument('--reference-module',help='Optional archived tensor_solver.py for same-GPU comparison')
     args=parser.parse_args();out=Path(args.output)
     if out.exists():raise FileExistsError(out)
     if not torch.cuda.is_available():raise RuntimeError('CUDA required; no CPU substitution')
-    sources=['src/cellquant/tensor_solver.py','src/cellquant/tensor_cells.py','src/cellquant/tensor_math.py','src/cellquant/solver.py',__file__]
+    sources=['src/cellquant/tensor_solver.py','src/cellquant/tensor_cells.py','src/cellquant/tensor_input_cells.py',
+             'src/cellquant/tensor_math.py','src/cellquant/solver.py',__file__]
     source_hashes={p:sha256_file(p) for p in sources}
     engine=tensor_solver
     if args.reference_module:
         spec=importlib.util.spec_from_file_location('cellquant._archived_tensor_solver',args.reference_module)
         engine=importlib.util.module_from_spec(spec);spec.loader.exec_module(engine)
+    if args.input_engine=='incremental':
+        from cellquant import tensor_input_cells
+        tensor_input_cells.can_batch=lambda orbit:False
     generator=torch.Generator(device='cuda').manual_seed(861)
     def rand(shape):return torch.randn(shape,dtype=torch.float64,device='cuda',generator=generator)
     d,ffn,tokens=(8,16,4) if args.case=='small' else (4096,11008,128)
@@ -51,6 +57,7 @@ def main():
             'environment':environment_report(),'elapsed_seconds':time.perf_counter()-started,
             'peak_allocated_bytes':torch.cuda.max_memory_allocated(),'solver':result,
             'engine_source':str(args.reference_module or 'src/cellquant/tensor_solver.py'),
+            'diagnostic_input_engine':args.input_engine,
             'source_hashes':source_hashes,
             'sources_unchanged_during_run':all(sha256_file(p)==h for p,h in source_hashes.items())}
     if args.reference_module:report['reference_module_sha256']=sha256_file(args.reference_module)

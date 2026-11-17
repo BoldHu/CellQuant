@@ -22,7 +22,7 @@ from .solver import panel_specs, panel_fingerprint
 from .tensor_math import (scalar, basis, affine_roots, owner_intervals, square_coeff,
                           product_coeff, scale_square)
 
-CELL_ENGINE_VERSION = 'torch_batched_output_prefix_v1'
+CELL_ENGINE_VERSION = 'torch_batched_bilateral_prefix_v2'
 
 
 def synchronize(device):

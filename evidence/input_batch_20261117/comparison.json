@@ -1,0 +1,18 @@
+{
+  "source_type": "synthetic_math",
+  "case": "mixed_full",
+  "scope": "Full matrix axes and angle domain where requested; random data, identity Q, not pretrained layers or G1. mixed_full has six input panels and ONE output panel.",
+  "repetitions_per_implementation": 1,
+  "method_seconds_before": 57.29192449999391,
+  "method_seconds_after": 27.608491500024684,
+  "pair_seconds_before": 49.77078550000442,
+  "pair_seconds_after": 20.095699900004547,
+  "coefficients_seconds_before": 31.168896100018173,
+  "coefficients_seconds_after": 1.2109716999984812,
+  "event_count": 54786,
+  "best_and_final_values_equal": true,
+  "max_best_abs_difference": 0.0,
+  "peak_allocated_before": 3093792768,
+  "peak_allocated_after": 3093792768,
+  "sources_unchanged_during_runs": true
+}

@@ -70,7 +70,7 @@ def test_shared_batched_angle_matches_independent_cpu_solver(device,fixed):
     assert actual['best']['loss']==pytest.approx(expected['best']['loss'],rel=1e-7,abs=1e-10)
     assert actual['best']['budget_w']<=float(limits['budget_w'])+1e-10
     assert actual['best']['budget_a']<=float(limits['budget_a'])+1e-10
-    assert actual['cell_engine']=='torch_batched_output_prefix_v1'
+    assert actual['cell_engine']=='torch_batched_bilateral_prefix_v2'
     assert actual['boundary_rounding_evaluations']==actual['event_count']
 
 

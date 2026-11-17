@@ -1,0 +1,60 @@
+{
+  "observed_at_utc": "2026-11-17T12:33:09.208519+00:00",
+  "status": "LOCAL_VALIDATION_PASSED_NEW_REAL_L4_NOT_RUN",
+  "evidence_kind": "ENGINEERING_VALIDATION_ONLY",
+  "git_head": "799892408e51393e482ac0c23480509c354c18cc",
+  "source_sha256": {
+    "src/cellquant/tensor_input_cells.py": "1377e8bbd9829effd8cf4ab82535f6dd509083fbe35f6b03333801e857b92abb",
+    "src/cellquant/tensor_cells.py": "35c6fce74e969aebb383f1715ba992a76c7434f0d994a5d6dbb33b876475a522",
+    "src/cellquant/tensor_solver.py": "d02f0d1ffbd637e17a6fdbc9ee758664015957595b2fbdf284f5c9c8fb99e460",
+    "scripts/profile_tensor_cells.py": "f67e42ab8441f351d3a0c8910767476784d2f81bea71f2e452e947cadf05616c",
+    "tests/test_tensor_input_cells.py": "f708d7c6d4d1e08063eb028913e02c980c616f94da2e7ea77b5f9d1b2b5eeeff",
+    "tests/test_tensor_cells.py": "45c55262bdc8e784dbf473c0b99c4bfa989626820fd62dfbf92fa347c1f62285"
+  },
+  "tests": {
+    "pytest_before.log": "257 passed, 1 warning in 57.73s",
+    "targeted_first.log": "50 passed, 1 warning in 31.77s",
+    "pytest_final.log": "281 passed, 1 warning in 83.22s (0:01:23)"
+  },
+  "test_exit_codes": {
+    "before": 0,
+    "targeted": 0,
+    "final": 0
+  },
+  "test_warning": "Windows pytest cache write permission only",
+  "notebooks": {
+    "notebook_schema_and_syntax": [
+      "notebooks\\00_Colab_GitHub_Workspace.ipynb",
+      "notebooks\\00_Colab_Preflight_and_Math.ipynb",
+      "notebooks\\01_Colab_Real_Layer_Pilot.ipynb",
+      "notebooks\\02_AutoDL_Migration_and_Canary.ipynb",
+      "notebooks\\03_Full_Experiments.ipynb",
+      "notebooks\\04_Paper_Analysis.ipynb"
+    ],
+    "changed_cells": [
+      "g1-pair-profile-guide"
+    ],
+    "all_user_code_cells_and_outputs_preserved": true,
+    "archive_hf_token_scan": "no_token_pattern_found"
+  },
+  "math_reference": "PASS",
+  "empty_G1": "INSUFFICIENT_EVIDENCE",
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "formal_config_and_gate_unchanged_from_HEAD": true,
+  "real_prefix_observation": "observation.json",
+  "local_comparison": "comparison.json",
+  "new_real_L4_prefix8": "NOT_RUN",
+  "new_full_G1": "NOT_RUN",
+  "G1_qualification": "INSUFFICIENT_EVIDENCE",
+  "commands": [
+    ".venv/Scripts/python.exe -m pytest -q",
+    ".venv/Scripts/python.exe -m pytest -q tests/test_tensor_input_cells.py tests/test_tensor_cells.py",
+    ".venv/Scripts/python.exe scripts/profile_tensor_cells.py --case mixed_full --method cellquant --seconds-per-pair 300 --input-engine incremental --output evidence/input_batch_20261117/mixed_incremental.json",
+    ".venv/Scripts/python.exe scripts/profile_tensor_cells.py --case mixed_full --method cellquant --seconds-per-pair 300 --output evidence/input_batch_20261117/mixed_batched.json",
+    ".venv/Scripts/python.exe scripts/run_math_checks.py --output runs/input_batch_20261117/math_reference",
+    ".venv/Scripts/python.exe -m cellquant.gates evaluate --stage G1 --evidence examples/G1_evidence_NOT_RUN.json --output evidence/input_batch_20261117/empty_G1.json"
+  ],
+  "next_colab_command": "python -u -m cellquant.experiment --config runs/prepared/g1_gpu/config.json --profile-pairs 8",
+  "log_encoding": "PowerShell UTF-16 logs transcoded losslessly to UTF-8 for archive readability",
+  "scope": "Local actual RTX 3050 CUDA synthetic checks do not establish real L4 throughput, full 128-pair completion, held-out quality or G1."
+}

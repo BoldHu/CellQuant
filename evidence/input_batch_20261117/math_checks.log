@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "checks": {
+    "orthogonality": true,
+    "product_equivalence": true,
+    "screening_event_equivalence": true,
+    "cell_partition": true,
+    "analytic_product": true,
+    "analytic_loss": true,
+    "analytic_budgets": true,
+    "actual_acceptance": true,
+    "independent_requantization": true,
+    "rounding_and_zero": true
+  },
+  "report": "runs\\input_batch_20261117\\math_reference\\math_reference_report.json"
+}

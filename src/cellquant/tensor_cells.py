@@ -299,6 +299,9 @@ def input_term(orbit, events, work, emit, batch_size=1024):
         if not stable:
             term.bw,term.ba,term.boundary[:,1:]=input_risks(orbit,events,angles,work)
         return term
+    from .tensor_input_cells import can_batch, full_row_input_term
+    if can_batch(orbit):
+        return full_row_input_term(orbit,angles,work,emit,batch_size)
     index=EventIndex(inverse,keys,members,len(angles))
     count=len(angles)-1
     loss=like.new_empty((count,9));bw=like.new_empty((count,5));ba=like.new_empty((count,5))

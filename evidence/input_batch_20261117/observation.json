@@ -1,0 +1,72 @@
+{
+  "observed_at_utc": "2026-11-17T12:20:47.714286+00:00",
+  "source_type": "real_layer",
+  "evidence_kind": "PAIR_PROFILE_ONLY",
+  "provenance": "User-saved notebook outputs; no independent access to remote result files.",
+  "notebook_sha256": "fd0ff6b25dbc95539bf14214f7d2961aa9d5828fc34a19e33f8022315bc4702f",
+  "summary": {
+    "status": "PROFILE_COMPLETE",
+    "run_dir": "/content/CellQuant/runs/experiments/2026-11-17T120623.229443_0000_083c7593b5",
+    "reason": null,
+    "incomplete_methods": [],
+    "missing": [],
+    "profile_pair_count": 8,
+    "budget_analysis": {
+      "configured_pair_count": 128,
+      "method_budget_seconds": 1440.0,
+      "budget_seconds_per_configured_pair_before_other_overhead": 11.25,
+      "methods": [
+        {
+          "method": "fixed_scale_search_matched",
+          "profile_status": "COMPLETE",
+          "completed_pairs": 8,
+          "requested_profile_pairs": 8,
+          "observed_method_seconds": 83.17737666899848,
+          "mean_pair_search_seconds": 8.742919225750029,
+          "projected_full_search_seconds": 1119.0936608960037,
+          "assessment": "SEARCH_COMPONENT_ESTIMATE_WITHIN_BUDGET",
+          "min_pair_search_seconds": 7.093613535002078,
+          "max_pair_search_seconds": 10.555741952000972
+        },
+        {
+          "method": "cellquant",
+          "profile_status": "COMPLETE",
+          "completed_pairs": 8,
+          "requested_profile_pairs": 8,
+          "observed_method_seconds": 175.84577422700022,
+          "mean_pair_search_seconds": 20.32696714562462,
+          "projected_full_search_seconds": 2601.8517946399515,
+          "assessment": "PROJECTED_SEARCH_EXCEEDS_METHOD_BUDGET",
+          "min_pair_search_seconds": 7.662910423998255,
+          "max_pair_search_seconds": 29.999934123999992
+        }
+      ],
+      "full_run_readiness": "NOT_ESTABLISHED_BY_PROFILE",
+      "assumption": "Remaining pairs have the same mean search time as this prefix; this is neither a runtime guarantee nor a confidence interval.",
+      "excluded_costs": "Initialization, accepted-Q refresh and checkpoint overhead; their time is included only in observed_method_seconds.",
+      "scope": "Engineering resource diagnosis only; no held-out result or G1 qualification."
+    }
+  },
+  "final_event": {
+    "event": "finished",
+    "status": "PROFILE_COMPLETE",
+    "phase": "profile.method.saved",
+    "details": {
+      "seed": 11,
+      "method": "cellquant",
+      "solver_status": "COMPLETE",
+      "solver_reason": null,
+      "result_path": "/content/CellQuant/runs/experiments/2026-11-17T120623.229443_0000_083c7593b5/pair_profile/seed_11/cellquant/profile_result.json"
+    },
+    "elapsed_seconds": 354.38,
+    "phase_elapsed_seconds": 0.01,
+    "process_rss_gib": 1.967,
+    "system_available_gib": 46.292,
+    "process_cpu_seconds": 373.45,
+    "progress_sequence": 471,
+    "updated_at_utc": "2026-11-17T12:12:19.621161+00:00",
+    "cuda_allocated_gib": 2.461,
+    "cuda_reserved_gib": 7.416
+  },
+  "scope": "Eight consecutive pairs for seed 11, two event methods; no held-out evaluation or G1 qualification."
+}

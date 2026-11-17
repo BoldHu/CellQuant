@@ -6,7 +6,7 @@
 
 2026-11-16：Colab G1 默认改为**完整模型驻留 GPU + PyTorch CUDA 数值求解**，包含事件、增量系数、GPU QR 求根与五种匹配方法。采集完所有 seed 后释放基础模型，面板继续留在 GPU；不会静默回退 CPU。新服务器从 [GPU 完整操作指南](docs/COLAB_GPU_FROM_SCRATCH.md) 开始，使用新的 `runs/prepared/g1_gpu/config.json`。本地已运行实际 CUDA 小模型、完整维度合成面板与回归检查；真实 7B 的质量和加速比仍须云端实测。
 
-2026-11-17：GPU 批量输出前缀和、输入秩二/边界增量及批量候选筛选已使用户真实 L4 首对返回 `PROFILE_COMPLETE`。完整 128 对尚未验证，G1 尚未通过。首对搜索耗时外推存在方法总预算不足的风险，下一步在 01 使用 `RUN_PAIR_PROFILE=True`、`PROFILE_PAIR_COUNT=8` 连续诊断原定前 8 对，保持原科学门槛和时间预算。实际记录见 [批量求解证据](evidence/batched_cells_20261117/)及[真实首对观察](evidence/colab_profile_complete_20261117/observation.json)。
+2026-11-17：用户真实 L4 连续 8 对诊断已完成，总耗时 354.38 秒。CellQuant 平均 20.33 秒/对，128 对仅搜索的条件性外推为 43.36 分钟，超过原 24 分钟方法预算；这不是完整 G1。已继续将动态输入组更新批量化，同卡完整维度合成案例搜索由 49.77 降至 20.10 秒，结果一致；真实 L4 新版尚待重测。在 01 保持 `RUN_PAIR_PROFILE=True`、`PROFILE_PAIR_COUNT=8`，同步新源码后重测原前缀，不修改正式对数、预算或门槛。记录见 [最新实测与工程验证](evidence/input_batch_20261117/)，操作见 [Colab 指南](docs/COLAB_GPU_FROM_SCRATCH.md)。
 
 - 已复现原有 62 项测试；2026-11-15 构建 116 项通过，新增工作流后全套 125 项通过，包含本机可执行的 CUDA 检查。
 - 合成 G0：3 seeds、24 cases，真实计算为 PASS；完整 d=4096、FFN=11008 工程 smoke 已运行，使用少 tokens/窄角域。

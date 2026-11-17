@@ -1,0 +1,15 @@
+{
+  "notebook_schema_and_syntax": [
+    "notebooks\\00_Colab_GitHub_Workspace.ipynb",
+    "notebooks\\00_Colab_Preflight_and_Math.ipynb",
+    "notebooks\\01_Colab_Real_Layer_Pilot.ipynb",
+    "notebooks\\02_AutoDL_Migration_and_Canary.ipynb",
+    "notebooks\\03_Full_Experiments.ipynb",
+    "notebooks\\04_Paper_Analysis.ipynb"
+  ],
+  "changed_cells": [
+    "g1-pair-profile-guide"
+  ],
+  "all_user_code_cells_and_outputs_preserved": true,
+  "archive_hf_token_scan": "no_token_pattern_found"
+}

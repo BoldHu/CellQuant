@@ -15,25 +15,52 @@ from .progress import report
 
 
 def panel_metrics(panels,q,specs,device='cpu',*,progress=None):
+    tensor=hasattr(q,'detach')
+    if tensor:
+        from .tensor_solver import PanelState as TensorState
     rows=[]
     for panel in panels:
         report(progress,'heldout.panel',panel_id=panel.panel_id,device=device)
-        state=PanelState(panel,q,*panel_specs(specs,panel),device=device)
+        state=TensorState(panel,q,*panel_specs(specs,panel)) if tensor else PanelState(panel,q,*panel_specs(specs,panel),device=device)
         pieces=panel.metadata['tokens_per_block'];offset=0;blocks=[]
         for index,count in enumerate(pieces):
             error=state.error[:,offset:offset+count];target=state.target[:,offset:offset+count]
             blocks.append({'block_id':panel.metadata['block_ids'][index],'document_id':panel.metadata['document_ids'][index],
-                'squared_error':float(np.square(error).sum()),'target_energy':float(np.square(target).sum()),'sampled_tokens':count})
+                'squared_error':float(error.square().sum() if tensor else np.square(error).sum()),
+                'target_energy':float(target.square().sum() if tensor else np.square(target).sum()),'sampled_tokens':count})
             offset+=count
         rows.append({'panel_id':panel.panel_id,'placement':panel.placement,'layer':panel.metadata['layer'],
-            'nmse':state.loss,'budget_w':state.bw,'budget_a':state.ba,'blocks':blocks,
+            'nmse':float(state.loss),'budget_w':float(state.bw),'budget_a':float(state.ba),'blocks':blocks,
             'weight_shape':list(panel.weight.shape),'activation_shape':list(panel.activation.shape),
-            'weight_crest':float(np.max(np.abs(state.a))/max(np.sqrt(np.mean(state.a**2)),1e-30)),
-            'activation_crest':float(np.max(np.abs(state.x))/max(np.sqrt(np.mean(state.x**2)),1e-30))})
+            'weight_crest':float(state.a.abs().max()/state.a.square().mean().sqrt().clamp_min(1e-30)) if tensor else float(np.max(np.abs(state.a))/max(np.sqrt(np.mean(state.a**2)),1e-30)),
+            'activation_crest':float(state.x.abs().max()/state.x.square().mean().sqrt().clamp_min(1e-30)) if tensor else float(np.max(np.abs(state.x))/max(np.sqrt(np.mean(state.x**2)),1e-30))})
+        del state
     return rows
 
 
-def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_fingerprint=None,progress=None):
+def prepare_pilot_inputs(config,model,*,graph_identity,progress=None):
+    """Capture all seeds with the entire model on GPU, then allow its release."""
+    from .spinquant_adapter import panel_quant_specs
+    from .tensor_solver import synchronize
+    device=config['runtime']['model_device'];formal=config['formal_pilot'];seeds={}
+    for seed in config['seeds']:
+        _,parts=load_token_manifest(config['data']['token_manifests'][str(seed)])
+        verify_disjoint(parts['fit'],parts['dev'])
+        kwargs=dict(layers=formal['layers'],projections=formal['projections'],input_weight_rows=formal['input_weight_rows'],
+                    seed=seed,device=device,graph_identity=graph_identity,resident=True)
+        synchronize(device);start=time.perf_counter()
+        fit=capture_panels(model,parts['fit'],tokens_per_panel=formal['fit_tokens_per_panel'],
+            progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split='fit',**d),**kwargs)
+        specs=panel_quant_specs(model,fit,config['quantization']);synchronize(device)
+        seconds=time.perf_counter()-start
+        held=capture_panels(model,parts['dev'],tokens_per_panel=formal['heldout_tokens_per_panel'],
+            progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split='heldout',**d),**kwargs)
+        seeds[seed]={'fit':fit,'heldout':held,'specs':specs,'capture_seconds':seconds}
+    return {'seeds':seeds,'hidden_size':model.config.hidden_size,
+            'model_parameter_billions':sum(p.numel() for p in model.parameters())/1e9}
+
+
+def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_fingerprint=None,progress=None,prepared=None):
     output=Path(output);formal=config['formal_pilot'];records=[]
     if set(formal['methods'])!=set(METHODS):raise ValueError('G1 requires Hadamard, cell, STE, grid, fixed-scale controls')
     quant=config['quantization']
@@ -45,13 +72,29 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
         manifest,parts=load_token_manifest(manifest_path);fit=parts['fit'];heldout=parts['dev'];verify_disjoint(fit,heldout)
         start=time.perf_counter()
         kwargs=dict(layers=formal['layers'],projections=formal['projections'],input_weight_rows=formal['input_weight_rows'],seed=seed,device=device,graph_identity=graph_identity)
-        fit_panels=capture_panels(model,fit,tokens_per_panel=formal['fit_tokens_per_panel'],progress=lambda phase,**d:emit(phase,split='fit',**d),**kwargs)
-        from .spinquant_adapter import panel_quant_specs
-        specs=panel_quant_specs(model,fit_panels,quant)
-        capture_seconds=time.perf_counter()-start
-        heldout_panels=capture_panels(model,heldout,tokens_per_panel=formal['heldout_tokens_per_panel'],progress=lambda phase,**d:emit(phase,split='heldout',**d),**kwargs)
-        emit('initial_rotation',device='cpu')
-        q0=hadamard_rotation(model.config.hidden_size,seed)
+        if prepared is None:
+            fit_panels=capture_panels(model,fit,tokens_per_panel=formal['fit_tokens_per_panel'],progress=lambda phase,**d:emit(phase,split='fit',**d),**kwargs)
+            from .spinquant_adapter import panel_quant_specs
+            specs=panel_quant_specs(model,fit_panels,quant)
+            capture_seconds=time.perf_counter()-start
+            heldout_panels=capture_panels(model,heldout,tokens_per_panel=formal['heldout_tokens_per_panel'],progress=lambda phase,**d:emit(phase,split='heldout',**d),**kwargs)
+            hidden=model.config.hidden_size;parameters=sum(p.numel() for p in model.parameters())/1e9
+        else:
+            ready=prepared['seeds'].pop(seed)
+            fit_panels,heldout_panels,specs,capture_seconds=ready['fit'],ready['heldout'],ready['specs'],ready['capture_seconds']
+            hidden=prepared['hidden_size'];parameters=prepared['model_parameter_billions']
+            del ready
+        tensor=config['solver'].get('backend')=='torch'
+        emit('initial_rotation',device=config['solver'].get('device','cpu'))
+        if tensor:
+            from .tensor_solver import hadamard_rotation as tensor_hadamard
+            q0=tensor_hadamard(hidden,seed,config['solver']['device'])
+        else:q0=hadamard_rotation(hidden,seed)
+        fit_hash=panel_fingerprint(fit_panels)
+        sources={p.metadata.get('source_type') for p in [*fit_panels,*heldout_panels]}
+        if len(sources)!=1 or not sources.issubset({'real_layer','unit_test_fixture'}):
+            raise ValueError('Pilot panels must share an explicit real-layer or test-fixture source')
+        source_type=next(iter(sources))
         schedule=pair_schedule(len(q0),config['solver']['pair_budget'],seed)
         method_budget=config['solver'].get('wall_seconds_per_method',min(2400.,config.get('gpu_hour_budget',4)*3600/len(METHODS)/len(config['seeds'])))
         for method in formal['methods']:
@@ -68,25 +111,27 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
                         raise ValueError('Completed pilot checkpoint integrity mismatch')
                     shutil.copy2(saved['q_path'],dest/'Q.npz');saved['q_path']=str((dest/'Q.npz').resolve())
                     saved['resumed_from']=str(prior.resolve());records.append(atomic_json(dest/'pilot_result.json',saved));continue
-                if (prior/'rotation_state.npz').exists() and method in {'cellquant','fixed_scale_search_matched'}:
-                    shutil.copy2(prior/'rotation_state.npz',dest/'rotation_state.npz');resume=True
+                state_name='rotation_state.pt' if tensor else 'rotation_state.npz'
+                if (prior/state_name).exists() and method in {'cellquant','fixed_scale_search_matched'}:
+                    shutil.copy2(prior/state_name,dest/state_name);resume=True
                 elif saved and method in {'givens_ste_matched','angle_grid_matched'}:
                     raise ValueError('Partial grid/STE resume is unsupported; do not reset its wall budget silently')
             cfg=SolverConfig(theta_limit=config['solver'].get('theta_limit',np.pi/4),
+                backend=config['solver'].get('backend','numpy_reference'),compute_dtype=config['solver'].get('compute_dtype','float64'),
                 event_limit_per_pair=config['solver'].get('event_limit_per_pair',200000),
                 seconds_per_pair=config['solver'].get('seconds_per_pair',300.),wall_seconds=method_budget,
-                device=config['solver'].get('device','cpu'),checkpoint_path=str(dest/'rotation_state.npz'),
+                device=config['solver'].get('device','cpu'),checkpoint_path=str(dest/('rotation_state.pt' if tensor else 'rotation_state.npz')),
                 execution_fingerprint=execution_fingerprint or graph_identity,resume=resume)
             result=fit_baseline(method,fit_panels,q0,specs,schedule,cfg,progress=method_progress)
             method_progress('solve.complete',solver_status=result['status'])
             q=result.pop('q');atomic_npz(dest/'Q.npz',Q=q)
-            row={'source_type':'real_layer','status':result['status'],'seed':seed,'method':method,
+            row={'source_type':source_type,'status':result['status'],'seed':seed,'method':method,
                 'model_id':formal['model_id'],'model_revision':config['model_revision'],
-                'model_parameter_billions':sum(p.numel() for p in model.parameters())/1e9,
+                'model_parameter_billions':parameters,
                 'graph_identity':graph_identity,'hardware_sha256':hardware,'quantization':quant,
                 'schedule_sha256':config_hash(schedule),'wall_budget_seconds':method_budget,
                 'data_manifest_path':str(Path(manifest_path).resolve()),'data_manifest_sha256':sha256_file(manifest_path),
-                'fit_panel_fingerprint':panel_fingerprint(fit_panels),'fit_documents':sorted({b['document_id'] for b in fit}),
+                'fit_panel_fingerprint':fit_hash,'fit_documents':sorted({b['document_id'] for b in fit}),
                 'heldout_documents':sorted({b['document_id'] for b in heldout}),
                 'context_lengths':sorted({len(b['tokens']) for b in fit+heldout}),
                 'capture_seconds':capture_seconds,'total_calibration_seconds':capture_seconds+result['seconds'],
@@ -94,6 +139,7 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
                 'heldout':panel_metrics(heldout_panels,q,specs,cfg.device,progress=method_progress)}
             path=atomic_json(dest/'pilot_result.json',row);records.append(path)
             method_progress('method.saved',result_path=str(path),solver_status=result['status'])
+        del fit_panels,heldout_panels,q0
     return records
 
 

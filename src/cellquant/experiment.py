@@ -85,10 +85,22 @@ def preflight(config,root=None):
         memory=env['cuda']['devices'][0]['total_gib']
         if memory<24 and '7b' in config.get('model_id','').lower():missing.append(f'Visible GPU memory {memory:.2f} GiB is below this full 7B implementation working set')
     import psutil
+    runtime=config.get('runtime',{});resident=runtime.get('model_device','cpu').startswith('cuda')
+    if stage=='G1' and resident:
+        if runtime.get('cpu_offload',True):missing.append('GPU-resident G1 requires cpu_offload=false')
+        if config.get('solver',{}).get('backend')!='torch' or not config.get('solver',{}).get('device','').startswith('cuda'):
+            missing.append('GPU-resident G1 requires the torch CUDA solver, not the NumPy reference')
+        if env['cuda'].get('available') and source_manifest and Path(source_manifest).is_file():
+            size=sum(f['size_bytes'] for f in read_json(source_manifest)['files'])/2**30
+            estimate=size*(2 if runtime.get('dtype')=='float32' else 1)+4
+            import torch
+            free,total=torch.cuda.mem_get_info()
+            if min(free/2**30,total/2**30*runtime.get('max_memory_fraction',.85))<estimate:
+                missing.append(f'GPU-resident capture estimates {estimate:.2f} GiB (checkpoint bytes + workspace); insufficient free/budgeted VRAM. No CPU fallback.')
     model_id=config.get('model_id',config.get('formal_pilot',{}).get('model_id',''))
     if any(s in model_id.lower() for s in ['7b','8b']):
         available=psutil.virtual_memory().available/2**30
-        if available<24:missing.append(f'Available CPU RAM {available:.2f} GiB below 24 GiB model/panel staging requirement')
+        if not resident and available<24:missing.append(f'Available CPU RAM {available:.2f} GiB below 24 GiB model/panel staging requirement')
     dtype=config.get('runtime',{}).get('dtype')
     if dtype not in {'float16','bfloat16','float32'}:missing.append('Record an explicit actual model dtype; no silent fallback')
     if dtype=='bfloat16' and env['cuda'].get('available') and not env['cuda'].get('bf16_supported'):missing.append('BF16 is unsupported on this GPU')
@@ -110,12 +122,17 @@ def _load_model(config,*,training=False):
     model_id=config.get('model_id',config.get('formal_pilot',{}).get('model_id'))
     token=os.environ.get('HF_TOKEN') or None
     cache=str(huggingface_cache_paths(config.get('runtime'))[0])
+    resident=config.get('runtime',{}).get('model_device','cpu').startswith('cuda')
+    placement={'device_map':{'':config['runtime']['model_device']}} if resident else {}
     model=Model.from_pretrained(model_id,revision=config['model_revision'],token=token,cache_dir=cache,
         torch_dtype=getattr(torch,config['runtime']['dtype']),low_cpu_mem_usage=True,attn_implementation='eager',
-        local_files_only=config.get('runtime',{}).get('local_cache_only',False))
+        local_files_only=config.get('runtime',{}).get('local_cache_only',False),**placement)
     tokenizer=AutoTokenizer.from_pretrained(model_id,revision=config['tokenizer_revision'],token=token,cache_dir=cache,
         use_fast=True,add_bos_token=False,add_eos_token=False,local_files_only=config.get('runtime',{}).get('local_cache_only',False))
     model.eval();model.config.use_cache=False
+    if not training:model.requires_grad_(False)
+    if resident and any(p.device.type!='cuda' for p in model.parameters()):
+        raise ExperimentBlocked('GPU-resident loading left CPU parameters; no automatic offload allowed')
     if getattr(model.config,'_commit_hash',None)!=config['model_revision']:raise ExperimentBlocked('Loaded model revision differs from frozen config')
     return model,tokenizer
 
@@ -196,10 +213,17 @@ def run_experiment(config,*,project_root=None,preflight_only=False):
         with measured('load'):
             _verify_weight_files(config,output)
             model,tokenizer=_load_model(config,training=method in {'spinquant_full','spinquant_r1_control'})
+        resident=config.get('runtime',{}).get('model_device','cpu').startswith('cuda')
+        devices={}
+        for p in model.parameters():devices[str(p.device)]=devices.get(str(p.device),0)+p.numel()*p.element_size()
+        placement_report={'parameter_bytes_by_device':devices,'all_parameters_cuda':all(p.device.type=='cuda' for p in model.parameters()),'cpu_offload':not resident}
+        atomic_json(output/'model_placement.json',placement_report)
+        print('[CellQuant] model_placement='+json.dumps(placement_report),flush=True)
         progress.step('fixed_rotations')
-        quant=config['quantization'];r2=fixed_r2(model.config,config['rotation']['fixed_r2_seed'])
+        quant=config['quantization'];r2=fixed_r2(model.config,config['rotation']['fixed_r2_seed'],device=config['runtime'].get('model_device','cpu'))
         graph_identity=config_hash({'overlay':overlay['overlay_sha256'],'r2_seed':config['rotation']['fixed_r2_seed'],
-                                     'model':config['model_revision'],'dtype':config['runtime']['dtype'],'r3r4':'upstream fp32_had'})
+                                     'model':config['model_revision'],'dtype':config['runtime']['dtype'],'r3r4':'upstream fp32_had',
+                                     'r2_generator':'torch_cuda_hadamard_v1' if resident else 'numpy_pcg64_hadamard'})
         if stage=='G1':
             from .pilot import run_pilot,build_g1_evidence
             from .runner import frozen_execution_config_hash
@@ -212,12 +236,22 @@ def run_experiment(config,*,project_root=None,preflight_only=False):
                     raise ExperimentBlocked('G1 resume provenance changed; create a new protocol')
                 base['parent_run_dir']=str(prior.resolve())
             with measured('fusion'):
-                progress.step('fusion.norms',device='cpu');fuse_norms(model)
-                progress.step('fusion.export',device='cpu')
-                export_spinquant_rotation(np.eye(model.config.hidden_size),r2,output/'fixed_R.bin')
+                progress.step('fusion.norms',device=str(next(model.parameters()).device));fuse_norms(model)
+                progress.step('fusion.export',device=str(next(model.parameters()).device))
+                identity=torch.eye(model.config.hidden_size,dtype=torch.float64,device=next(model.parameters()).device)
+                export_spinquant_rotation(identity,r2,output/'fixed_R.bin');del identity
                 progress.step('fusion.rotate',device='cuda');rotate_model(model,output/'fixed_R.bin')
                 progress.step('fusion.online_graph');install_online_graph(model,quant,quantized=False)
-            paths=run_pilot(config,model,output,graph_identity=graph_identity,execution_fingerprint=fingerprint['sha256'],progress=progress.step)
+                if resident:model.to(config['runtime']['model_device'])
+            prepared=None
+            if resident:
+                from .pilot import prepare_pilot_inputs
+                prepared=prepare_pilot_inputs(config,model,graph_identity=graph_identity,progress=progress.step)
+                # The base model is no longer needed once every seed's panels
+                # are frozen. Free it; do not offload a 7B copy to host RAM.
+                del model;model=None;gc.collect();torch.cuda.empty_cache()
+                progress.step('g1.model_released',reason='all seed panels captured; panels remain on CUDA')
+            paths=run_pilot(config,model,output,graph_identity=graph_identity,execution_fingerprint=fingerprint['sha256'],progress=progress.step,prepared=prepared)
             progress.step('g1.evidence')
             gate=build_g1_evidence(paths,output,g0_evidence_path=config.get('g0_evidence_path','runs/build_m2/G0_evidence.json'))
             result={**base,'source_type':'real_layer','status':'COMPLETE' if all(read_json(p)['status']=='COMPLETE' for p in paths) else 'RESOURCE_BLOCKED',
@@ -374,7 +408,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False):
     except (KeyboardInterrupt,Exception) as exc:
         token=os.environ.get('HF_TOKEN');message=f'{type(exc).__name__}: {exc}'
         if token:message=message.replace(token,'[REDACTED]')
-        result={**base,'status':'INTERRUPTED' if isinstance(exc,KeyboardInterrupt) else 'BLOCKED' if isinstance(exc,ExperimentBlocked) else 'FAILED',
+        result={**base,'status':'INTERRUPTED' if isinstance(exc,KeyboardInterrupt) else 'BLOCKED' if isinstance(exc,ExperimentBlocked) else 'RESOURCE_BLOCKED' if isinstance(exc,torch.cuda.OutOfMemoryError) else 'FAILED',
                 'phase':progress.state['phase'],'reason':message,'timings':timings}
         result['resources']=monitor.stop();atomic_json(output/'resources.json',result['resources'])
         atomic_json(output/'result.json',result)
@@ -388,7 +422,11 @@ def run_experiment(config,*,project_root=None,preflight_only=False):
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',required=True);parser.add_argument('--preflight',action='store_true')
-    args=parser.parse_args();result=run_experiment(args.config,preflight_only=args.preflight)
+    parser.add_argument('--result-index',help='New pointer file for this invocation, without changing its frozen config')
+    args=parser.parse_args()
+    if args.result_index and Path(args.result_index).exists():raise FileExistsError('Result index already exists; choose a unique path')
+    result=run_experiment(args.config,preflight_only=args.preflight)
+    if args.result_index:atomic_json(args.result_index,{k:result[k] for k in ['run_id','run_dir','status']})
     print(json.dumps({'status':result['status'],'run_dir':result['run_dir'],'reason':result.get('reason'),
                       'missing':result.get('readiness',{}).get('missing',[])},ensure_ascii=False,indent=2))
     return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY'} else 2

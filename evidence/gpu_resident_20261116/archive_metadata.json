@@ -1,0 +1,32 @@
+[
+  {
+    "path": "notebooks\\00_Colab_GitHub_Workspace.ipynb",
+    "original_sha256": "9230a4fadd1cb35b9a3b29d54b961cee86f9be9a060add33ba2bcdb1bb492e6c",
+    "redactions": 68
+  },
+  {
+    "path": "notebooks\\00_Colab_Preflight_and_Math.ipynb",
+    "original_sha256": "46580e5e9b0f28ab2f2e4c31605bb17154157794e4266b7d97520f7e36055446",
+    "redactions": 0
+  },
+  {
+    "path": "notebooks\\01_Colab_Real_Layer_Pilot.ipynb",
+    "original_sha256": "66626abc203e22a6511493bdeeb76a854d18778107a13b9286e17a7b3e5860f4",
+    "redactions": 1
+  },
+  {
+    "path": "notebooks\\02_AutoDL_Migration_and_Canary.ipynb",
+    "original_sha256": "7216508e8ded057847ac80de5d4510bd2d4d67ff3c834da6c19964544249a0c6",
+    "redactions": 0
+  },
+  {
+    "path": "notebooks\\03_Full_Experiments.ipynb",
+    "original_sha256": "b42dfd5218567493cc86f4a75f85aafc291ced419baed28cfb91012d9cdffdc0",
+    "redactions": 0
+  },
+  {
+    "path": "notebooks\\04_Paper_Analysis.ipynb",
+    "original_sha256": "75d72de01637d958315611777874a482175d10d24b4cd64c006ff65aa5288c72",
+    "redactions": 0
+  }
+]

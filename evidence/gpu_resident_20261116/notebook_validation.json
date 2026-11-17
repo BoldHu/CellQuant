@@ -1,0 +1,51 @@
+{
+  "notebooks": [
+    {
+      "notebook": "00_Colab_GitHub_Workspace.ipynb",
+      "schema_and_syntax": "PASS",
+      "changed_existing_cells": [
+        "7fcbf6d5",
+        "prepare-real-g1-inputs"
+      ],
+      "unchanged_existing_cells": 14
+    },
+    {
+      "notebook": "00_Colab_Preflight_and_Math.ipynb",
+      "schema_and_syntax": "PASS",
+      "changed_existing_cells": [],
+      "unchanged_existing_cells": 11
+    },
+    {
+      "notebook": "01_Colab_Real_Layer_Pilot.ipynb",
+      "schema_and_syntax": "PASS",
+      "changed_existing_cells": [
+        "4f38e1f8",
+        "2b0a9038",
+        "9e3551d3",
+        "g1-live-progress-guide",
+        "5199c9d6"
+      ],
+      "unchanged_existing_cells": 9
+    },
+    {
+      "notebook": "02_AutoDL_Migration_and_Canary.ipynb",
+      "schema_and_syntax": "PASS",
+      "changed_existing_cells": [],
+      "unchanged_existing_cells": 12
+    },
+    {
+      "notebook": "03_Full_Experiments.ipynb",
+      "schema_and_syntax": "PASS",
+      "changed_existing_cells": [],
+      "unchanged_existing_cells": 10
+    },
+    {
+      "notebook": "04_Paper_Analysis.ipynb",
+      "schema_and_syntax": "PASS",
+      "changed_existing_cells": [],
+      "unchanged_existing_cells": 10
+    }
+  ],
+  "gate_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "user_hf_setting_preserved": true
+}

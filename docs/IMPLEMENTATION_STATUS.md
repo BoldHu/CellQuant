@@ -7,10 +7,10 @@
 | 原 CPU 参考与基础设施 | 保留并修正零组物理 scale 风险 | 原 62 项测试复现；最终全套 116 项通过 |
 | 共享 global Q、多面板输入侧 WQ.T/QX、输出侧 QB | IMPLEMENTED | FP64 增量胞元系数、风险约束、实际边界 rounding；3 seeds/24 cases 合成 G0 PASS |
 | 完整维度 | IMPLEMENTED / REAL_PERFORMANCE_NOT_RUN | d=4096、down=4096×11008，2 tokens、1 pair、±0.0001 的工程 smoke COMPLETE；不是正式吞吐 |
-| 筛选与事件增量 | IMPLEMENTED_CPU | scale-stable 输入组筛选、输出完整行 signed hull；按实际事件收费并记录阶段耗时 |
-| CUDA dense GEMM/量化 | IMPLEMENTED / SMALL_CASE_VALIDATED | 本机 CUDA 小共享求解器和 4096 元素量化一致性检查；全 GPU 增量事件 kernel NOT_IMPLEMENTED |
+| 筛选与事件增量 | IMPLEMENTED_CPU_REFERENCE / TORCH_CUDA | 输入稳定组筛选、输出完整行 GPU support envelope；事件排序、增量系数和 QR 数值根均在张量设备计算，小例已与 CPU 对照 |
+| CUDA dense GEMM/量化/求解 | IMPLEMENTED_PYTORCH / ENGINEERING_VALIDATED | 实际 CUDA 小模型/五方法和 4096×11008、2-token 输出侧计算；没有自定义融合 CUDA kernel，真实 7B 性能未验证 |
 | Hadamard / angle-grid / Givens STE / fixed-scale | IMPLEMENTED | 相同面板、坐标预算、约束、墙钟上限；小矩阵验证。grid/STE 中途 optimizer 恢复 NOT_IMPLEMENTED |
-| 真实层采集与 Colab G1 | IMPLEMENTED / COLAB_RUN_STARTED_OUTCOME_UNKNOWN | 用户 11-16 保存的 01 显示 READY、7B 分片加载完成；尚无完整 G1 结果。逐层 GPU 采集、默认 CPU 求解；见下方进度诊断记录 |
+| 真实层采集与 Colab G1 | GPU_RESIDENT_IMPLEMENTED / NEW_7B_RUN_NOT_RUN | 新配置模型驻留 GPU，所有 seed 采集后释放模型，面板留在 CUDA 求解；旧用户尝试结果未知，新版 7B 待用户 Colab 执行 |
 | SpinQuant 固定上游 / overlay / R.bin | IMPLEMENTED | commit 8f47aa3… 已核对、tracked tree clean；禁 embedding centering、保 gamma，导出全部 R2 |
 | FP 旋转 / GPTQ W4A4KV4 | IMPLEMENTED / TINY_CUDA_VALIDATED | MHA/GQA 小模型 FP 相对误差约 1e-7；GPTQ 有限输出、逐层恢复与连续运行参数差 0 |
 | 完整 R1+R2 CE/SGDG baseline | IMPLEMENTED / TINY_CUDA_VALIDATED | 实际两步训练与 Trainer 恢复一致；正式 100 步×8 的完整 CE 训练池尚未运行，distinct blocks 数另报 |
@@ -93,3 +93,18 @@ workspace 新增默认 False 的 PREPARE_G1_INPUTS 和完整调度单元，串�
 本地相关回归 **80 passed in 9.09s**，验证五方法进度回调前后 Q/损失一致、完整输出侧采集轴、心跳不伪造进展、I/O 失败传播与陈旧 PID 拒绝；包括既有可执行的小 CUDA 测试，不代表本次 Colab 7B 验证。三个 notebook schema/语法与未改动单元保留检查通过。首轮新增采集测试时发现 Windows 读/替换状态文件的瞬时共享冲突，限定重试后最终套件通过；失败原日志也保留。记录及脱敏前版本见 `evidence/g1_live_progress_20261116/`。
 
 新版日志尚未在用户 L4/预训练 7B 上运行；当前旧进程不会自动获得改动。先在同一服务器独立终端采样，旧作业结束/停止后再同步代码并以新 run 执行 `python -u -m cellquant.experiment --config runs/prepared/g1/config.json`（或 01）。科研门槛 hash 未变，未切换 device/dtype、削减维度或填入实验结果。全 GPU 增量事件 kernel 仍 NOT_IMPLEMENTED。
+
+
+## 2026-11-16 — GPU 驻留与 PyTorch 数值后端
+
+用户要求新 Colab 上将模型与核心数值计算放在 GPU。`runtime.model_device=cuda:0`、`cpu_offload=false` 使模型直接加载到 CUDA；采集不再调用 model.cpu()/layer.cpu()，全部 seed 面板准备后释放基础模型，面板继续保留在 GPU。模型参数设备清单写入 model_placement.json，进度心跳记录 CUDA allocated/reserved。显存不足明确 RESOURCE_BLOCKED，不自动卸载到 CPU。
+
+新增 tensor_math.py / tensor_solver.py：完整输入/输出侧张量、RTN、全目标/预算、事件生成与排序、输出侧 support envelope、稀疏系数更新、移位 QR 数值根、实际边界 rounding、前 32 候选完整复核和五种匹配方法均采用同设备 PyTorch 运算。输出侧 STE 仅构造变化的两行梯度，已对照完整目标的更新一致。CPU NumPy 保留为参考；公开 shared-Q API 与 notebook 都按 backend 分派。文件/校验和、tokenizer、日志和 Python 调度仍在主机端，不能宣称 CPU 使用率为零或 GPU 利用率始终 100%。没有自定义融合 CUDA 事件 kernel。
+
+为避免 PyTorch 2.6 对小 eigvals 矩阵的内部 CPU 路径，最终求根采用 torch CUDA 复数移位 QR；数值不收敛明确阻塞，未降低任何科研门槛。GPU 初始化/R2 使用已记录的 torch CUDA RNG，所有匹配方法同一初始化和固定 R2；新协议与旧 NumPy 初始化的结果/断点分开。
+
+验证：初始 **148 passed in 13.31s**；最终 **191 passed in 23.51s**。真实本机 RTX 3050 Laptop CUDA 小 LLaMA 全参数与层输入均在 cuda:0，五方法运行通过，FP 融合/旋转相对 RMS 为 1.077980899e-07。完整输出矩阵 4096×11008、2 tokens 的 GPU 初始化和一次直接评估耗时 3.5775s，采样对应峰值分配 2496416256 bytes；这只是完整维度工程检查，不是预训练 7B、完整角域吞吐或速度比较。CPU 参考与生产 G0 重跑 PASS，空 G1 仍 INSUFFICIENT_EVIDENCE。
+
+workspace/01 已增加 GPU 检查、新 g1_gpu 配置目录、旧 CPU 配置拒绝和本次 run 结果指针。六本 notebook schema/语法检查通过，仅清除修改单元的旧输出；原用户配置和 HF 变量保持，归档脱敏。新服务器完整步骤见 docs/COLAB_GPU_FROM_SCRATCH.md。实际命令、日志、源码 hash、失败尝试与报告在 evidence/gpu_resident_20261116/。
+
+尚未执行：新版 Colab L4 + FHT extension、预训练 7B G1 质量/速度、AutoDL 96GB。原因：本机只有 4GiB GPU，无法加载 7B，且没有直接连接用户 Colab。云端先按指南准备环境并运行 `python -u scripts/run_gpu_resident_checks.py --fht-backend extension --full-dimension --output <新的结果目录>`，再通过 01 或 `python -u -m cellquant.experiment --config runs/prepared/g1_gpu/config.json` 实测。G1 合格前不进入正式评估；代码未提交/push。

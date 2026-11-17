@@ -15,6 +15,10 @@ METHODS=('hadamard_shared','cellquant','angle_grid_matched','givens_ste_matched'
 
 def fit_baseline(method,panels,q0,specs,schedule,config=None,*,grid_points=129,ste_steps=100,learning_rate=.02,progress=None):
     config=config or SolverConfig()
+    if config.backend=='torch':
+        from .tensor_solver import fit_baseline as fit_tensor
+        return fit_tensor(method,panels,q0,specs,schedule,config,grid_points=grid_points,ste_steps=ste_steps,learning_rate=learning_rate,progress=progress)
+    if config.backend!='numpy_reference':raise ValueError('Unknown solver backend')
     if method not in METHODS:raise ValueError(f"Unknown matched method: {method}")
     if method in {'cellquant','fixed_scale_search_matched'}:
         cfg=SolverConfig(**{**asdict(config),'fixed_scales':method=='fixed_scale_search_matched'})

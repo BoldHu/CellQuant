@@ -1,0 +1,103 @@
+{
+  "artifact_refs": [
+    {
+      "path": "runs\\gpu_resident_validation_final\\production\\cases.json",
+      "sha256": "d6b95f647e4e7acc7f2676eba2008a4bad3c0f8512847564161d8f306c890600"
+    }
+  ],
+  "gate_id": "G0",
+  "metrics": {
+    "accepted_update_increase_count": 0,
+    "budget_violation_count": 0,
+    "cell_loss_prediction_abs_error_max": 1.3383391617161067e-15,
+    "fp64_orthogonality_rel_error_max": 7.851684725819548e-17,
+    "fp64_product_rel_error_max": 2.99558524132532e-16,
+    "input_output_direction_cases_pass": true,
+    "math_case_count": 24,
+    "math_seed_count": 3,
+    "reference_implementation_audited": true,
+    "rounding_boundary_cases_pass": true,
+    "screened_vs_full_loss_rel_error_max": 0.0
+  },
+  "provenance": {
+    "environment": {
+      "compatibility_claim": "CPU tooling only; GPU kernels require target-device tests",
+      "created_at_utc": "2026-11-16T12:02:25.954203+00:00",
+      "cuda": {
+        "available": true,
+        "bf16_supported": true,
+        "devices": [
+          {
+            "compute_capability": [
+              8,
+              6
+            ],
+            "index": 0,
+            "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+            "total_gib": 3.99951171875
+          }
+        ],
+        "nvidia_smi": "NVIDIA GeForce RTX 3050 Laptop GPU, 546.30, 4096 MiB, 8.6",
+        "status": "DEVICE_DETECTED",
+        "torch_cuda_build": "11.8"
+      },
+      "executable": "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+      "machine": "AMD64",
+      "packages": {
+        "accelerate": "0.34.2",
+        "datasets": "2.20.0",
+        "fast-hadamard-transform": null,
+        "flash-attn": null,
+        "huggingface-hub": "0.36.2",
+        "lm_eval": "0.4.14.dev0",
+        "nbclient": "0.11.0",
+        "nbformat": "5.11.1",
+        "numpy": "2.4.6",
+        "psutil": "7.2.2",
+        "pyarrow": "26.0.1",
+        "safetensors": "0.8.0",
+        "scipy": "1.17.1",
+        "tokenizers": "0.19.1",
+        "torch": "2.6.0+cu118",
+        "transformers": "4.44.2",
+        "triton": null
+      },
+      "platform": "Windows-10-10.0.26200-SP0",
+      "python": "3.11.18",
+      "schema_version": "1.0"
+    },
+    "interval_certified": false,
+    "source_hashes": {
+      "analysis.py": "71c5b00a42fabb4466dafaf0c50b224bbf7447c034c479b2e596c02a430a7c7a",
+      "baselines.py": "7e9f4f2afab2844f8f0d952db26d7934e6a0654639ab2084384512fc69b2cdf1",
+      "capture.py": "f4e2e9719b41aa95893ca48662013ac118ce8fcd45fa3d127cf90a6ff93a56fc",
+      "data.py": "c384bafd051e9dc00bc7dc2daf2beb178da49f7bb7d8b98b4242e920eced2a6d",
+      "diagnostics.py": "704c2039d0d4493e74a3241d2dd8fe5e1f1aa1aff1dbbd0916ea3149e1c4f56a",
+      "evaluation.py": "976cb59a6a7be574f8fd099e8352480453f16a7697f5e65f8f2586ee74977c56",
+      "events.py": "0a59416b92d6d9f58e7948e7700e3e2d592b871074c6bc4d02e88a314f18fecf",
+      "evidence.py": "e5dc3628240910c45ee51ccb01c1484138acce4ff6704fb48bc2170e0e05c311",
+      "experiment.py": "3e3e0e450384cf7b660a22eed342390678f3b18aa352ac15a401c72150b65a0f",
+      "gates.py": "4f364a0889bcdab93e7d54a0b3ca178ee58212be3b12e74e5a307da79b54f5bf",
+      "hadamard.py": "1de23beb64fe6a265168b14a0e6aff603df44afd7d0513c41c1a6446d71cdc1f",
+      "math_reference.py": "bf1beef49d392ca2a7d3a6c937f953ff6248de5c5f28a7a37764a9c4c31ee7f1",
+      "metrics.py": "61ec871c9bf67e96e4e2aa0eea4a8e173208ca0ff39b58615f13a7f2fd008a96",
+      "migration.py": "58a86b89aa3c9414a3a2a8597a4840d436b0c959439867f11b22ad075fb12653",
+      "panels.py": "41d3908247a43c6ee2618b7d60e5ca1e740bf78db273bce2b227b8d420e3d4c6",
+      "pilot.py": "9eefdc23958b093b57fe70fad11ca68d7b16227cc80eb77b3712acf0ef2cd9d7",
+      "progress.py": "bdb8610a0995297317d55dee53724b8f6fcaf7d0b5a34f0255052fff0c8fbdec",
+      "quantization.py": "74d18d69311b98a7e552f82d59bf2bd8735778c07a4c112a26835c04c65b2d4b",
+      "resources.py": "5f11f5088774873a698bb5f6f7e8b2b1fabcec9f65aacebb08948eebf75442a9",
+      "runner.py": "980bd2518e8dfe7f0c87b80d0a8d73599c5457f8e8ed920b91f7805a79e21d47",
+      "runtime.py": "26bb4c3ffb1326f45ed5df0e90fcc0d611a3f78eea65b0bc5e6e73822fc4b43d",
+      "solver.py": "340096e553bf69a83e390ebdbb0dd7dba11cd6c2d1d0f96262f6dfa7049b49d3",
+      "spinquant_adapter.py": "3ae4ce8747b35eb3d6749a0964e5091c42c92aa796719b93c878fa5556b794cb",
+      "spinquant_train.py": "2f0d9cb7d0617f453d4ece82b1cb1690b12d4b1d5279235fde2bcdd933074bd1",
+      "tensor_math.py": "b85ec756845c5c9945d1eabb596290dd25267d6986e5ca2205dff3a94787b0ed",
+      "tensor_solver.py": "858ba09697e5c862a49315c96f5e2defc2cfc675f1aff0da14b9533b949838a4",
+      "triton_probe.py": "c7a5aeff4faf9138cf66b5b0c9d24eab3cc2009b13afb9de46ebb24be88e2b8e",
+      "workspace.py": "7ecb8e108016d51eb61f09a68af20e31b87de266d4815d3cde99f0519431c614"
+    }
+  },
+  "schema_version": "1.0",
+  "source_type": "synthetic_math"
+}

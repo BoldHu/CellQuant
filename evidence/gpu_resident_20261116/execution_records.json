@@ -1,0 +1,55 @@
+[
+  {
+    "label": "gpu",
+    "argv": [
+      "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+      "scripts/run_gpu_resident_checks.py",
+      "--output",
+      "runs\\gpu_resident_validation_final\\gpu",
+      "--fht-backend",
+      "torch_reference",
+      "--full-dimension"
+    ],
+    "returncode": 0,
+    "wall_seconds": 14.126287800012506
+  },
+  {
+    "label": "math",
+    "argv": [
+      "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+      "scripts/run_math_checks.py",
+      "--output",
+      "runs\\gpu_resident_validation_final\\math"
+    ],
+    "returncode": 0,
+    "wall_seconds": 0.6105537999974331
+  },
+  {
+    "label": "production",
+    "argv": [
+      "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+      "scripts/run_production_checks.py",
+      "--output",
+      "runs\\gpu_resident_validation_final\\production"
+    ],
+    "returncode": 0,
+    "wall_seconds": 7.800997300000745
+  },
+  {
+    "label": "empty_g1",
+    "argv": [
+      "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+      "-m",
+      "cellquant.gates",
+      "evaluate",
+      "--stage",
+      "G1",
+      "--evidence",
+      "examples/G1_evidence_NOT_RUN.json",
+      "--output",
+      "runs\\gpu_resident_validation_final\\empty_G1.json"
+    ],
+    "returncode": 0,
+    "wall_seconds": 0.12061790000007022
+  }
+]

@@ -1,0 +1,186 @@
+{
+  "checks": [
+    {
+      "expected": null,
+      "metric": "schema_version",
+      "observed": "1.0",
+      "op": "metadata",
+      "rationale": "Evidence schema_version must be the string '1.0'.",
+      "reason": "Evidence schema_version must be the string '1.0'.",
+      "status": "PASS",
+      "unit": "metadata"
+    },
+    {
+      "expected": null,
+      "metric": "gate_id",
+      "observed": "['G0']",
+      "op": "metadata",
+      "rationale": "All supplied stage identifiers must match the requested stage.",
+      "reason": "All supplied stage identifiers must match the requested stage.",
+      "status": "PASS",
+      "unit": "metadata"
+    },
+    {
+      "expected": null,
+      "metric": "source_type",
+      "observed": "synthetic_math",
+      "op": "metadata",
+      "rationale": "Allowed measurement source; truthfulness is not automatically certified.",
+      "reason": "Allowed measurement source; truthfulness is not automatically certified.",
+      "status": "PASS",
+      "unit": "metadata"
+    },
+    {
+      "expected": null,
+      "metric": "provenance",
+      "observed": null,
+      "op": "metadata",
+      "rationale": "Any provenance stage identifier must agree; model/code/protocol references require audit.",
+      "reason": "Any provenance stage identifier must agree; model/code/protocol references require audit.",
+      "status": "PASS",
+      "unit": "metadata"
+    },
+    {
+      "expected": null,
+      "metric": "artifact_refs",
+      "observed": null,
+      "op": "metadata",
+      "rationale": "Artifact references supplied; existence, hashes, and provenance remain pipeline/audit responsibilities.",
+      "reason": "Artifact references supplied; existence, hashes, and provenance remain pipeline/audit responsibilities.",
+      "status": "PASS",
+      "unit": "metadata"
+    },
+    {
+      "expected": 3,
+      "metric": "math_seed_count",
+      "observed": 3,
+      "op": "ge",
+      "rationale": "覆盖校准构造的随机性",
+      "reason": "Threshold satisfied.",
+      "status": "PASS",
+      "unit": "count"
+    },
+    {
+      "expected": 20,
+      "metric": "math_case_count",
+      "observed": 24,
+      "op": "ge",
+      "rationale": "不同形状、分组、边界和更新方向",
+      "reason": "Threshold satisfied.",
+      "status": "PASS",
+      "unit": "count"
+    },
+    {
+      "expected": 1e-10,
+      "metric": "fp64_product_rel_error_max",
+      "observed": 2.99558524132532e-16,
+      "op": "le",
+      "rationale": "||WQ^TQX-WX||F / max(||WX||F,1e-12)",
+      "reason": "Threshold satisfied.",
+      "status": "PASS",
+      "unit": "ratio"
+    },
+    {
+      "expected": 1e-10,
+      "metric": "fp64_orthogonality_rel_error_max",
+      "observed": 7.851684725819548e-17,
+      "op": "le",
+      "rationale": "||Q^TQ-I||F/sqrt(d)",
+      "reason": "Threshold satisfied.",
+      "status": "PASS",
+      "unit": "ratio"
+    },
+    {
+      "expected": 1e-09,
+      "metric": "cell_loss_prediction_abs_error_max",
+      "observed": 1.3383391617161067e-15,
+      "op": "le",
+      "rationale": "解析胞元系数与直接量化一致",
+      "reason": "Threshold satisfied.",
+      "status": "PASS",
+      "unit": "normalized_loss"
+    },
+    {
+      "expected": 1e-07,
+      "metric": "screened_vs_full_loss_rel_error_max",
+      "observed": 0.0,
+      "op": "le",
+      "rationale": "有平坦最优集时比较损失而非角度",
+      "reason": "Threshold satisfied.",
+      "status": "PASS",
+      "unit": "ratio"
+    },
+    {
+      "expected": 0,
+      "metric": "budget_violation_count",
+      "observed": 0,
+      "op": "eq",
+      "rationale": "容差应预先固定",
+      "reason": "Threshold satisfied.",
+      "status": "PASS",
+      "unit": "count"
+    },
+    {
+      "expected": 0,
+      "metric": "accepted_update_increase_count",
+      "observed": 0,
+      "op": "eq",
+      "rationale": "实际量化器验证后才接受",
+      "reason": "Threshold satisfied.",
+      "status": "PASS",
+      "unit": "count"
+    },
+    {
+      "expected": true,
+      "metric": "rounding_boundary_cases_pass",
+      "observed": true,
+      "op": "eq",
+      "rationale": "覆盖实际边界和同时事件",
+      "reason": "Threshold satisfied.",
+      "status": "PASS",
+      "unit": "boolean"
+    },
+    {
+      "expected": true,
+      "metric": "input_output_direction_cases_pass",
+      "observed": true,
+      "op": "eq",
+      "rationale": "分别覆盖WQ^T/QX和QB",
+      "reason": "Threshold satisfied.",
+      "status": "PASS",
+      "unit": "boolean"
+    }
+  ],
+  "decision_scope": "real_layer_pilot",
+  "disclaimer": "Threshold aggregation only: this engine does not certify evidence truthfulness, novelty, or conference acceptance.",
+  "evidence_sha256": "602736e939d9139e8831b5315b86c2f830fa4f6148bcdce9ed280e47710ca58c",
+  "evidence_source_type": "synthetic_math",
+  "gate_id": "G0",
+  "missing_fields": [],
+  "nonblocking_missing_fields": [],
+  "passing_routes": [
+    "correctness"
+  ],
+  "routes": {
+    "correctness": {
+      "checks": [
+        {
+          "expected": true,
+          "metric": "reference_implementation_audited",
+          "observed": true,
+          "op": "eq",
+          "rationale": "数值根不等于形式化认证",
+          "reason": "Threshold satisfied.",
+          "status": "PASS",
+          "unit": "boolean"
+        }
+      ],
+      "missing_fields": [],
+      "status": "PASS"
+    }
+  },
+  "rules_path": "D:\\python_project\\quant-llm\\configs\\gate_rules.json",
+  "rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "schema_version": "1.0",
+  "status": "PASS"
+}

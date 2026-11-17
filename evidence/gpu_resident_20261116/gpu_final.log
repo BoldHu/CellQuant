@@ -1,0 +1,9 @@
+We detected that you are passing `past_key_values` as a tuple and this is deprecated and will be removed in v4.43. Please use an appropriate `Cache` class (https://huggingface.co/docs/transformers/v4.41.3/en/internal/generation_utils#transformers.Cache)
+D:\python_project\quant-llm\.venv\Lib\site-packages\transformers\modeling_utils.py:4713: FutureWarning: `_is_quantized_training_enabled` is going to be deprecated in transformers 4.39.0. Please use `model.hf_quantizer.is_trainable` instead
+  warnings.warn(
+GPU check: hadamard_shared
+GPU check: givens_ste_matched
+GPU check: angle_grid_matched
+GPU check: fixed_scale_search_matched
+GPU check: cellquant
+{'status': 'PASS_ENGINEERING_ONLY', 'report': 'runs\\gpu_resident_validation_final\\gpu\\report.json', 'fp_equivalence': {'relative_rms': 1.0779808994177909e-07, 'max_absolute': 5.960464477539063e-08}}

@@ -95,7 +95,7 @@ def prepare(config_path,output,*,include_tests=False):
     data['token_manifest_path']=manifests[str(config.get('seed',config.get('seeds',[11])[0]))]
     protocol={'schema_version':'1.0','status':'FROZEN','model_id':model_id,'model_revision':config['model_revision'],
               'tokenizer_revision':config['tokenizer_revision'],'dataset_revision':config['dataset_revision'],
-              'quantization':config['quantization'],'rotation':config['rotation'],'runtime_dtype':dtype,
+              'quantization':config['quantization'],'rotation':config['rotation'],'runtime_dtype':dtype,'runtime':config['runtime'],
               'data':{k:v for k,v in data.items() if k not in {'token_manifests','token_manifest_path'}},
               'token_manifest_sha256':{s:sha256_file(p) for s,p in manifests.items()},
               'evaluation':config['evaluation'],'solver':config.get('solver'),'spinquant_training':config.get('spinquant_training'),

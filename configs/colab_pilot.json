@@ -121,7 +121,8 @@
   },
   "run_real_model_default": false,
   "runtime": {
-    "cpu_offload": true,
+    "cpu_offload": false,
+    "model_device": "cuda:0",
     "dtype": "auto_detect_and_record",
     "fht_backend": "extension",
     "local_cache_only": false,
@@ -134,6 +135,11 @@
     23
   ],
   "solver": {
+    "backend": "torch",
+    "device": "cuda:0",
+    "compute_dtype": "float64",
+    "root_solver": "torch_complex_shifted_qr_v1",
+    "initialization": "torch_cuda_hadamard_v1",
     "event_limit_per_pair": 200000,
     "fallback_policy": "report_resource_blocked_do_not_truncate_groups",
     "pair_budget": 128,

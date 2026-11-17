@@ -18,7 +18,7 @@ def _tree_to(value,device):
 
 
 def capture_panels(model,blocks,*,layers,projections=('q_proj','up_proj','down_proj'),
-                   tokens_per_panel=128,input_weight_rows=64,seed=11,device='cuda',graph_identity=None,source_type='real_layer',progress=None):
+                   tokens_per_panel=128,input_weight_rows=64,seed=11,device='cuda',graph_identity=None,source_type='real_layer',progress=None,resident=False):
     import torch
     if not blocks or tokens_per_panel<len(blocks):raise ValueError('Sample at least one token per independent block')
     if not getattr(model,'_cellquant_online_installed',False):raise ValueError('Capture requires the audited fixed R2/R3/R4 graph')
@@ -26,11 +26,15 @@ def capture_panels(model,blocks,*,layers,projections=('q_proj','up_proj','down_p
     if source_type not in {'real_layer','unit_test_fixture'}:raise ValueError('Explicit capture source type required')
     if len(set(layers))!=len(layers) or min(layers)<0 or max(layers)>=len(model.model.layers):raise ValueError('Invalid layers')
     rng=np.random.default_rng(seed);hidden=[];kwargs_list=[];handles=[]
+    storage=device if resident else 'cpu'
+    if resident and (not str(device).startswith('cuda') or any(p.device.type!='cuda' for p in model.parameters())):
+        raise RuntimeError('Resident capture requires the complete model on CUDA; no CPU fallback')
     report(progress,'capture.embedding',device=device,blocks=len(blocks))
     class CapturedInput(Exception):pass
     def first_hook(module,args,kwargs):
-        hidden.append(args[0].detach().cpu());kwargs_list.append(_tree_to(kwargs,'cpu'));raise CapturedInput
-    model.cpu();model.eval();model.config.use_cache=False
+        hidden.append(args[0].detach().to(storage));kwargs_list.append(_tree_to(kwargs,storage));raise CapturedInput
+    if not resident:model.cpu()
+    model.eval();model.config.use_cache=False
     initial=[model.model.embed_tokens,model.model.norm]
     if hasattr(model.model,'rotary_emb'):initial.append(model.model.rotary_emb)
     for module in initial:module.to(device)
@@ -43,7 +47,8 @@ def capture_panels(model,blocks,*,layers,projections=('q_proj','up_proj','down_p
                 raise RuntimeError('First-layer capture did not stop the forward')
     finally:
         hook.remove()
-        for module in initial:module.cpu()
+        if not resident:
+            for module in initial:module.cpu()
     selection=[]
     for i,block in enumerate(blocks):
         count=tokens_per_panel//len(blocks)+int(i<tokens_per_panel%len(blocks))
@@ -63,18 +68,20 @@ def capture_panels(model,blocks,*,layers,projections=('q_proj','up_proj','down_p
                         module=wrapper.module;name=f'layer_{lid}.{projection}';captured[name]=[]
                         output=projection in {'down_proj','o_proj'}
                         rows=np.arange(module.weight.shape[0]) if output else np.linspace(0,module.weight.shape[0]-1,min(input_weight_rows,module.weight.shape[0]),dtype=int)
-                        weights[name]=(module.weight.detach()[torch.tensor(rows,device=device)].float().cpu().numpy(),rows,output)
+                        weight=module.weight.detach()[torch.tensor(rows,device=device)].float()
+                        weights[name]=(weight if resident else weight.cpu().numpy(),rows,output)
                         def hook_input(mod,args,key=name):
                             z=args[0].detach().reshape(-1,args[0].shape[-1])
                             indices=torch.tensor(selection[active[0]],device=z.device)
-                            captured[key].append(z.index_select(0,indices).float().cpu().numpy())
+                            value=z.index_select(0,indices).float()
+                            captured[key].append(value if resident else value.cpu().numpy())
                         handles.append(module.register_forward_pre_hook(hook_input))
                 for b in range(len(blocks)):
                     active[0]=b
                     out=layer(hidden[b].to(device),**_tree_to(kwargs_list[b],device))
-                    hidden[b]=out[0].detach().cpu()
+                    hidden[b]=out[0].detach().to(storage)
                 for name,pieces in captured.items():
-                    w,rows,output=weights[name];x=np.concatenate(pieces,axis=0).T
+                    w,rows,output=weights[name];x=(torch.cat(pieces,dim=0) if resident else np.concatenate(pieces,axis=0)).T
                     metadata={'layer':lid,'projection':name.split('.')[-1],'source_type':source_type,
                         'weight_row_ids':rows.tolist(),'full_hidden_axis':output,'graph_identity':graph_identity,
                         'block_ids':[b['block_id'] for b in blocks],'document_ids':[b['document_id'] for b in blocks],
@@ -83,7 +90,8 @@ def capture_panels(model,blocks,*,layers,projections=('q_proj','up_proj','down_p
                         config_hash([{'hash':b['token_ids_sha256'],'positions':s.tolist()} for b,s in zip(blocks,selection)]),w.shape[1],1.,metadata))
             finally:
                 for handle in handles:handle.remove()
-                handles.clear();layer.cpu()
+                handles.clear()
+                if not resident:layer.cpu()
             if lid>=max(layers):break
     if len(panels)!=len(layers)*len(projections):raise RuntimeError('Incomplete panel capture')
     if str(device).startswith('cuda'):torch.cuda.empty_cache()

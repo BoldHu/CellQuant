@@ -1,0 +1,31 @@
+[
+  {
+    "label": "pytest_release",
+    "argv": [
+      "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+      "-m",
+      "pytest",
+      "-q",
+      "--basetemp",
+      "runs/gpu_release_tests",
+      "-o",
+      "cache_dir=runs/gpu_resident_pytest_cache"
+    ],
+    "returncode": 0,
+    "wall_seconds": 24.708453400002327
+  },
+  {
+    "label": "gpu_release",
+    "argv": [
+      "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+      "scripts/run_gpu_resident_checks.py",
+      "--output",
+      "runs/gpu_resident_release",
+      "--fht-backend",
+      "torch_reference",
+      "--full-dimension"
+    ],
+    "returncode": 0,
+    "wall_seconds": 13.643957899999805
+  }
+]

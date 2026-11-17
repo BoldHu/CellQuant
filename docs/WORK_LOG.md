@@ -118,3 +118,13 @@
 - 相关回归初次 79 项通过；增加实际采集回调 fixture 后，Windows 高频读取与原子替换出现瞬时 PermissionError（1 failed / 9 passed），限定仅 Windows PermissionError 重试后，最终 **80 passed in 9.09s**。五方法 Q/损失与未接回调时一致，输出侧完整轴保留；I/O 失败仍传播。两次之前日志均保留，无假成功记录。
 - 三本 notebook schema/语法、未改动单元与用户配置保留、gate hash 检查通过；实际本地只读诊断运行，无活跃真实 experiment 进程。记录见 `evidence/g1_live_progress_20261116/validation.json`、pytest 日志与脱敏前版本。用户原有 00 notebook 改动保持原样。代码未提交/push；新日志须同步后新 run 才生效。
 - 未执行：新版 Colab L4 预训练 7B、实际 GPU 性能诊断及 AutoDL 96GB；本机资源不足且无法直接控制用户 Colab。真实 G1 状态为 RUN_STARTED_OUTCOME_UNKNOWN / INSUFFICIENT_EVIDENCE，全 GPU 增量事件 kernel 仍 NOT_IMPLEMENTED。
+
+
+## 2026-11-16 — 将 01/G1 模型、面板与数值求解迁移到 PyTorch CUDA
+
+- 用户明确要求 GPU 驻留与新服务器从头测试。先复现当前全套 148 项测试，审阅加载、捕获、NumPy 求解、SpinQuant 及门槛；原用户 notebook 状态脱敏归档。上游 commit 8f47aa3… 的 tracked tree 保持干净。
+- 完成 GPU-resident 加载/采集，采集所有 seed 后释放基础模型而不卸载到 RAM；补设备清单与显存心跳。G1 的量化、误差、风险预算、STE/grid/fixed-scale/cellquant、事件排序、输出完整行 envelope、增量系数和数值根均在 torch 设备上计算，主机保留调度和 I/O。初次测试暴露 NumPy 2 的 .device 属性判断错误（6 failed / 26 passed），修正后对照通过。
+- 初版使用 torch.linalg.eigvals；核对 PyTorch 2.6 上游实现发现小矩阵隐式转 CPU，于是改用同设备复数移位 QR。根不收敛明确 ResourceLimit；未使用 CPU fallback。补 support owner 在浮点边界右侧的延续、固定尺度/零尺度/同时舍入、五方法、公开 API、恢复与完整目标 STE 更新对照。所有失败和中间日志均保留。
+- 最终 191 passed in 23.51s，包含真实 CUDA 测试。最终 GPU smoke 子进程退出 0，报告 PASS_ENGINEERING_ONLY；完整 4096×11008×2 工程计算 3.5775s，峰值 2496416256 bytes。首次 PowerShell pipeline 对 stderr 警告返回 1，未将该 shell exit 标作成功；后续使用 subprocess 取得真实退出码，记录在 release_execution_records.json。CPU 数学、生产 G0 退出 0/PASS，空 G1 不足，gate_rules SHA 不变。
+- 以 g1_gpu 新协议隔离旧 CPU 准备配置和断点，记录 torch CUDA RNG/QR 后端；01 拒绝旧 CPU 配置，准确绑定本次 run 的真实 G1 文件。新增从 GitHub 同步、Python 3.12/Colab 2026.07、Drive 恢复、保留 torch、固定依赖/FHT/SpinQuant、GPU 工程检查、真实准备、运行与备份的完整指南。六本 notebook schema/语法通过；未修改单元/输出及用户 HF 配置保持。
+- 本机仅有 RTX 3050 Laptop 4GiB，FHT 采用明确的 torch_reference 工程后端。新版 L4 extension/7B 与 AutoDL 尚未运行，不能宣称科学门槛通过、完整求解一定更快或有 CUDA 融合 kernel。结果在 evidence/gpu_resident_20261116/validation.json 与实际日志；代码未提交/push。

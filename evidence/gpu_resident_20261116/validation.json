@@ -1,0 +1,92 @@
+{
+  "source_type": "synthetic_math",
+  "status": "ENGINEERING_VALIDATED_REAL_7B_NOT_RUN",
+  "baseline_tests": "148 passed in 13.31s (initial tool execution)",
+  "final_tests": "191 passed in 23.51s",
+  "gpu_report": "gpu_release_report.json",
+  "actual_local_gpu": [
+    {
+      "compute_capability": [
+        8,
+        6
+      ],
+      "index": 0,
+      "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+      "total_gib": 3.99951171875
+    }
+  ],
+  "gate_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "source_sha256": {
+    "src\\cellquant\\analysis.py": "71c5b00a42fabb4466dafaf0c50b224bbf7447c034c479b2e596c02a430a7c7a",
+    "src\\cellquant\\baselines.py": "7e9f4f2afab2844f8f0d952db26d7934e6a0654639ab2084384512fc69b2cdf1",
+    "src\\cellquant\\capture.py": "f4e2e9719b41aa95893ca48662013ac118ce8fcd45fa3d127cf90a6ff93a56fc",
+    "src\\cellquant\\data.py": "c384bafd051e9dc00bc7dc2daf2beb178da49f7bb7d8b98b4242e920eced2a6d",
+    "src\\cellquant\\diagnostics.py": "704c2039d0d4493e74a3241d2dd8fe5e1f1aa1aff1dbbd0916ea3149e1c4f56a",
+    "src\\cellquant\\evaluation.py": "976cb59a6a7be574f8fd099e8352480453f16a7697f5e65f8f2586ee74977c56",
+    "src\\cellquant\\events.py": "0a59416b92d6d9f58e7948e7700e3e2d592b871074c6bc4d02e88a314f18fecf",
+    "src\\cellquant\\evidence.py": "e5dc3628240910c45ee51ccb01c1484138acce4ff6704fb48bc2170e0e05c311",
+    "src\\cellquant\\experiment.py": "3e3e0e450384cf7b660a22eed342390678f3b18aa352ac15a401c72150b65a0f",
+    "src\\cellquant\\gates.py": "4f364a0889bcdab93e7d54a0b3ca178ee58212be3b12e74e5a307da79b54f5bf",
+    "src\\cellquant\\hadamard.py": "1de23beb64fe6a265168b14a0e6aff603df44afd7d0513c41c1a6446d71cdc1f",
+    "src\\cellquant\\math_reference.py": "bf1beef49d392ca2a7d3a6c937f953ff6248de5c5f28a7a37764a9c4c31ee7f1",
+    "src\\cellquant\\metrics.py": "61ec871c9bf67e96e4e2aa0eea4a8e173208ca0ff39b58615f13a7f2fd008a96",
+    "src\\cellquant\\migration.py": "58a86b89aa3c9414a3a2a8597a4840d436b0c959439867f11b22ad075fb12653",
+    "src\\cellquant\\panels.py": "41d3908247a43c6ee2618b7d60e5ca1e740bf78db273bce2b227b8d420e3d4c6",
+    "src\\cellquant\\pilot.py": "9eefdc23958b093b57fe70fad11ca68d7b16227cc80eb77b3712acf0ef2cd9d7",
+    "src\\cellquant\\progress.py": "bdb8610a0995297317d55dee53724b8f6fcaf7d0b5a34f0255052fff0c8fbdec",
+    "src\\cellquant\\quantization.py": "74d18d69311b98a7e552f82d59bf2bd8735778c07a4c112a26835c04c65b2d4b",
+    "src\\cellquant\\resources.py": "5f11f5088774873a698bb5f6f7e8b2b1fabcec9f65aacebb08948eebf75442a9",
+    "src\\cellquant\\runner.py": "980bd2518e8dfe7f0c87b80d0a8d73599c5457f8e8ed920b91f7805a79e21d47",
+    "src\\cellquant\\runtime.py": "26bb4c3ffb1326f45ed5df0e90fcc0d611a3f78eea65b0bc5e6e73822fc4b43d",
+    "src\\cellquant\\solver.py": "fdb2fb5450a458e837898f02f0c15c58dc80b4db2b1365cf9a133c58b46bf497",
+    "src\\cellquant\\spinquant_adapter.py": "3ae4ce8747b35eb3d6749a0964e5091c42c92aa796719b93c878fa5556b794cb",
+    "src\\cellquant\\spinquant_train.py": "2f0d9cb7d0617f453d4ece82b1cb1690b12d4b1d5279235fde2bcdd933074bd1",
+    "src\\cellquant\\tensor_math.py": "b85ec756845c5c9945d1eabb596290dd25267d6986e5ca2205dff3a94787b0ed",
+    "src\\cellquant\\tensor_solver.py": "01d83070436683d6076d4ed4d14a8ac4d3425b3abc625efe24121c761107592a",
+    "src\\cellquant\\triton_probe.py": "c7a5aeff4faf9138cf66b5b0c9d24eab3cc2009b13afb9de46ebb24be88e2b8e",
+    "src\\cellquant\\workspace.py": "7ecb8e108016d51eb61f09a68af20e31b87de266d4815d3cde99f0519431c614",
+    "scripts\\run_gpu_resident_checks.py": "d6a4778e23f43773ac8ef4dedc1eff7321be291f207208eecd58a5a50c9718e9",
+    "scripts\\prepare_experiment.py": "f2a273d864d050aab39f9b124efabb1cac772f64fcd4e275a065ecbdca9c02ba",
+    "configs\\colab_pilot.json": "9498ed0db6be3bb7e8f7a47bfa6ecd1c54c0ab1d3ba3a8f7fabf6ae4675305b8"
+  },
+  "root_commit_before_uncommitted_changes": "f61b883a9682e13c7def45e32ef9b9020ec1120f",
+  "upstream_commit": "8f47aa3f00e8662caf1a484153920a07e5281c3a",
+  "upstream_tracked_tree_clean": true,
+  "new_gpu_scope": [
+    "GPU-resident tiny LLaMA capture",
+    "five torch CUDA methods",
+    "GPU event envelope and incremental coefficients",
+    "GPU complex shifted-QR roots",
+    "full 4096x11008 synthetic output matrix with 2 tokens",
+    "checkpoint resume",
+    "fixture result rejection by G1"
+  ],
+  "host_work": [
+    "tokenizer and file/cache I/O",
+    "hashes/checkpoint serialization",
+    "Python scheduling and scalar decisions",
+    "gate/report metadata"
+  ],
+  "not_run": [
+    "pretrained 7B on Colab L4",
+    "new Colab extension FHT build",
+    "real G1 performance/quality",
+    "AutoDL 96GB"
+  ],
+  "limitations": [
+    "No speedup claim from small CUDA fixtures",
+    "Numerical FP64 roots are not interval-certified",
+    "Fine-grained Python/CUDA dispatch overhead remains; no fused custom kernel",
+    "QR nonconvergence or memory/event/time exhaustion remains explicit blocking"
+  ],
+  "test_history": [
+    "tensor_tests_01: 6 failed / 26 passed due NumPy 2 arrays having a device attribute; fixed tensor detection using detach",
+    "initial eigvals implementation superseded after verifying PyTorch 2.6 internal CPU fallback; final code uses device QR",
+    "first PowerShell Tee-Object smoke wrapper returned 1 on native stderr warnings despite a PASS report; subsequent direct subprocess checks have verified exit 0"
+  ],
+  "scientific_gates": {
+    "G0": "PASS",
+    "empty_G1": "INSUFFICIENT_EVIDENCE",
+    "thresholds_changed": false
+  }
+}

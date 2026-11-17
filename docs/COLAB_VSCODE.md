@@ -201,6 +201,8 @@ subprocess.run(["git", "-C", "/content/CellQuant", "pull", "--ff-only", "origin"
 
 ## 6. 01 长时间无输出、GPU 空闲时
 
+**GPU 改造后的新服务器请优先使用 [从头操作指南](COLAB_GPU_FROM_SCRATCH.md)。** 新配置是 `runs/prepared/g1_gpu/config.json`，完整模型驻留 GPU，面板与求解使用 torch CUDA；完成全部采集后释放模型，显存下降不表示回到 CPU。下面关于默认 CPU 路径的描述仅用于解释改造前的旧日志和旧配置。
+
 `Loading checkpoint shards: 100%` 只表示权重加载结束。当前后端先把模型放在 CPU，融合后逐层将模型送往 GPU 采集面板；默认 `solver.device=cpu`，完整输出侧矩阵变换、匹配对照和事件根搜索会消耗 CPU。GPU 空闲不能单独证明卡死。`_is_quantized_training_enabled` 是上游遍历模型属性触发的 FutureWarning，本身不是失败原因。
 
 新进程启动时打印唯一 run_dir/PID，之后每 30 秒输出资源心跳。`state.json` 记录实际阶段、seed、fit/heldout、层号、方法、面板/坐标对、进度序号、CPU 累计时间、RSS 和剩余系统 RAM；结束时更新最终状态。`progress_sequence` 只在算法报告进展时增加，心跳不增加它，也不产生科学证据。01 每次调用使用独立日志，重跑不会覆盖旧的 pilot.log。

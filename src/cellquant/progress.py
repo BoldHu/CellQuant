@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 import threading
 import time
@@ -46,6 +47,10 @@ class RunProgress:
             system_available_gib=round(memory.available/2**30, 3),
             system_total_gib=round(memory.total/2**30, 3),
         )
+        torch=sys.modules.get('torch')
+        if torch is not None and torch.cuda.is_initialized():
+            self.state['cuda_allocated_gib']=round(torch.cuda.memory_allocated()/2**30,3)
+            self.state['cuda_reserved_gib']=round(torch.cuda.memory_reserved()/2**30,3)
         for attempt in range(6):
             try:
                 atomic_json(self.output/'state.json', self.state)
@@ -59,6 +64,7 @@ class RunProgress:
         fields = ['event', 'status', 'phase', 'details', 'elapsed_seconds',
                   'phase_elapsed_seconds', 'process_rss_gib', 'system_available_gib',
                   'process_cpu_seconds', 'progress_sequence', 'updated_at_utc']
+        fields += [k for k in ['cuda_allocated_gib','cuda_reserved_gib'] if k in self.state]
         print('[CellQuant] '+json.dumps({k: self.state[k] for k in fields}), flush=True)
 
     def step(self, phase, **details):

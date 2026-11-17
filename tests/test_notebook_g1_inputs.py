@@ -60,7 +60,9 @@ def test_missing_prepared_config_never_starts_a_real_run(tmp_path, monkeypatch, 
 def test_prepared_config_is_used_and_missing_reasons_block_execution(tmp_path, monkeypatch):
     cfg = tmp_path / "runs/prepared/custom/config.json"
     cfg.parent.mkdir(parents=True)
-    cfg.write_text('{"source_type":"unit_test_fixture"}')
+    cfg.write_text(json.dumps({'source_type':'unit_test_fixture',
+        'runtime':{'cpu_offload':False,'model_device':'cuda:0'},
+        'solver':{'backend':'torch','device':'cuda:0'}}))
     monkeypatch.setenv("CELLQUANT_PILOT_CONFIG", str(cfg.relative_to(tmp_path)))
     calls = []
 
@@ -80,6 +82,14 @@ def test_prepared_config_is_used_and_missing_reasons_block_execution(tmp_path, m
     with pytest.raises(RuntimeError, match="fixture: insufficient CPU RAM") as error:
         exec(cell("01_Colab_Real_Layer_Pilot.ipynb", "process = stream_command("), ns)
     assert str(cfg) in str(error.value)
+
+
+def test_old_cpu_configuration_is_rejected_before_real_launch(tmp_path,monkeypatch):
+    cfg=tmp_path/'old_cpu_config.json'
+    cfg.write_text(json.dumps({'runtime':{'cpu_offload':True},'solver':{}}))
+    monkeypatch.setenv('CELLQUANT_PILOT_CONFIG',str(cfg))
+    with pytest.raises(RuntimeError,match='g1_gpu'):
+        exec(pilot_config_cell(True),context(tmp_path))
 
 
 @pytest.mark.parametrize("enabled,mounted", [(False, True), (True, False)])

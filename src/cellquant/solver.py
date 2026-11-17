@@ -36,15 +36,22 @@ class CalibrationPanel:
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self):
-        self.weight = np.asarray(self.weight)
-        self.activation = np.asarray(self.activation)
+        tensor = hasattr(self.weight, 'detach')
+        if not tensor:
+            self.weight = np.asarray(self.weight)
+            self.activation = np.asarray(self.activation)
         if self.placement not in {"input", "output"}:
             raise ValueError("placement must be input (WQ.T/QX) or output (QB/U)")
         if (self.weight.ndim != 2 or self.activation.ndim != 2 or
                 self.weight.shape[1] != self.activation.shape[0] or
                 min(*self.weight.shape, *self.activation.shape) <= 0):
             raise ValueError("Panel requires complete W[m,d]/X[d,T] or B[d,f]/U[f,T]")
-        if not np.isfinite(self.weight).all() or not np.isfinite(self.activation).all():
+        if tensor:
+            import torch
+            finite = bool(torch.isfinite(self.weight).all() & torch.isfinite(self.activation).all())
+            if self.weight.device != self.activation.device:raise ValueError('Panel tensors must share a device')
+        else:finite = np.isfinite(self.weight).all() and np.isfinite(self.activation).all()
+        if not finite:
             raise ValueError("Nonfinite panel")
         if not math.isfinite(self.objective_weight) or self.objective_weight <= 0:
             raise ValueError("Positive finite objective weight required")
@@ -60,6 +67,8 @@ class CalibrationPanel:
 
 @dataclass
 class SolverConfig:
+    backend: str = "numpy_reference"
+    compute_dtype: str = "float64"
     theta_limit: float = math.pi/4
     event_limit_per_pair: int = 200000
     seconds_per_pair: float = 300.
@@ -409,9 +418,12 @@ def solve_pair(states, pair, limits, config=SolverConfig()):
 
 
 def panel_fingerprint(panels):
+    def digest(value):
+        if hasattr(value,'detach'):value=value.detach().cpu().numpy()  # Artifact checksum only.
+        return hashlib.sha256(np.ascontiguousarray(value).tobytes()).hexdigest()
     return config_hash([{ "id":p.panel_id,"placement":p.placement,"tokens":p.token_ids_hash,
-                         "weight":hashlib.sha256(np.ascontiguousarray(p.weight).tobytes()).hexdigest(),
-                         "activation":hashlib.sha256(np.ascontiguousarray(p.activation).tobytes()).hexdigest(),
+                         "weight":digest(p.weight),
+                         "activation":digest(p.activation),
                          "shape":[list(p.weight.shape),list(p.activation.shape)],"objective_weight":p.objective_weight}
                        for p in panels])
 
@@ -421,6 +433,7 @@ def atomic_npz(path,**arrays):
     fd,tmp=tempfile.mkstemp(prefix=".rotation-",suffix=".npz",dir=path.parent)
     try:
         with os.fdopen(fd,"wb") as f:
+            arrays={k:v.detach().cpu().numpy() if hasattr(v,'detach') else v for k,v in arrays.items()}
             np.savez(f,**arrays);f.flush();os.fsync(f.fileno())
         os.replace(tmp,path)
     finally:
@@ -436,6 +449,11 @@ def panel_specs(specs, panel):
 def fit_shared_rotation(panels,q0,quant_specs,schedule,budgets=None,config=None,*,progress=None):
     start=time.perf_counter()
     config=config or SolverConfig()
+    if config.backend=='torch':
+        from .tensor_solver import fit_baseline as fit_tensor
+        return fit_tensor('fixed_scale_search_matched' if config.fixed_scales else 'cellquant',
+                          panels,q0,quant_specs,schedule,config,progress=progress,budgets=budgets)
+    if config.backend!='numpy_reference':raise ValueError('Unknown solver backend')
     panels=list(panels);schedule=[tuple(map(int,p)) for p in schedule]
     if not panels or len({p.panel_id for p in panels})!=len(panels):
         raise ValueError("Nonempty panels with unique IDs required")

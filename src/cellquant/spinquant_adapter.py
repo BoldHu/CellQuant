@@ -150,28 +150,31 @@ def atomic_torch_save(payload,path):
 
 def export_spinquant_rotation(q,r2_per_layer,path,*,num_layers=None):
     import torch
-    q=torch.as_tensor(q).detach().cpu().double()
+    q=torch.as_tensor(q).detach().double()
     if q.ndim!=2 or q.shape[0]!=q.shape[1] or not torch.isfinite(q).all():raise ValueError('Finite square Q required')
     if num_layers is None:num_layers=len(r2_per_layer)
     if num_layers<1 or len(r2_per_layer)!=num_layers:raise ValueError('Every layer R2 is required')
-    residual=float(torch.linalg.norm(q.T@q-torch.eye(len(q),dtype=q.dtype))/math.sqrt(len(q)))
+    residual=float(torch.linalg.norm(q.T@q-torch.eye(len(q),dtype=q.dtype,device=q.device))/math.sqrt(len(q)))
     if residual>1e-5:raise ValueError('Nonorthogonal Q')
-    state={'R1':q.T.contiguous().float()};r2_residual=[]
+    state={'R1':q.T.contiguous().float().cpu()};r2_residual=[]
     for layer,r in enumerate(r2_per_layer):
-        r=torch.as_tensor(r).detach().cpu().double()
+        r=torch.as_tensor(r).detach().double()
         if r.ndim!=2 or r.shape[0]!=r.shape[1] or not torch.isfinite(r).all():raise ValueError('Invalid R2')
-        error=float(torch.linalg.norm(r.T@r-torch.eye(len(r),dtype=r.dtype))/math.sqrt(len(r)))
+        error=float(torch.linalg.norm(r.T@r-torch.eye(len(r),dtype=r.dtype,device=r.device))/math.sqrt(len(r)))
         if error>1e-5:raise ValueError('Nonorthogonal R2')
-        r2_residual.append(error);state[f'model.layers.{layer}.self_attn.R2']=r.float().contiguous()
+        r2_residual.append(error);state[f'model.layers.{layer}.self_attn.R2']=r.float().contiguous().cpu()
     atomic_torch_save(state,path)
     return {'sha256':sha256_file(path),'keys':list(state),'orientation':'R1=Q.T',
             'q_orthogonality_residual':residual,'r2_orthogonality_residuals':r2_residual}
 
 
-def fixed_r2(config,seed):
+def fixed_r2(config,seed,*,device='cpu'):
     import torch
     from .solver import hadamard_rotation
     h=config.hidden_size//config.num_attention_heads
+    if str(device).startswith('cuda'):
+        from .tensor_solver import hadamard_rotation as tensor_hadamard
+        return [tensor_hadamard(h,seed+i,device).T.contiguous().float() for i in range(config.num_hidden_layers)]
     # Upstream R2 is in row-vector orientation; save this exact same tensor for all controls.
     return [torch.from_numpy(hadamard_rotation(h,seed+i).T.copy()).float() for i in range(config.num_hidden_layers)]
 
@@ -197,6 +200,7 @@ def rotate_model(model,checkpoint,*,device='cuda',compute_dtype='float32',chunk_
     expected={'R1'}|{f'model.layers.{i}.self_attn.R2' for i in range(len(model.model.layers))}
     if set(state)!=expected:raise ValueError('Checkpoint requires R1 and every R2 key, with no extras')
     if r1.shape!=(model.config.hidden_size,)*2:raise ValueError('Wrong R1 shape')
+    identity=torch.equal(r1,torch.eye(len(r1),device=r1.device,dtype=r1.dtype))
     with torch.no_grad():
         def right(module,rotation):
             weight=module.weight
@@ -209,10 +213,11 @@ def rotate_model(model,checkpoint,*,device='cuda',compute_dtype='float32',chunk_
                 part=rotation@weight[:,start:start+chunk_rows].to(device=device,dtype=dtype)
                 weight[:,start:start+chunk_rows].copy_(part.to(weight))
             if module.bias is not None:module.bias.copy_((rotation@module.bias.to(device=device,dtype=dtype)).to(module.bias))
-        right(model.model.embed_tokens,r1);right(model.lm_head,r1)
+        if not identity:right(model.model.embed_tokens,r1);right(model.lm_head,r1)
         for idx,layer in enumerate(model.model.layers):
-            for module in [layer.self_attn.q_proj,layer.self_attn.k_proj,layer.self_attn.v_proj,layer.mlp.up_proj,layer.mlp.gate_proj]:right(module,r1)
-            left(layer.self_attn.o_proj,r1.T);left(layer.mlp.down_proj,r1.T)
+            if not identity:
+                for module in [layer.self_attn.q_proj,layer.self_attn.k_proj,layer.self_attn.v_proj,layer.mlp.up_proj,layer.mlp.gate_proj]:right(module,r1)
+                left(layer.self_attn.o_proj,r1.T);left(layer.mlp.down_proj,r1.T)
             if global_only:continue
             r2=state[f'model.layers.{idx}.self_attn.R2'].to(device=device,dtype=dtype);h=r2.shape[0]
             if h!=model.config.hidden_size//model.config.num_attention_heads:raise ValueError('Wrong R2 head dimension')
@@ -227,7 +232,7 @@ def rotate_model(model,checkpoint,*,device='cuda',compute_dtype='float32',chunk_
                 part=w[start:start+chunk_rows].to(device=device,dtype=dtype)
                 had,K=hadamard_utils.get_hadK(part.shape[-1])
                 w[start:start+chunk_rows].copy_(hadamard_utils.matmul_hadU_cuda(part,had,K).to(w))
-    return {'extra_online_r1_ops':0,'compute_dtype':compute_dtype,'checkpoint_sha256':sha256_file(checkpoint)}
+    return {'extra_online_r1_ops':0,'compute_dtype':compute_dtype,'checkpoint_sha256':sha256_file(checkpoint),'identity_r1_skipped':identity}
 
 
 def install_online_graph(model,quantization,*,quantized=False):

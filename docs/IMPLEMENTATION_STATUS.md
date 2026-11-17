@@ -108,3 +108,12 @@ workspace 新增默认 False 的 PREPARE_G1_INPUTS 和完整调度单元，串�
 workspace/01 已增加 GPU 检查、新 g1_gpu 配置目录、旧 CPU 配置拒绝和本次 run 结果指针。六本 notebook schema/语法检查通过，仅清除修改单元的旧输出；原用户配置和 HF 变量保持，归档脱敏。新服务器完整步骤见 docs/COLAB_GPU_FROM_SCRATCH.md。实际命令、日志、源码 hash、失败尝试与报告在 evidence/gpu_resident_20261116/。
 
 尚未执行：新版 Colab L4 + FHT extension、预训练 7B G1 质量/速度、AutoDL 96GB。原因：本机只有 4GiB GPU，无法加载 7B，且没有直接连接用户 Colab。云端先按指南准备环境并运行 `python -u scripts/run_gpu_resident_checks.py --fht-backend extension --full-dimension --output <新的结果目录>`，再通过 01 或 `python -u -m cellquant.experiment --config runs/prepared/g1_gpu/config.json` 实测。G1 合格前不进入正式评估；代码未提交/push。
+
+
+## 2026-11-17 — G1 显存预检查诊断
+
+读取用户保存的 Colab notebook：GPU 驻留工程检查显示 PASS_ENGINEERING_ONLY，01 在加载真实模型前被显存预检查阻塞。用户补充的实际 L4 诊断为 total=22.0343 GiB、free=14.1336 GiB、85% budget=18.7292 GiB，当前 kernel 的 PyTorch allocated/reserved 均为 0；free 低于既有 16.55 GiB 估计。具体占用进程尚未确认，用户随后释放服务器准备重新连接，不能宣称已定位或已清除某个旧模型。
+
+预检查现在记录所配置 CUDA 设备的总容量、当前空闲、预算、估计需求、当前进程 PID 和 allocator 占用；错误区分 total_capacity/configured_budget/currently_free。保留原估计、85% 预算和所有科学门槛，不自动释放显存、杀进程或回退 CPU。操作指南补充新服务器恢复缓存、显存检查与重新预检查步骤。
+
+实际本地全套 197 passed, 1 warning in 52.61s；警告为 Windows pytest 缓存目录写入被拒，不影响测试退出码 0。新增 6 项覆盖占用中的 L4、空闲 L4、预算限制、小显存、FP32 估计及无 CUDA；设备选择也作回归验证。本轮没有编辑用户 notebook，接手时的三本副本已脱敏归档；工作期间 00 数学与 01 notebook 又被外部操作更新，未覆盖这些变化。门槛 hash 不变。记录见 evidence/preflight_vram_20261117/。尚未执行用户新服务器重试或真实 7B G1，当前实验仍为 PREFLIGHT_BLOCKED/INSUFFICIENT_EVIDENCE；代码未提交/push。

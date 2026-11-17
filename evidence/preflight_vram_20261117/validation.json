@@ -1,0 +1,69 @@
+{
+  "source_type": "unit_test_fixture",
+  "status": "LOCAL_REGRESSION_PASSED_CLOUD_RETRY_NOT_RUN",
+  "tests": "197 passed, 1 warning in 52.61s",
+  "test_execution": {
+    "argv": [
+      "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+      "-m",
+      "pytest",
+      "-q"
+    ],
+    "returncode": 0,
+    "elapsed_seconds": 55.65002289999393,
+    "log": "pytest.log"
+  },
+  "warning": "Windows pytest cache write denied; preserved in pytest.log",
+  "user_observation": {
+    "source": "saved Colab notebooks and user diagnostic reply; not independently rerun",
+    "gpu_name": "NVIDIA L4",
+    "total_gib": 22.0343017578125,
+    "free_gib": 14.13360595703125,
+    "budget_gib": 18.729156494140625,
+    "current_process_allocated_gib": 0.0,
+    "current_process_reserved_gib": 0.0,
+    "estimated_required_gib_rounded": 16.55,
+    "blocker": "currently_free",
+    "occupying_process": "UNKNOWN; user released runtime before process query",
+    "real_model_experiment_status": "PREFLIGHT_BLOCKED"
+  },
+  "notebooks_edited_by_agent": false,
+  "notebook_observations": {
+    "00_Colab_GitHub_Workspace.ipynb": {
+      "sha256_at_archive": "a6480027fdaca07bc4ecbadee0b4b404f5e74a6d816ef2efbaa01900c2a5c11d",
+      "sha256_at_final_check": "a6480027fdaca07bc4ecbadee0b4b404f5e74a6d816ef2efbaa01900c2a5c11d",
+      "changed_during_work": false
+    },
+    "00_Colab_Preflight_and_Math.ipynb": {
+      "sha256_at_archive": "4d184b7ba85c891ab2760f1e048eeee27ccbfd46fcd4338e361cfafc80e6a825",
+      "sha256_at_final_check": "24c875914a75f160562993733b59fa02c9c9adb481ee1a97e9a1a99ed496ed4d",
+      "changed_during_work": true,
+      "later_archive_redactions": 0
+    },
+    "01_Colab_Real_Layer_Pilot.ipynb": {
+      "sha256_at_archive": "a23d5648577330b945cf203c90493524049e53190a96436009f1a9ee818ad015",
+      "sha256_at_final_check": "a831805ef1f0731889a59c609bb7708fc21cf589b39e7032114a4ff9da04ef6c",
+      "changed_during_work": true,
+      "later_archive_redactions": 0
+    }
+  },
+  "archive_validation_history": [
+    "Initial unchanged-byte check failed after external changes to two user notebooks; retained both observations and did not overwrite working notebooks"
+  ],
+  "archived_credentials_redacted": true,
+  "scientific_thresholds_changed": false,
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "source_sha256": {
+    "src/cellquant/experiment.py": "a741198a5ebea0395b2ad4ca9279184a32eb660172b06673e1582fefbb30e6a2",
+    "tests/test_preflight_gpu_memory.py": "5fb92146f2358cfc725529e5a6e49fe2b15b9c44d6ff8365a1a746b521331a69",
+    "docs/COLAB_GPU_FROM_SCRATCH.md": "ec1be3e050d4c42638ad5bc4004543d8d5a9339dc181a1b8c57b16bab970dc6a",
+    "docs/IMPLEMENTATION_STATUS.md": "fcbfa79fdd2c946bffe80d3b34c1b518384d5c182a1e5b766ec52f88a01485ea",
+    "docs/WORK_LOG.md": "aa5f5dab62d8c086e9a4a247f7a6cfa978db32a92321904dec09aed6b6fce9d4"
+  },
+  "not_run": [
+    "new Colab retry",
+    "pretrained 7B G1"
+  ],
+  "remote_processes_terminated": false,
+  "gpu_memory_freed_by_agent": false
+}

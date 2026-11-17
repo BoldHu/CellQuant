@@ -29,7 +29,7 @@ class ExperimentBlocked(RuntimeError):pass
 
 
 def preflight(config,root=None):
-    root=Path(root or Path.cwd()).resolve();missing=[];env=environment_report()
+    root=Path(root or Path.cwd()).resolve();missing=[];env=environment_report();gpu_memory=None
     stage=config.get('stage');data=config.get('data',{})
     if stage not in {'G1','G2','canary','full'}:missing.append('Unknown experiment stage')
     quant=config.get('quantization',{})
@@ -94,9 +94,35 @@ def preflight(config,root=None):
             size=sum(f['size_bytes'] for f in read_json(source_manifest)['files'])/2**30
             estimate=size*(2 if runtime.get('dtype')=='float32' else 1)+4
             import torch
-            free,total=torch.cuda.mem_get_info()
-            if min(free/2**30,total/2**30*runtime.get('max_memory_fraction',.85))<estimate:
-                missing.append(f'GPU-resident capture estimates {estimate:.2f} GiB (checkpoint bytes + workspace); insufficient free/budgeted VRAM. No CPU fallback.')
+            device=torch.device(runtime['model_device'])
+            free,total=torch.cuda.mem_get_info(device)
+            free_gib,total_gib=free/2**30,total/2**30
+            fraction=runtime.get('max_memory_fraction',.85)
+            budget_gib=total_gib*fraction
+            name=torch.cuda.get_device_name(device)
+            limits=[]
+            if total_gib<estimate:limits.append('total_capacity')
+            if budget_gib<estimate:limits.append('configured_budget')
+            if free_gib<estimate:limits.append('currently_free')
+            gpu_memory={'status':'BLOCKED' if limits else 'READY',
+                'device':str(device),'name':name,'observed_at_utc':utc_now(),
+                'total_gib':total_gib,'free_gib':free_gib,'budget_gib':budget_gib,
+                'effective_available_gib':min(free_gib,budget_gib),'max_memory_fraction':fraction,
+                'estimated_required_gib':estimate,'checkpoint_files_gib':size,'workspace_estimate_gib':4.,
+                'insufficient_limits':limits,'current_process_pid':os.getpid(),
+                'current_process_allocated_gib':torch.cuda.memory_allocated(device)/2**30,
+                'current_process_reserved_gib':torch.cuda.memory_reserved(device)/2**30,
+                'scope':'Engineering estimate and current device memory snapshot; not a measured peak or scientific gate.'}
+            if limits:
+                hint=('Selected GPU capacity is below the estimate. ' if 'total_capacity' in limits else '')
+                if 'currently_free' in limits:
+                    hint+='Inspect GPU processes with nvidia-smi; current-process allocator statistics do not include other kernels or CUDA libraries. '
+                if 'configured_budget' in limits:
+                    hint+='The configured memory budget is also below the estimate. '
+                missing.append(f'GPU-resident capture estimates {estimate:.2f} GiB (checkpoint bytes + workspace); '
+                    f'{name} [{device}]: total={total_gib:.2f}, free={free_gib:.2f}, '
+                    f'budget={budget_gib:.2f} GiB (fraction={fraction}). '
+                    f'Insufficient limits: {", ".join(limits)}. {hint}No CPU fallback.')
     model_id=config.get('model_id',config.get('formal_pilot',{}).get('model_id',''))
     if any(s in model_id.lower() for s in ['7b','8b']):
         available=psutil.virtual_memory().available/2**30
@@ -109,7 +135,7 @@ def preflight(config,root=None):
     method=config.get('method')
     if method in {'spinquant_full','spinquant_r1_control'} and not config.get('spinquant_training'):
         missing.append('Explicit SpinQuant CE steps, accumulation and training token partition required')
-    return {'status':'READY' if not missing else 'BLOCKED','missing':missing,'environment':env,'stage':stage,
+    return {'status':'READY' if not missing else 'BLOCKED','missing':missing,'environment':env,'stage':stage,'gpu_memory':gpu_memory,
             'scope':'Execution prerequisites only; no new scientific evidence'}
 
 

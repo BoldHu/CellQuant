@@ -128,3 +128,11 @@
 - 最终 191 passed in 23.51s，包含真实 CUDA 测试。最终 GPU smoke 子进程退出 0，报告 PASS_ENGINEERING_ONLY；完整 4096×11008×2 工程计算 3.5775s，峰值 2496416256 bytes。首次 PowerShell pipeline 对 stderr 警告返回 1，未将该 shell exit 标作成功；后续使用 subprocess 取得真实退出码，记录在 release_execution_records.json。CPU 数学、生产 G0 退出 0/PASS，空 G1 不足，gate_rules SHA 不变。
 - 以 g1_gpu 新协议隔离旧 CPU 准备配置和断点，记录 torch CUDA RNG/QR 后端；01 拒绝旧 CPU 配置，准确绑定本次 run 的真实 G1 文件。新增从 GitHub 同步、Python 3.12/Colab 2026.07、Drive 恢复、保留 torch、固定依赖/FHT/SpinQuant、GPU 工程检查、真实准备、运行与备份的完整指南。六本 notebook schema/语法通过；未修改单元/输出及用户 HF 配置保持。
 - 本机仅有 RTX 3050 Laptop 4GiB，FHT 采用明确的 torch_reference 工程后端。新版 L4 extension/7B 与 AutoDL 尚未运行，不能宣称科学门槛通过、完整求解一定更快或有 CUDA 融合 kernel。结果在 evidence/gpu_resident_20261116/validation.json 与实际日志；代码未提交/push。
+
+
+## 2026-11-17 — 显存空闲不足定位与预检查可观测性
+
+- 核对当前代码与三本用户 notebook，GPU 工程检查由用户保存的输出显示通过，G1 在模型加载前阻塞。请求实际显存读数，确认 L4 22.03 GiB/预算 18.73 GiB 足够覆盖估计，但 free 14.13 GiB 不足 16.55 GiB；当前 PyTorch kernel 占用为零。请求进程明细之前用户释放服务器，因此未确定占用者，不猜测为某个模型。
+- 增加 GPU 内存结构化报告与三类限制原因，并按配置设备查询内存；保留原需求估计、预算、模型精度、面板和门槛。没有通过扩大 max_memory_fraction、卸载 CPU 或缩小实验绕过检查，也没有执行远程进程终止。
+- 新增 6 项内存预检查回归，完整 pytest 实际 197 passed, 1 warning in 52.61s、exit 0。唯一警告为 Windows .pytest_cache 写入权限；完整日志保留。本轮没有编辑 notebook；最终字节比较发现用户 00 数学与 01 文件在工作期间被外部操作更新，首次归档验证据实失败，随后记录前后 hash 并保留外部变化。脱敏归档无令牌，gate_rules SHA 不变。
+- 更新新 Colab 指南：恢复 models/datasets/runs 缓存，检查实际新 GPU 和 free 显存，重跑 01 预检查；明确 empty_cache 仅处理本进程未使用的缓存。云端新会话与真实 7B 未运行，保留不足状态。本轮代码未提交/push。

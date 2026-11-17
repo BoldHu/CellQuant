@@ -88,6 +88,31 @@ BACKUP_AREAS = []
 
 ## 4. 长作业诊断、结束和备份
 
+若预检查报告 `GPU-resident capture estimates ... insufficient`，先区分总容量、配置预算与当前空闲量。新版本将它们写入 `preflight["readiness"]["gpu_memory"]` 和错误文本。`currently_free` 表示当前空闲不足；`configured_budget` 表示预算上限不足；`total_capacity` 表示整卡容量不足。这个估计不是实测峰值，也不是 G1 成绩。
+
+2026-11-17 用户报告的 L4 总容量为 22.03 GiB、85% 预算为 18.73 GiB、当前空闲仅 14.13 GiB，低于 16.55 GiB 估计；01 kernel 的 PyTorch allocated/reserved 均为零。因此不能把问题归因于当前 kernel 的 PyTorch 缓存，也不能靠提高预算比例增加空闲量。具体占用进程未确认，用户随后释放了服务器。
+
+重新连接时先在 00 配置 `RESTORE_AREAS=["models", "datasets", "runs"]`，从已有 Drive 快照恢复本地缓存，再按上文完成环境检查。新分配的 GPU 型号可能不同；进入 01 后重新运行预检查，不复用旧 `preflight` 变量。旧代码也可在 01 的预检查单元之后新增单元检查：
+
+```python
+import json, subprocess, torch
+cfg = json.loads(PILOT_CONFIG_PATH.read_text())
+dev = torch.device(cfg["runtime"].get("model_device", "cuda:0"))
+free, total = torch.cuda.mem_get_info(dev)
+print({"GPU": torch.cuda.get_device_name(dev),
+       "total_GiB": total / 2**30, "free_GiB": free / 2**30,
+       "budget_GiB": total / 2**30 * cfg["runtime"].get("max_memory_fraction", .85),
+       "allocated_this_kernel_GiB": torch.cuda.memory_allocated(dev) / 2**30,
+       "reserved_this_kernel_GiB": torch.cuda.memory_reserved(dev) / 2**30})
+r = subprocess.run(
+    ["nvidia-smi", "--query-compute-apps=pid,process_name,used_gpu_memory", "--format=csv,noheader"],
+    capture_output=True, text=True)
+print("nvidia-smi returncode:", r.returncode)
+print(r.stdout.strip() or r.stderr.strip() or "驱动未返回可见的进程记录")
+```
+
+确认占用者以后，停止属于自己的旧任务或关闭相应 kernel，再重跑预检查；不要批量杀掉未知进程。`empty_cache()` 只释放当前 PyTorch 分配器中未使用的缓存，无法释放仍被引用的张量或其他进程的分配，见 [PyTorch 说明](https://docs.pytorch.org/docs/2.11/generated/torch.cuda.memory.empty_cache.html)。未取得进程记录时，不把空进程列表当作显存无人使用。
+
 同一忙碌 kernel 的下一单元会排队。在能访问同一 `/content/CellQuant` 的独立终端/kernel 执行：
 
 ```bash

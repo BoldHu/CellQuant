@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q"
+  ],
+  "returncode": 0,
+  "elapsed_seconds": 55.65002289999393,
+  "log": "pytest.log"
+}

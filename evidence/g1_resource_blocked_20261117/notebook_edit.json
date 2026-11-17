@@ -1,0 +1,11 @@
+{
+  "before_sha256": "219eaa6dfd35376e26db5492a2d4617be8cd720963587c828b21aad7f5200c66",
+  "after_sha256": "b8889e0cd5c92456a85cc21f328d8dff8879e3a76d2f7a793eff0da53f8ec9b2",
+  "changed_cell_ids": [
+    "2b0a9038",
+    "9e3551d3",
+    "5199c9d6"
+  ],
+  "new_cell": "g1-pair-profile-guide",
+  "archive_redactions": 1
+}

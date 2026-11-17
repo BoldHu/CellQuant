@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "tests/test_tensor_solver.py",
+    "tests/test_pilot_failure_summary.py",
+    "tests/test_gpu_pipeline.py",
+    "tests/test_notebook_g1_inputs.py"
+  ],
+  "returncode": 0,
+  "seconds": 20.892446300014853
+}

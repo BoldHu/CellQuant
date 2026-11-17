@@ -174,6 +174,16 @@ def companion_roots(coeff):
 def trig_roots(real, left, right):
     """Half-angle companion roots on the tensor device; actual-quantizer verification is required."""
     degree = (len(real)-1)//2
+    # Mean-value bound: |f(t)-f(m)| <= |t-m| sum k(|a_k|+|b_k|).
+    # Most event cells are extremely narrow. A strict sign over the whole
+    # cell excludes roots without running a companion QR for that cell.
+    # The FP64 guard keeps near-zero/tangent cases on the original root path;
+    # this numerical screen is not interval arithmetic or a certified solver.
+    lo,hi=scalar(left,real),scalar(right,real);mid=lo+(hi-lo)/2
+    frequencies=torch.arange(1,degree+1,device=real.device,dtype=real.dtype)
+    variation=(hi-lo).abs()/2*(frequencies*(real[1::2].abs()+real[2::2].abs())).sum()
+    guard=64*torch.finfo(real.dtype).eps*real.abs().sum().clamp_min(torch.finfo(real.dtype).tiny)
+    if bool(trig_value(real,mid).abs()>variation+guard):return real.new_empty(0)
     coeff = polynomial_transform(degree, str(real.device))@real
     scale = coeff.abs().max()
     if not bool(scale > 0):return real.new_empty(0)

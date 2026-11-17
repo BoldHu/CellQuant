@@ -1,16 +1,16 @@
 # 实现状态与证据边界
 
-更新：2026-11-16。以下“已实现”描述代码；实验结论单独列出。整个研究尚未完成。
+更新：2026-11-17。以下“已实现”描述代码；实验结论单独列出。整个研究尚未完成。
 
 | 组件 | 代码状态 | 已执行的证据与限制 |
 |---|---|---|
-| 原 CPU 参考与基础设施 | 保留并修正零组物理 scale 风险 | 原 62 项测试复现；最终全套 116 项通过 |
+| 原 CPU 参考与基础设施 | 保留并修正零组物理 scale 风险 | 原 62 项测试复现；当前全套 213 项通过（含可执行 CUDA 检查） |
 | 共享 global Q、多面板输入侧 WQ.T/QX、输出侧 QB | IMPLEMENTED | FP64 增量胞元系数、风险约束、实际边界 rounding；3 seeds/24 cases 合成 G0 PASS |
-| 完整维度 | IMPLEMENTED / REAL_PERFORMANCE_NOT_RUN | d=4096、down=4096×11008，2 tokens、1 pair、±0.0001 的工程 smoke COMPLETE；不是正式吞吐 |
+| 完整维度 | IMPLEMENTED / RESOURCE_BLOCKED_AT_FULL_SEARCH | 本机 4096×11008、128 tokens、±π/4 的单输出面板产生 48725 个区间，30 秒诊断预算处理 979 个后阻塞；用户真实 G1 首对 300 秒仍未完成 |
 | 筛选与事件增量 | IMPLEMENTED_CPU_REFERENCE / TORCH_CUDA | 输入稳定组筛选、输出完整行 GPU support envelope；事件排序、增量系数和 QR 数值根均在张量设备计算，小例已与 CPU 对照 |
-| CUDA dense GEMM/量化/求解 | IMPLEMENTED_PYTORCH / ENGINEERING_VALIDATED | 实际 CUDA 小模型/五方法和 4096×11008、2-token 输出侧计算；没有自定义融合 CUDA kernel，真实 7B 性能未验证 |
+| CUDA dense GEMM/量化/求解 | IMPLEMENTED_PYTORCH / REAL_SEARCH_RESOURCE_BLOCKED | 模型与核心数学已驻留 CUDA；小区间根排除和事件索引有回归及同卡合成计时，完整事件吞吐仍是瓶颈；没有完整真实 G1 加速结论 |
 | Hadamard / angle-grid / Givens STE / fixed-scale | IMPLEMENTED | 相同面板、坐标预算、约束、墙钟上限；小矩阵验证。grid/STE 中途 optimizer 恢复 NOT_IMPLEMENTED |
-| 真实层采集与 Colab G1 | GPU_RESIDENT_IMPLEMENTED / NEW_7B_RUN_NOT_RUN | 新配置模型驻留 GPU，所有 seed 采集后释放模型，面板留在 CUDA 求解；旧用户尝试结果未知，新版 7B 待用户 Colab 执行 |
+| 真实层采集与 Colab G1 | GPU_RESIDENT_RUN / RESOURCE_BLOCKED | 用户 L4 日志确认全模型 CUDA、两 seed 采集完成；Hadamard/STE/grid 完成，CellQuant/fixed-scale 均首对 300 秒超时；G1 证据不足。新单对诊断模式不生成 G1 |
 | SpinQuant 固定上游 / overlay / R.bin | IMPLEMENTED | commit 8f47aa3… 已核对、tracked tree clean；禁 embedding centering、保 gamma，导出全部 R2 |
 | FP 旋转 / GPTQ W4A4KV4 | IMPLEMENTED / TINY_CUDA_VALIDATED | MHA/GQA 小模型 FP 相对误差约 1e-7；GPTQ 有限输出、逐层恢复与连续运行参数差 0 |
 | 完整 R1+R2 CE/SGDG baseline | IMPLEMENTED / TINY_CUDA_VALIDATED | 实际两步训练与 Trainer 恢复一致；正式 100 步×8 的完整 CE 训练池尚未运行，distinct blocks 数另报 |
@@ -117,3 +117,25 @@ workspace/01 已增加 GPU 检查、新 g1_gpu 配置目录、旧 CPU 配置拒�
 预检查现在记录所配置 CUDA 设备的总容量、当前空闲、预算、估计需求、当前进程 PID 和 allocator 占用；错误区分 total_capacity/configured_budget/currently_free。保留原估计、85% 预算和所有科学门槛，不自动释放显存、杀进程或回退 CPU。操作指南补充新服务器恢复缓存、显存检查与重新预检查步骤。
 
 实际本地全套 197 passed, 1 warning in 52.61s；警告为 Windows pytest 缓存目录写入被拒，不影响测试退出码 0。新增 6 项覆盖占用中的 L4、空闲 L4、预算限制、小显存、FP32 估计及无 CUDA；设备选择也作回归验证。本轮没有编辑用户 notebook，接手时的三本副本已脱敏归档；工作期间 00 数学与 01 notebook 又被外部操作更新，未覆盖这些变化。门槛 hash 不变。记录见 evidence/preflight_vram_20261117/。尚未执行用户新服务器重试或真实 7B G1，当前实验仍为 PREFLIGHT_BLOCKED/INSUFFICIENT_EVIDENCE；代码未提交/push。
+
+
+## 2026-11-17 — 用户 Colab G1 运行中：真实 CUDA 驻留与资源阻塞
+
+用户重新连接后的 01 输出已从预检查 BLOCKED 变为 READY，启动时 L4 空闲 21.8448 GiB。已保存的模型设备报告为全部参数在 cuda:0、cpu_offload=false，参数字节数 13476831232；约 94 秒完成全部 seed 面板采集并释放基础模型，面板继续驻留 CUDA。当前日志显示第二个 seed 的 STE 持续推进，不能再描述为仍停在显存预检查。
+
+seed 11 的 Hadamard、STE、网格报告 COMPLETE；固定尺度搜索与 CellQuant 各约 5 分钟后报告 RESOURCE_BLOCKED，之后继续运行 seed 23。具体 solver.reason 尚未读取，不能据时长断言一定是某种超时或数值错误。按 seed 11 耗时估计用户报告 32 分钟时剩余约 15–20 分钟，这是条件性结束时间估计，不是成功或 G1 PASS 保证。必须保留原始结果并检查阻塞原因，门槛未修改。
+
+以上仅来自用户保存的 notebook 日志，并非本机执行或独立读取云端结果。该次观察最后保存时间为 2026-11-17T08:45:01.726457+00:00，原始副本已脱敏归档到 evidence/g1_colab_progress_20261117/58e803d3ccbc/；没有改动 notebook、代码或正在运行的配置。真实 G1 尚无完整合格证据。
+
+
+## 2026-11-17 — G1 首对超时确认、数值路径优化与独立诊断入口
+
+用户本轮 L4 运行于 2919.83 秒（约 48 分 40 秒）结束。读取用户补充的逐方法摘要：seed 11/23 的 STE 与 grid 都完成 128 对；CellQuant 与 fixed-scale 都为 `Pair wall-clock budget exceeded: 300s`、完成 0 对。这是事件搜索在预算内未完成，不是显存预检查失败，也不足以判断方法的量化收益。原始 notebook 和用户结果观察保存于 `evidence/g1_resource_blocked_20261117/`；未直接访问其云端 result 文件。
+
+修复顶层 `reason:null`：汇总逐 seed/method 的真实失败原因、完成对数和资源诊断，CLI/notebook 直接显示；保留非零退出码与 RESOURCE_BLOCKED。事件求解增加阶段、事件数、扫描区间数与失败 checkpoint 信息。GPU 事件索引一次排序取代逐边界全表扫描；三角多项式用中点导数上界排除无根小区间，近零/切根仍走原 FP64 QR。没有改变角域、维度、量化规则、单对 300 秒、事件 cap 或科研门槛。
+
+新增 `--profile-pair` / 01 的 `RUN_PAIR_PROFILE=True`：复用正式加载、融合和完整真实面板，只诊断第一个 seed 的第一对，对固定尺度与 CellQuant 分别执行；输出 PAIR_PROFILE_ONLY/PROFILE_COMPLETE 或实际阻塞，不生成 held-out 成绩/G1 证据，G1 聚合器明确拒绝这些记录。该工程入口保留原方法预算，且明确单对完成不等于 128 对的完整方法可完成。新的真实 L4 诊断尚未执行。
+
+实际本地验证：完整 213 passed, 1 warning in 30.43s（仅 Windows pytest 缓存写入权限警告，exit 0）；六本 notebook schema/语法通过，只清除修改单元输出，其他用户单元保持。4 个同 GPU 小合成对照前后最终目标/预算一致，耗时降低约 1.33–3.53 倍，仅代表这些小工程案例。完整 4096×11008、128 tokens、±π/4 的单输出合成面板产生 48725 区间，在 30 秒诊断预算内只处理 979 个后 RESOURCE_BLOCKED；该限制被保留，没有算作 PASS。可见完整事件遍历吞吐仍不足，尚未解决真实 G1 的执行瓶颈，不能宣称优化后正式 G1 已可运行完毕。
+
+下一步先备份原 runs，再同步代码、重启同一服务器 kernel，使用新单对诊断入口定位真实面板的阶段/吞吐；保留原配置，不混用旧源码断点或直接重跑完整 sweep。G1 仍为 INSUFFICIENT_EVIDENCE。代码未提交/push，AutoDL/G2–G4 未运行。

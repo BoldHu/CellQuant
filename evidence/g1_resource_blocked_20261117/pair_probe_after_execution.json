@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+    "evidence\\g1_resource_blocked_20261117\\profile_probe.py",
+    "--output",
+    "evidence\\g1_resource_blocked_20261117\\pair_probe_after.json"
+  ],
+  "returncode": 0,
+  "seconds": 13.855947400006698
+}

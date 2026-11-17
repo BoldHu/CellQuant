@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q"
+  ],
+  "returncode": 0,
+  "seconds": 31.645573999994667,
+  "notebook_schema_and_syntax": "PASS"
+}

@@ -1,0 +1,46 @@
+{
+  "source_type": "synthetic_math",
+  "scope": "Small same-GPU engineering probes; not real-model speedup",
+  "cases": [
+    {
+      "hidden": 8,
+      "ffn": 16,
+      "method": "cellquant",
+      "before_seconds": 3.4962430000014137,
+      "after_seconds": 2.6364880000182893,
+      "ratio": 1.3260985826512999,
+      "final_objective_and_budgets_match": true,
+      "events": 21
+    },
+    {
+      "hidden": 8,
+      "ffn": 16,
+      "method": "fixed_scale_search_matched",
+      "before_seconds": 2.2633955999917816,
+      "after_seconds": 1.0688314999861177,
+      "ratio": 2.117635567459585,
+      "final_objective_and_budgets_match": true,
+      "events": 21
+    },
+    {
+      "hidden": 32,
+      "ffn": 128,
+      "method": "cellquant",
+      "before_seconds": 6.880208499991568,
+      "after_seconds": 3.464337200013688,
+      "ratio": 1.9860100512052878,
+      "final_objective_and_budgets_match": true,
+      "events": 108
+    },
+    {
+      "hidden": 32,
+      "ffn": 128,
+      "method": "fixed_scale_search_matched",
+      "before_seconds": 9.503199900005711,
+      "after_seconds": 2.6956615000090096,
+      "ratio": 3.525368411417364,
+      "final_objective_and_budgets_match": true,
+      "events": 99
+    }
+  ]
+}

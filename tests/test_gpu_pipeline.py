@@ -61,3 +61,30 @@ def test_prepared_gpu_pilot_outputs_are_fixtures_and_not_gate_evidence(tmp_path,
         assert Path(row['q_path']).is_file()
     with pytest.raises(ValueError,match='Only real-layer'):
         pilot.build_g1_evidence(rows,tmp_path/'rejected',g0_evidence_path='unused')
+
+
+def test_pair_profile_reuses_full_panels_but_cannot_form_g1(tmp_path):
+    from cellquant import pilot
+    from cellquant.solver import CalibrationPanel,pair_schedule
+    from cellquant.quantization import QuantSpec
+    from cellquant.runtime import read_json,atomic_json
+    rng=np.random.default_rng(718)
+    panels=[CalibrationPanel('fixture.q','input',torch.tensor(rng.normal(size=(2,4)),device='cuda'),
+        torch.tensor(rng.normal(size=(4,2)),device='cuda'),metadata={'source_type':'unit_test_fixture'}),
+        CalibrationPanel('fixture.down','output',torch.tensor(rng.normal(size=(4,8)),device='cuda'),
+        torch.tensor(rng.normal(size=(8,2)),device='cuda'),metadata={'source_type':'unit_test_fixture'})]
+    prepared={'hidden_size':4,'seeds':{11:{'fit':panels,'specs':QuantSpec(group_size=4)}}}
+    config={'seeds':[11,23],'solver':{'backend':'torch','device':'cuda','pair_budget':3,
+        'theta_limit':.01,'seconds_per_pair':60,'wall_seconds_per_method':120}}
+    result=pilot.profile_prepared_pair(config,prepared,tmp_path,execution_fingerprint='fixture')
+    assert result['status']=='PROFILE_COMPLETE' and result['evidence_kind']=='PAIR_PROFILE_ONLY'
+    assert result['source_type']=='unit_test_fixture' and len(result['profile_results'])==2
+    assert not list(tmp_path.rglob('pilot_result.json')) and not (tmp_path/'G1_evidence.json').exists()
+    for path in result['profile_results']:
+        row=read_json(path)
+        assert row['configured_pair_count']==3 and row['solver']['requested_pairs']==1
+        assert row['profiled_pair']==list(pair_schedule(4,3,11)[0])
+        row['source_type']='real_layer'
+        rejection=atomic_json(tmp_path/'rejected_profile.json',row)
+        with pytest.raises(ValueError,match='Pair profiles cannot form G1'):
+            pilot.build_g1_evidence([rejection],tmp_path/'no_gate',g0_evidence_path='unused')

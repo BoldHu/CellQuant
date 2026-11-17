@@ -221,11 +221,56 @@ def plain(values):
     return {k:float(v) if torch.is_tensor(v) else v for k,v in values.items()}
 
 
-def solve_pair(states,pair,limits,config):
+class EventIndex:
+    """GPU incidence index: sort once, then visit only the current boundary.
+
+    Re-scanning the entire incidence vector at every cell is quadratic in the
+    number of events. Offsets are host scalar control; event arrays stay on GPU.
+    """
+    def __init__(self,inverse,keys,members,event_count):
+        valid=keys>=0
+        order=torch.argsort(inverse[valid],stable=True)
+        self.keys,self.members=keys[valid][order],members[valid][order]
+        counts=torch.bincount(inverse[valid],minlength=event_count)
+        self.offsets=torch.cat((counts.new_zeros(1),counts.cumsum(0)))
+
+    def at(self,index):
+        start,end=int(self.offsets[index]),int(self.offsets[index+1])
+        return self.keys[start:end],self.members[start:end]
+
+
+def solve_pair(states,pair,limits,config,*,progress=None):
+    trace={'pair':list(pair),'phase':'orbit_initialization','groups_enumerated':0,
+           'event_incidences':0,'event_count':None,'cells_completed':0,'cell_count':None,
+           'started':time.perf_counter(),'last_emitted':0.}
+    def snapshot():
+        result={k:v for k,v in trace.items() if k not in {'started','last_emitted','work'}}
+        result['seconds']=time.perf_counter()-trace['started']
+        if 'work' in trace:result['event_incidences']=trace['work'].generated
+        return result
+    def emit(phase,*,force=False,**details):
+        trace.update(phase=phase,**details)
+        now=time.perf_counter()
+        if force or now-trace['last_emitted']>=30.:
+            trace['last_emitted']=now
+            details=snapshot();details['search_phase']=details.pop('phase')
+            report(progress,'solve.pair.phase',**details)
+    try:
+        return _solve_pair(states,pair,limits,config,trace,emit)
+    except ResourceLimit as exc:
+        exc.diagnostics=snapshot()
+        details=dict(exc.diagnostics);details['search_phase']=details.pop('phase')
+        report(progress,'solve.pair.blocked',reason=str(exc),**details)
+        raise
+
+
+def _solve_pair(states,pair,limits,config,trace,emit):
     if not 0 < config.theta_limit < math.pi:raise ValueError('theta_limit must lie in (0, pi)')
     d = states[0].panel.hidden_size
     if len(pair)!=2 or pair[0]==pair[1] or min(pair)<0 or max(pair)>=d:raise ValueError('Invalid pair')
     synchronize(states[0].a.device);start=time.perf_counter();work=WorkBudget(config.event_limit_per_pair,config.seconds_per_pair)
+    trace['work']=work
+    emit('orbit_initialization',force=True)
     orbit=[PanelOrbit(s,pair) for s in states];baseline=aggregate(states);like=states[0].a
     left,right=-config.theta_limit,config.theta_limit
     timings={k:0. for k in ['event_generation','sort','coefficient_updates','roots','boundary_rounding','verification']}
@@ -233,18 +278,24 @@ def solve_pair(states,pair,limits,config):
     groups=[];angles=[like.new_tensor([left,right,0.])];keys=[torch.full((3,),-1,device=like.device,dtype=torch.long)];members=[keys[0]]
     t=time.perf_counter()
     for o in orbit:
+        emit('event_generation',force=True,panel_id=o.state.panel.panel_id)
         for gid,g in enumerate(o.groups):
+            emit('event_generation',group_id=gid,group_count=len(o.groups))
             a,ids,st=g.enumerate(left,right,config.screen,work)
             for k,v in st.items():stats[o.state.panel.placement][k]+=v
             angles.append(a);members.append(ids);keys.append(torch.full((len(a),),len(groups),device=like.device,dtype=torch.long));groups.append((o,gid))
+            trace['groups_enumerated']+=1
     synchronize(like.device);timings['event_generation']=time.perf_counter()-t;t=time.perf_counter()
+    emit('event_sort',force=True,panel_id=None,group_id=None,group_count=None)
     angles,inverse=torch.unique(torch.cat(angles),sorted=True,return_inverse=True);keys=torch.cat(keys);members=torch.cat(members)
+    event_index=EventIndex(inverse,keys,members,len(angles))
     synchronize(like.device);timings['sort']=time.perf_counter()-t
+    trace.update(event_count=len(angles),cell_count=len(angles)-1)
     def incident(index,all_groups=False):
         if all_groups:return [(o,g,None) for o,g in groups]
-        at=torch.where((inverse==index)&(keys>=0))[0];result=[]
-        for key in torch.unique(keys[at]):
-            ids=members[at[keys[at]==key]];o,g=groups[int(key)]
+        selected_keys,selected_members=event_index.at(index);result=[]
+        for key in torch.unique(selected_keys):
+            ids=selected_members[selected_keys==key];o,g=groups[int(key)]
             result.append((o,g,None if bool((ids<0).any()) else torch.unique(ids)))
         return result
     def coefficients():return [sum(o.state.panel.objective_weight*getattr(o,k) for o in orbit) for k in ['loss_coeff','bw','ba']]
@@ -260,10 +311,12 @@ def solve_pair(states,pair,limits,config):
         if len(short_loss)>32:
             keep=short_loss.topk(32,largest=False).indices;short_theta,short_loss=short_theta[keep],short_loss[keep]
     for n in range(len(angles)-1):
+        emit('coefficient_updates',cell_index=n)
         work.check();lo,hi=angles[n],angles[n+1];mid=lo+(hi-lo)/2;t=time.perf_counter()
         for o,g,ids in incident(n,n==0):o.replace(g,mid,indices=ids)
         synchronize(like.device);timings['coefficient_updates']+=time.perf_counter()-t
         lc,bw,ba=coefficients();t=time.perf_counter();derivative=torch.zeros_like(lc)
+        emit('roots')
         k=torch.arange(1,5,device=like.device,dtype=like.dtype);derivative[1::2]=k*lc[2::2];derivative[2::2]=-k*lc[1::2]
         stationary=trig_roots(derivative,lo,hi);cuts=[torch.stack((lo,hi))]
         if config.constrain_budgets:
@@ -272,13 +325,16 @@ def solve_pair(states,pair,limits,config):
         cuts=torch.unique(torch.cat(cuts),sorted=True);a,b=cuts[:-1],cuts[1:]
         candidates=torch.cat((stationary,cuts[1:-1],a+(b-a)/2,torch.nextafter(a,b),torch.nextafter(b,a),a+(b-a)*1e-7,b-(b-a)*1e-7))
         consider(candidates,lc,bw,ba);synchronize(like.device);timings['roots']+=time.perf_counter()-t;t=time.perf_counter()
+        emit('boundary_rounding')
         for idx in ([n,n+1] if n==0 else [n+1]):
             dirty=incident(idx,idx==0 or idx==len(angles)-1);theta=angles[idx]
             for o,g,_ in dirty:o.replace(g,theta,actual=True)
             consider(theta,*coefficients());boundary_count+=1
             for o,g,_ in dirty:o.replace(g,mid)
         synchronize(like.device);timings['boundary_rounding']+=time.perf_counter()-t
+        trace['cells_completed']=n+1
     t=time.perf_counter();best={**baseline,'theta':like.new_zeros(())}
+    emit('verification',force=True)
     for theta in short_theta[short_loss.argsort()]:
         work.check();measured=[s.direct(pair,theta) for s in states]
         actual={key:sum(s.panel.objective_weight*v[key] for s,v in zip(states,measured)) for key in baseline}
@@ -347,7 +403,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
         'q0':hashlib.sha256(q.detach().cpu().numpy().tobytes()).hexdigest(),'schedule':schedule,
         'specs':{s.panel.panel_id:[asdict(s.wspec),asdict(s.aspec)] for s in states},'limits':plain(limits),
         'config':{k:v for k,v in asdict(config).items() if k not in {'resume','checkpoint_path'}}})
-    log=[];factors=[];offset=0;spent=0.;evaluations=0;status='COMPLETE';reason=None
+    log=[];factors=[];offset=0;spent=0.;evaluations=0;status='COMPLETE';reason=None;resource_diagnostics=None
     checkpoint=Path(config.checkpoint_path) if config.checkpoint_path else None
     if config.resume:
         if checkpoint is None:raise ValueError('Resume requires a checkpoint')
@@ -361,7 +417,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
         if checkpoint is not None and cell:
             synchronize(q.device)
             meta={'signature':signature,'status':state,'log':log,'factors':factors,'next_pair':next_pair,
-                  'elapsed_seconds':spent+time.perf_counter()-started}
+                  'elapsed_seconds':spent+time.perf_counter()-started,'reason':reason,'resource_diagnostics':resource_diagnostics}
             atomic_torch_save({'q':q.detach(),'metadata':meta},checkpoint)
     save('RUNNING')
     try:
@@ -376,7 +432,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
                 if cell:
                     from .solver import SolverConfig
                     cfg=SolverConfig(**{**asdict(config),'seconds_per_pair':min(config.seconds_per_pair,remaining)})
-                    result=solve_pair(states,pair,limits,cfg)
+                    result=solve_pair(states,pair,limits,cfg,progress=lambda phase,**d:report(progress,phase,pair_index=index,**d))
                     result.update(pair=list(pair),pair_index=index)
                 else:
                     end=time.perf_counter()+min(config.seconds_per_pair,remaining)
@@ -402,7 +458,9 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
                     rotate_rows(q,pair,theta);factors.append({'pair':list(pair),'theta':theta})
                 log.append(result);next_pair=index+1;save('RUNNING')
     except ResourceLimit as exc:
-        status='RESOURCE_BLOCKED';reason=str(exc);save(status)
+        status='RESOURCE_BLOCKED';reason=str(exc)
+        resource_diagnostics=getattr(exc,'diagnostics',{'phase':'method_wall_budget','completed_pairs':next_pair})
+        save(status)
     except KeyboardInterrupt:
         # Keep the last atomic completed transaction, never a half-updated Q.
         if checkpoint is not None and cell and checkpoint.is_file():
@@ -412,7 +470,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
         raise
     synchronize(q.device);save(status)
     orth=float(torch.linalg.norm(q.T@q-eye)/math.sqrt(d));synchronize(q.device)
-    return {'status':status,'reason':reason,'q':q,'initial':plain(initial),'final':plain(aggregate(states)),
+    return {'status':status,'reason':reason,'resource_diagnostics':resource_diagnostics,'q':q,'initial':plain(initial),'final':plain(aggregate(states)),
             'limits':plain(limits),'factors':factors,'log':log,'seconds':spent+time.perf_counter()-started,
             'evaluations':evaluations,'completed_pairs':next_pair,'requested_pairs':len(schedule),
             'stopped_by_wall_budget':next_pair<len(schedule) and method!='hadamard_shared','signature':signature,

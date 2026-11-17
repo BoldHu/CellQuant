@@ -1,0 +1,4 @@
+{"hidden": 8, "ffn": 16, "method": "cellquant", "status": "COMPLETE", "reason": null, "seconds": 3.4962430000014137, "completed_pairs": 1, "resource_diagnostics": null}
+{"hidden": 8, "ffn": 16, "method": "fixed_scale_search_matched", "status": "COMPLETE", "reason": null, "seconds": 2.2633955999917816, "completed_pairs": 1, "resource_diagnostics": null}
+{"hidden": 32, "ffn": 128, "method": "cellquant", "status": "COMPLETE", "reason": null, "seconds": 6.880208499991568, "completed_pairs": 1, "resource_diagnostics": null}
+{"hidden": 32, "ffn": 128, "method": "fixed_scale_search_matched", "status": "COMPLETE", "reason": null, "seconds": 9.503199900005711, "completed_pairs": 1, "resource_diagnostics": null}

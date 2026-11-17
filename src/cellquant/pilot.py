@@ -14,6 +14,25 @@ from .gates import evaluate_file
 from .progress import report
 
 
+def summarize_pilot_results(paths):
+    """Summarize execution failures, without assigning a scientific gate result."""
+    paths=list(paths);incomplete=[]
+    for path in paths:
+        row=read_json(path)
+        if row.get('status')=='COMPLETE':continue
+        solver=row.get('solver',{})
+        incomplete.append({'seed':row.get('seed'),'method':row.get('method'),
+            'status':row.get('status'),'reason':solver.get('reason') or 'Incomplete method; no solver reason was recorded',
+            'completed_pairs':solver.get('completed_pairs',len(solver.get('log',[]))),
+            'requested_pairs':solver.get('requested_pairs'),
+            'resource_diagnostics':solver.get('resource_diagnostics'),
+            'result_path':str(path)})
+    reason='; '.join(f"seed={r['seed']} {r['method']}: {r['reason']}" for r in incomplete) or None
+    if not paths:reason='No pilot method results were produced'
+    return {'status':'COMPLETE' if paths and not incomplete else 'RESOURCE_BLOCKED',
+            'reason':reason,'incomplete_methods':incomplete}
+
+
 def panel_metrics(panels,q,specs,device='cpu',*,progress=None):
     tensor=hasattr(q,'detach')
     if tensor:
@@ -58,6 +77,48 @@ def prepare_pilot_inputs(config,model,*,graph_identity,progress=None):
         seeds[seed]={'fit':fit,'heldout':held,'specs':specs,'capture_seconds':seconds}
     return {'seeds':seeds,'hidden_size':model.config.hidden_size,
             'model_parameter_billions':sum(p.numel() for p in model.parameters())/1e9}
+
+
+def profile_prepared_pair(config,prepared,output,*,execution_fingerprint,progress=None):
+    """Bounded real-panel diagnosis; never writes G1 evidence or evaluates held-out."""
+    from .tensor_solver import hadamard_rotation as tensor_hadamard
+    if config['solver'].get('backend')!='torch':raise ValueError('Pair profiling requires the torch solver')
+    output=Path(output);seed=config['seeds'][0];ready=prepared['seeds'][seed]
+    panels,specs=ready['fit'],ready['specs']
+    sources={p.metadata.get('source_type') for p in panels}
+    if len(sources)!=1 or not sources.issubset({'real_layer','unit_test_fixture'}):
+        raise ValueError('Explicit panel provenance required for pair profiling')
+    settings=config['solver'];device=settings['device']
+    q0=tensor_hadamard(prepared['hidden_size'],seed,device)
+    schedule=pair_schedule(len(q0),settings['pair_budget'],seed)
+    if not schedule:raise ValueError('A nonempty pair schedule is required')
+    method_budget=settings.get('wall_seconds_per_method',min(2400.,config.get('gpu_hour_budget',4)*3600/len(METHODS)/len(config['seeds'])))
+    records=[];paths=[]
+    for method in ['fixed_scale_search_matched','cellquant']:
+        def emit(phase,**details):report(progress,'profile.'+phase,seed=seed,method=method,**details)
+        dest=output/'pair_profile'/f'seed_{seed}'/method;dest.mkdir(parents=True,exist_ok=True)
+        cfg=SolverConfig(theta_limit=settings.get('theta_limit',np.pi/4),backend='torch',device=device,
+            compute_dtype=settings.get('compute_dtype','float64'),event_limit_per_pair=settings.get('event_limit_per_pair',200000),
+            seconds_per_pair=settings.get('seconds_per_pair',300.),wall_seconds=method_budget,
+            checkpoint_path=str(dest/'rotation_state.pt'),execution_fingerprint=execution_fingerprint)
+        emit('solve.start',wall_budget_seconds=method_budget,seconds_per_pair=cfg.seconds_per_pair)
+        result=fit_baseline(method,panels,q0,specs,schedule[:1],cfg,progress=emit)
+        q=result.pop('q');atomic_npz(dest/'Q.npz',Q=q)
+        row={'source_type':next(iter(sources)),'evidence_kind':'PAIR_PROFILE_ONLY',
+             'seed':seed,'method':method,'status':result['status'],'solver':result,
+             'configured_pair_count':len(schedule),'profiled_pair':list(schedule[0]),
+             'scope':'First scheduled pair on unchanged full fit panels. No held-out scoring or G1 qualification.'}
+        path=atomic_json(dest/'profile_result.json',row);paths.append(str(path));records.append(row)
+        emit('method.saved',solver_status=result['status'],solver_reason=result.get('reason'),result_path=str(path))
+    incomplete=[{'method':r['method'],'reason':r['solver'].get('reason'),
+                 'resource_diagnostics':r['solver'].get('resource_diagnostics')} for r in records if r['status']!='COMPLETE']
+    summary={'source_type':next(iter(sources)),'evidence_kind':'PAIR_PROFILE_ONLY',
+        'status':'RESOURCE_BLOCKED' if incomplete else 'PROFILE_COMPLETE',
+        'reason':'; '.join(f"{r['method']}: {r['reason']}" for r in incomplete) or None,
+        'incomplete_methods':incomplete,'profile_results':paths,'seed':seed,
+        'scope':'Engineering diagnosis only; not a full rotation fit or G1 evidence.'}
+    atomic_json(output/'pair_profile.json',summary)
+    return summary
 
 
 def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_fingerprint=None,progress=None,prepared=None):
@@ -123,7 +184,8 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
                 device=config['solver'].get('device','cpu'),checkpoint_path=str(dest/('rotation_state.pt' if tensor else 'rotation_state.npz')),
                 execution_fingerprint=execution_fingerprint or graph_identity,resume=resume)
             result=fit_baseline(method,fit_panels,q0,specs,schedule,cfg,progress=method_progress)
-            method_progress('solve.complete',solver_status=result['status'])
+            method_progress('solve.complete',solver_status=result['status'],solver_reason=result.get('reason'),
+                            resource_diagnostics=result.get('resource_diagnostics'))
             q=result.pop('q');atomic_npz(dest/'Q.npz',Q=q)
             row={'source_type':source_type,'status':result['status'],'seed':seed,'method':method,
                 'model_id':formal['model_id'],'model_revision':config['model_revision'],
@@ -138,7 +200,7 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
                 'q_path':str((dest/'Q.npz').resolve()),'q_sha256':sha256_file(dest/'Q.npz'),'solver':result,
                 'heldout':panel_metrics(heldout_panels,q,specs,cfg.device,progress=method_progress)}
             path=atomic_json(dest/'pilot_result.json',row);records.append(path)
-            method_progress('method.saved',result_path=str(path),solver_status=result['status'])
+            method_progress('method.saved',result_path=str(path),solver_status=result['status'],solver_reason=result.get('reason'))
         del fit_panels,heldout_panels,q0
     return records
 
@@ -151,6 +213,7 @@ def build_g1_evidence(paths,output,*,g0_evidence_path):
         rows=[];refs=[]
         for path in paths:
             row=read_json(path)
+            if row.get('evidence_kind')=='PAIR_PROFILE_ONLY':raise ValueError('Pair profiles cannot form G1 evidence')
             if row.get('source_type')!='real_layer':raise ValueError('Only real-layer artifacts can form G1')
             for k,h in [('q_path','q_sha256'),('data_manifest_path','data_manifest_sha256')]:
                 if sha256_file(row[k])!=row[h]:raise ValueError('Pilot artifact checksum mismatch')

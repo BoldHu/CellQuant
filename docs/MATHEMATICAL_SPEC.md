@@ -126,3 +126,9 @@ def export_spinquant_rotation(Q, r2_per_layer, path):
 
 G0 已实测 3 seeds/24 cases；完整 d=4096 smoke 使用窄角域与少 tokens，不能当成正式全角域复杂度或模型吞吐证据。原参考 guard 保留。原有理论与科学不变量不因实现资源上限而放宽。
 
+## 2026-11-17：小区间求根筛选与事件索引
+
+对于三角多项式 `f(t)=a0+Σ(ak cos(kt)+bk sin(kt))`，令区间中点为 m、半宽为 h，则导数绝对值不超过 `L=Σ k(|ak|+|bk|)`，从而 `|f(t)-f(m)| <= hL`。在实数运算中，`|f(m)| > hL` 可排除该区间内的根。CUDA 数值实现额外加入 `64*eps*Σ|coeff|` 的舍入保护；接近零、切根和未能排除的区间仍使用原 FP64 QR 求根。该浮点保护不是 interval arithmetic，也没有新增 certified/global-optimal 声明。
+
+事件关联表按边界编号在 GPU 上排序一次，并建立累积计数偏移；查找当前边界时仅读取对应片段。它保留同时事件、owner 标记与所有成员，不改变枚举角域或事件集合。以上优化有 CPU 参考/CUDA 回归与同卡合成计时，但真实 7B 是否可在原预算内完成仍需实测，不能由小案例加速推出。
+

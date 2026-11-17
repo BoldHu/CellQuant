@@ -167,3 +167,65 @@ def test_two_row_output_ste_matches_full_objective_updates(device):
     full=list(full_ste([cpu],(0,1),cfg,6,.02))
     partial=[float(v) for v in ts._ste_proposals([gpu],(0,1),cfg,6,.02)]
     np.testing.assert_allclose(partial,full,rtol=1e-10,atol=1e-12)
+
+
+def test_root_exclusion_avoids_qr_without_hiding_near_zero_cells(device,monkeypatch):
+    original=tm.companion_roots;calls=[]
+    def measured(coeff):
+        calls.append(True)
+        return original(coeff)
+    monkeypatch.setattr(tm,'companion_roots',measured)
+    # Strictly positive throughout: the analytic derivative bound suffices.
+    assert not tm.trig_roots(tensor([10.,1.,1.],device),-.5,.5).numel()
+    assert not calls
+    # A real root inside a narrow cell must reach the numerical root finder.
+    roots=tm.trig_roots(tensor([0.,0.,1.],device),-1e-4,1e-4)
+    assert calls and roots.numel()==1 and abs(float(roots[0]))<1e-12
+    # Tangency at zero also cannot be screened by a strict-sign bound.
+    calls.clear()
+    roots=tm.trig_roots(tensor([1.,-1.,0.],device),-1e-4,1e-4)
+    assert calls and roots.numel()==1 and abs(float(roots[0]))<1e-8
+
+
+def test_root_screen_matches_reference_on_narrow_random_cells(device):
+    rng=np.random.default_rng(8712)
+    for _ in range(30):
+        c=rng.normal(size=9)
+        roots=_trig_roots(c,-.78,.78)
+        mid=float(rng.uniform(-.7,.7));lo,hi=mid-1e-4,mid+1e-4
+        if roots and rng.random()<.7:lo,hi=roots[0]-1e-4,roots[0]+1e-4
+        actual=tm.trig_roots(tensor(c,device),lo,hi).cpu().numpy()
+        expected=_trig_roots(c,lo,hi)
+        np.testing.assert_allclose(actual,expected,atol=2e-9,rtol=1e-7)
+
+
+def test_event_index_preserves_all_simultaneous_members(device):
+    inverse=torch.tensor([0,4,0,2,4,2,2,0],device=device)
+    keys=torch.tensor([-1,1,0,1,2,1,2,3],device=device)
+    members=torch.tensor([-1,-1,3,4,5,6,-1,7],device=device)
+    index=ts.EventIndex(inverse,keys,members,5)
+    for i in range(5):
+        selected=(inverse==i)&(keys>=0)
+        actual_keys,actual_members=index.at(i)
+        torch.testing.assert_close(actual_keys,keys[selected],rtol=0,atol=0)
+        torch.testing.assert_close(actual_members,members[selected],rtol=0,atol=0)
+        assert actual_keys.device.type==device
+
+
+def test_resource_failure_records_phase_and_unfinished_pair(device,tmp_path):
+    rng=np.random.default_rng(94)
+    p=CalibrationPanel('fixture.output','output',rng.normal(size=(4,8)),rng.normal(size=(8,2)))
+    cfg=SolverConfig(backend='torch',device=device,theta_limit=.7,event_limit_per_pair=0,
+                     seconds_per_pair=120,wall_seconds=120,checkpoint_path=str(tmp_path/'state.pt'))
+    events=[]
+    result=ts.fit_baseline('cellquant',[p],tensor(np.eye(4),device),QuantSpec(group_size=4),[(0,1)],cfg,
+                          progress=lambda phase,**d:events.append((phase,d)))
+    assert result['status']=='RESOURCE_BLOCKED' and result['completed_pairs']==0
+    assert 'Event incidence budget exceeded' in result['reason']
+    diagnostic=result['resource_diagnostics']
+    assert diagnostic['phase']=='event_generation' and diagnostic['panel_id']=='fixture.output'
+    assert diagnostic['event_incidences']>0 and diagnostic['cells_completed']==0
+    blocked=[e for e in events if e[0]=='solve.pair.blocked']
+    assert len(blocked)==1 and blocked[0][1]['search_phase']=='event_generation'
+    saved=torch.load(cfg.checkpoint_path,map_location=device,weights_only=True)['metadata']
+    assert saved['reason']==result['reason'] and saved['resource_diagnostics']==diagnostic

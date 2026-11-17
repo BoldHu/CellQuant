@@ -1,0 +1,89 @@
+{
+  "source_type": "real_layer",
+  "origin": "User-provided stopped-run notebook and read-only result summary reply; cloud result files not independently accessed",
+  "run_dir": "/content/CellQuant/runs/experiments/2026-11-17T081006.337925_0000_a3db20ca9b",
+  "status": "RESOURCE_BLOCKED",
+  "elapsed_seconds": 2919.83,
+  "methods": [
+    {
+      "seed": 11,
+      "method": "angle_grid_matched",
+      "seconds": 232.53729189600017,
+      "status": "COMPLETE",
+      "reason": null,
+      "completed_pairs": 128
+    },
+    {
+      "seed": 11,
+      "method": "cellquant",
+      "seconds": 307.82472268900074,
+      "status": "RESOURCE_BLOCKED",
+      "reason": "Pair wall-clock budget exceeded: 300s",
+      "completed_pairs": 0
+    },
+    {
+      "seed": 11,
+      "method": "fixed_scale_search_matched",
+      "seconds": 307.8021749310001,
+      "status": "RESOURCE_BLOCKED",
+      "reason": "Pair wall-clock budget exceeded: 300s",
+      "completed_pairs": 0
+    },
+    {
+      "seed": 11,
+      "method": "givens_ste_matched",
+      "seconds": 514.758685882,
+      "status": "COMPLETE",
+      "reason": null,
+      "completed_pairs": 128
+    },
+    {
+      "seed": 11,
+      "method": "hadamard_shared",
+      "seconds": 6.736125981999976,
+      "status": "COMPLETE",
+      "reason": null,
+      "completed_pairs": 0
+    },
+    {
+      "seed": 23,
+      "method": "angle_grid_matched",
+      "seconds": 233.97979917200064,
+      "status": "COMPLETE",
+      "reason": null,
+      "completed_pairs": 128
+    },
+    {
+      "seed": 23,
+      "method": "cellquant",
+      "seconds": 307.852559338,
+      "status": "RESOURCE_BLOCKED",
+      "reason": "Pair wall-clock budget exceeded: 300s",
+      "completed_pairs": 0
+    },
+    {
+      "seed": 23,
+      "method": "fixed_scale_search_matched",
+      "seconds": 307.80838767000023,
+      "status": "RESOURCE_BLOCKED",
+      "reason": "Pair wall-clock budget exceeded: 300s",
+      "completed_pairs": 0
+    },
+    {
+      "seed": 23,
+      "method": "givens_ste_matched",
+      "seconds": 543.059243998,
+      "status": "COMPLETE",
+      "reason": null,
+      "completed_pairs": 128
+    },
+    {
+      "seed": 23,
+      "method": "hadamard_shared",
+      "seconds": 6.625469598000564,
+      "status": "COMPLETE",
+      "reason": null,
+      "completed_pairs": 0
+    }
+  ]
+}

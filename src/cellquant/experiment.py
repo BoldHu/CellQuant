@@ -194,15 +194,20 @@ def _verify_weight_files(config,output):
     atomic_json(Path(output)/'weights_manifest.json',{'revision':config['model_revision'],'files':files})
 
 
-def run_experiment(config,*,project_root=None,preflight_only=False):
+def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False):
     config=read_json(config) if isinstance(config,(str,Path)) else copy.deepcopy(config)
     root=Path(project_root or Path.cwd()).resolve()
     run_id=utc_now().replace(':','').replace('+','_')+'_'+uuid.uuid4().hex[:10]
     output=root/'runs'/'experiments'/run_id;output.mkdir(parents=True)
     atomic_json(output/'config.json',config)
-    ready=preflight(config,root);atomic_json(output/'preflight.json',ready)
+    ready=preflight(config,root)
+    if profile_pair and (config.get('stage')!='G1' or not config.get('runtime',{}).get('model_device','').startswith('cuda') or config.get('resume_run_dir')):
+        ready['missing'].append('Pair profile requires a GPU-resident G1 config without resume_run_dir')
+        ready['status']='BLOCKED'
+    atomic_json(output/'preflight.json',ready)
     base={'schema_version':'1.0','run_id':run_id,'created_at_utc':utc_now(),'run_dir':str(output),
-          'config_sha256':config_hash(config),'source_type':'not_run','status':'BLOCKED'}
+          'config_sha256':config_hash(config),'source_type':'not_run','status':'BLOCKED',
+          'execution_mode':'pair_profile_only' if profile_pair else 'experiment'}
     if preflight_only or ready['status']!='READY':
         result={**base,'readiness':ready,'status':'PREFLIGHT_ONLY' if preflight_only else 'BLOCKED'}
         atomic_json(output/'result.json',result);return result
@@ -251,7 +256,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False):
                                      'model':config['model_revision'],'dtype':config['runtime']['dtype'],'r3r4':'upstream fp32_had',
                                      'r2_generator':'torch_cuda_hadamard_v1' if resident else 'numpy_pcg64_hadamard'})
         if stage=='G1':
-            from .pilot import run_pilot,build_g1_evidence
+            from .pilot import run_pilot,build_g1_evidence,summarize_pilot_results
             from .runner import frozen_execution_config_hash
             fingerprint=execution_fingerprint(root,config.get('execution_provenance_path'))
             if fingerprint['status']!='VERIFIED':raise ExperimentBlocked('G1 execution provenance incomplete')
@@ -277,12 +282,17 @@ def run_experiment(config,*,project_root=None,preflight_only=False):
                 # are frozen. Free it; do not offload a 7B copy to host RAM.
                 del model;model=None;gc.collect();torch.cuda.empty_cache()
                 progress.step('g1.model_released',reason='all seed panels captured; panels remain on CUDA')
-            paths=run_pilot(config,model,output,graph_identity=graph_identity,execution_fingerprint=fingerprint['sha256'],progress=progress.step,prepared=prepared)
-            progress.step('g1.evidence')
-            gate=build_g1_evidence(paths,output,g0_evidence_path=config.get('g0_evidence_path','runs/build_m2/G0_evidence.json'))
-            result={**base,'source_type':'real_layer','status':'COMPLETE' if all(read_json(p)['status']=='COMPLETE' for p in paths) else 'RESOURCE_BLOCKED',
-                    'evidence_kind':'REAL_LAYER_PILOT','gate':gate['status'],
-                    'raw_results':[str(p) for p in paths],'timings':timings}
+            if profile_pair:
+                from .pilot import profile_prepared_pair
+                summary=profile_prepared_pair(config,prepared,output,execution_fingerprint=fingerprint['sha256'],progress=progress.step)
+                result={**base,**summary,'timings':timings}
+            else:
+                paths=run_pilot(config,model,output,graph_identity=graph_identity,execution_fingerprint=fingerprint['sha256'],progress=progress.step,prepared=prepared)
+                progress.step('g1.evidence')
+                gate=build_g1_evidence(paths,output,g0_evidence_path=config.get('g0_evidence_path','runs/build_m2/G0_evidence.json'))
+                result={**base,'source_type':'real_layer',**summarize_pilot_results(paths),
+                        'evidence_kind':'REAL_LAYER_PILOT','gate':gate['status'],
+                        'raw_results':[str(p) for p in paths],'timings':timings}
         else:
             data_manifest,parts=load_token_manifest(config['data']['token_manifest_path']);verify_disjoint(parts['fit'],parts['dev'])
             if len(parts['fit'])!=config['data']['calibration_samples']:raise ExperimentBlocked('Calibration sample count does not match protocol')
@@ -449,13 +459,15 @@ def run_experiment(config,*,project_root=None,preflight_only=False):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',required=True);parser.add_argument('--preflight',action='store_true')
     parser.add_argument('--result-index',help='New pointer file for this invocation, without changing its frozen config')
+    parser.add_argument('--profile-pair',action='store_true',help='Engineering diagnosis: first G1 pair on full fit panels for both event methods; no G1 evidence')
     args=parser.parse_args()
     if args.result_index and Path(args.result_index).exists():raise FileExistsError('Result index already exists; choose a unique path')
-    result=run_experiment(args.config,preflight_only=args.preflight)
+    result=run_experiment(args.config,preflight_only=args.preflight,profile_pair=args.profile_pair)
     if args.result_index:atomic_json(args.result_index,{k:result[k] for k in ['run_id','run_dir','status']})
     print(json.dumps({'status':result['status'],'run_dir':result['run_dir'],'reason':result.get('reason'),
+                      'incomplete_methods':result.get('incomplete_methods',[]),
                       'missing':result.get('readiness',{}).get('missing',[])},ensure_ascii=False,indent=2))
-    return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY'} else 2
+    return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY','PROFILE_COMPLETE'} else 2
 
 
 if __name__=='__main__':raise SystemExit(main())

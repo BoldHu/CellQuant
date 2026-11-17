@@ -1,0 +1,117 @@
+{
+  "source_type": "synthetic_math",
+  "status": "REGRESSION_PASSED_REAL_G1_STILL_RESOURCE_BLOCKED",
+  "test_execution": {
+    "argv": [
+      "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+      "-m",
+      "pytest",
+      "-q"
+    ],
+    "returncode": 0,
+    "seconds": 31.645573999994667,
+    "notebook_schema_and_syntax": "PASS"
+  },
+  "tests": "213 passed, 1 warning in 30.43s",
+  "notebook_validation": {
+    "schema_and_syntax": "PASS",
+    "modified_cell_outputs_cleared": true,
+    "other_cell_changes_observed": [],
+    "source_changed_after_edit": false,
+    "new_profile_switch_present": true
+  },
+  "source_sha256": {
+    "src/cellquant/tensor_math.py": "d4699846fb996fac28cc837c80d00fa616ade7fd936a7f33b8a0a703d586edaf",
+    "src/cellquant/tensor_solver.py": "44dd583d9cc99f6620c70db7418b45b7aba5b8f8ee19e112e5a5e0a6be5fa426",
+    "src/cellquant/pilot.py": "11afe4c5a23ca7f362de1c514c1702db5a7610b6d5ba9cc4e51c30c6ad936492",
+    "src/cellquant/experiment.py": "6d0d836709c464db997df9208d3d59bc8e4d20ac91cda8cee6105cee3de8119d",
+    "tests/test_tensor_solver.py": "c8302e0632e46283c88de1b8890bfe4abd26455176f0335b68c6439bb8a9a242",
+    "tests/test_pilot_failure_summary.py": "55b379d2f3090f1b641e5d3dc385c53fec0eba4fa8ff4f64940b4c9607d105bd",
+    "tests/test_gpu_pipeline.py": "0bc82b6046ad5abfee3115fd7dd0ada4b9df663e4b99b794ac921c70bab2a30f",
+    "tests/test_notebook_g1_inputs.py": "4523d5b4a47b3826ee11ad9c056b7354798f93f0e9f13e88217b2d3ab80d944e",
+    "notebooks/01_Colab_Real_Layer_Pilot.ipynb": "b8889e0cd5c92456a85cc21f328d8dff8879e3a76d2f7a793eff0da53f8ec9b2",
+    "configs/colab_pilot.json": "9498ed0db6be3bb7e8f7a47bfa6ecd1c54c0ab1d3ba3a8f7fabf6ae4675305b8"
+  },
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "gate_thresholds_changed": false,
+  "small_probe_comparison": {
+    "source_type": "synthetic_math",
+    "scope": "Small same-GPU engineering probes; not real-model speedup",
+    "cases": [
+      {
+        "hidden": 8,
+        "ffn": 16,
+        "method": "cellquant",
+        "before_seconds": 3.4962430000014137,
+        "after_seconds": 2.6364880000182893,
+        "ratio": 1.3260985826512999,
+        "final_objective_and_budgets_match": true,
+        "events": 21
+      },
+      {
+        "hidden": 8,
+        "ffn": 16,
+        "method": "fixed_scale_search_matched",
+        "before_seconds": 2.2633955999917816,
+        "after_seconds": 1.0688314999861177,
+        "ratio": 2.117635567459585,
+        "final_objective_and_budgets_match": true,
+        "events": 21
+      },
+      {
+        "hidden": 32,
+        "ffn": 128,
+        "method": "cellquant",
+        "before_seconds": 6.880208499991568,
+        "after_seconds": 3.464337200013688,
+        "ratio": 1.9860100512052878,
+        "final_objective_and_budgets_match": true,
+        "events": 108
+      },
+      {
+        "hidden": 32,
+        "ffn": 128,
+        "method": "fixed_scale_search_matched",
+        "before_seconds": 9.503199900005711,
+        "after_seconds": 2.6956615000090096,
+        "ratio": 3.525368411417364,
+        "final_objective_and_budgets_match": true,
+        "events": 99
+      }
+    ]
+  },
+  "full_shape_probe": {
+    "status": "RESOURCE_BLOCKED",
+    "reason": "Pair wall-clock budget exceeded: 30s",
+    "diagnostics": {
+      "cell_count": 48725,
+      "cell_index": 979,
+      "cells_completed": 979,
+      "event_count": 48726,
+      "event_incidences": 48716,
+      "group_count": null,
+      "group_id": null,
+      "groups_enumerated": 2,
+      "pair": [
+        0,
+        1
+      ],
+      "panel_id": null,
+      "phase": "coefficient_updates",
+      "seconds": 30.00319170000148
+    },
+    "scope": "One synthetic output panel on local RTX 3050, 30s diagnostic budget; not a real L4 G1"
+  },
+  "not_run": [
+    "Updated real L4 G1 pair profile",
+    "Successful full G1",
+    "AutoDL and G2-G4"
+  ],
+  "user_run_observation": "user_result_observation.json",
+  "archived_credentials_redacted": true,
+  "claims": [
+    "No real-model speedup claim",
+    "No numerical certification claim",
+    "No conversion of resource blocking to PASS"
+  ]
+}

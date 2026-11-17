@@ -1,0 +1,512 @@
+{
+  "environment": {
+    "compatibility_claim": "CPU tooling only; GPU kernels require target-device tests",
+    "created_at_utc": "2026-11-17T09:39:18.674825+00:00",
+    "cuda": {
+      "available": true,
+      "bf16_supported": true,
+      "devices": [
+        {
+          "compute_capability": [
+            8,
+            6
+          ],
+          "index": 0,
+          "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+          "total_gib": 3.99951171875
+        }
+      ],
+      "nvidia_smi": "NVIDIA GeForce RTX 3050 Laptop GPU, 546.30, 4096 MiB, 8.6",
+      "status": "DEVICE_DETECTED",
+      "torch_cuda_build": "11.8"
+    },
+    "executable": "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+    "machine": "AMD64",
+    "packages": {
+      "accelerate": "0.34.2",
+      "datasets": "2.20.0",
+      "fast-hadamard-transform": null,
+      "flash-attn": null,
+      "huggingface-hub": "0.36.2",
+      "lm_eval": "0.4.14.dev0",
+      "nbclient": "0.11.0",
+      "nbformat": "5.11.1",
+      "numpy": "2.4.6",
+      "psutil": "7.2.2",
+      "pyarrow": "26.0.1",
+      "safetensors": "0.8.0",
+      "scipy": "1.17.1",
+      "tokenizers": "0.19.1",
+      "torch": "2.6.0+cu118",
+      "transformers": "4.44.2",
+      "triton": null
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.18",
+    "schema_version": "1.0"
+  },
+  "runs": [
+    {
+      "completed_pairs": 1,
+      "compute_dtype": "float64",
+      "evaluations": 0,
+      "factors": [
+        {
+          "pair": [
+            0,
+            1
+          ],
+          "theta": 0.05216452058764583
+        }
+      ],
+      "ffn": 16,
+      "final": {
+        "budget_a": 0.048855761757604504,
+        "budget_w": 0.036127675097147025,
+        "loss": 0.024438840017335935
+      },
+      "hidden": 8,
+      "host_work": "Python scheduling/scalar decisions and checkpoint/hash I/O; no NumPy/SciPy solver arithmetic",
+      "initial": {
+        "budget_a": 0.04905875931343112,
+        "budget_w": 0.036345175406121435,
+        "loss": 0.03751120655613838
+      },
+      "interval_certified": false,
+      "limits": {
+        "budget_a": 0.04905875931343112,
+        "budget_w": 0.036345175406121435
+      },
+      "log": [
+        {
+          "accepted": true,
+          "baseline": {
+            "budget_a": 0.04905875931343112,
+            "budget_w": 0.036345175406121435,
+            "loss": 0.03751120655613838
+          },
+          "best": {
+            "budget_a": 0.048855761757604504,
+            "budget_w": 0.036127675097147025,
+            "loss": 0.024438840017335935,
+            "theta": 0.05216452058764583
+          },
+          "boundary_rounding_evaluations": 21,
+          "candidate_count": 125,
+          "candidate_policy": "32 lowest predicted feasible candidates; actual full-group verification",
+          "event_count": 21,
+          "event_incidences": 18,
+          "incremental_statistics": [
+            {
+              "code_member_updates": 55,
+              "full_gemm_per_event": 0,
+              "owner_member_updates": 7,
+              "row_column_updates": 20
+            },
+            {
+              "code_member_updates": 476,
+              "full_gemm_per_event": 0,
+              "owner_member_updates": 30,
+              "row_column_updates": 46
+            }
+          ],
+          "interval_certified": false,
+          "numerical_device": "cuda:0",
+          "pair": [
+            0,
+            1
+          ],
+          "pair_index": 0,
+          "scope": "Torch FP64 numerical cell search; not certified/global optimal",
+          "seconds": 2.5635349999938626,
+          "statistics": {
+            "input": {
+              "groups": 6,
+              "member_visits": 18,
+              "owner_intervals": 6,
+              "stable_groups": 5
+            },
+            "output": {
+              "groups": 2,
+              "member_visits": 32,
+              "owner_intervals": 2,
+              "stable_groups": 0
+            }
+          },
+          "status": "COMPLETE",
+          "timings": {
+            "boundary_rounding": 0.4113952999759931,
+            "coefficient_updates": 0.16742329989210702,
+            "event_generation": 0.09597389999544248,
+            "roots": 1.6376382000453304,
+            "sort": 0.038147499988554046,
+            "verification": 0.16506449997541495
+          }
+        }
+      ],
+      "method": "cellquant",
+      "numerical_backend": "torch_resident_v1",
+      "numerical_device": "cuda:0",
+      "orientation": "R1=Q.T",
+      "orthogonality_residual": 1.097770260190436e-18,
+      "reason": null,
+      "requested_pairs": 1,
+      "resource_diagnostics": null,
+      "root_solver": "torch_complex_shifted_qr_v1",
+      "seconds": 2.6364880000182893,
+      "shared_global_r1": true,
+      "signature": "dede145eeb97b4e1efc67abe418b652f3ed22170a25cc7808a978f70b5303713",
+      "status": "COMPLETE",
+      "stopped_by_wall_budget": false,
+      "tokens": 4
+    },
+    {
+      "completed_pairs": 1,
+      "compute_dtype": "float64",
+      "evaluations": 0,
+      "factors": [
+        {
+          "pair": [
+            0,
+            1
+          ],
+          "theta": 0.058382522689811395
+        }
+      ],
+      "ffn": 16,
+      "final": {
+        "budget_a": 0.04883074944342766,
+        "budget_w": 0.03610029556033128,
+        "loss": 0.021010587957980643
+      },
+      "hidden": 8,
+      "host_work": "Python scheduling/scalar decisions and checkpoint/hash I/O; no NumPy/SciPy solver arithmetic",
+      "initial": {
+        "budget_a": 0.04905875931343112,
+        "budget_w": 0.036345175406121435,
+        "loss": 0.03751120655613838
+      },
+      "interval_certified": false,
+      "limits": {
+        "budget_a": 0.04905875931343112,
+        "budget_w": 0.036345175406121435
+      },
+      "log": [
+        {
+          "accepted": true,
+          "baseline": {
+            "budget_a": 0.04905875931343112,
+            "budget_w": 0.036345175406121435,
+            "loss": 0.03751120655613838
+          },
+          "best": {
+            "budget_a": 0.04883074944342766,
+            "budget_w": 0.03610029556033128,
+            "loss": 0.02101058795798064,
+            "theta": 0.058382522689811395
+          },
+          "boundary_rounding_evaluations": 21,
+          "candidate_count": 124,
+          "candidate_policy": "32 lowest predicted feasible candidates; actual full-group verification",
+          "event_count": 21,
+          "event_incidences": 18,
+          "incremental_statistics": [
+            {
+              "code_member_updates": 14,
+              "full_gemm_per_event": 0,
+              "owner_member_updates": 0,
+              "row_column_updates": 14
+            },
+            {
+              "code_member_updates": 29,
+              "full_gemm_per_event": 0,
+              "owner_member_updates": 0,
+              "row_column_updates": 26
+            }
+          ],
+          "interval_certified": false,
+          "numerical_device": "cuda:0",
+          "pair": [
+            0,
+            1
+          ],
+          "pair_index": 0,
+          "scope": "Torch FP64 numerical cell search; not certified/global optimal",
+          "seconds": 1.0581635999842547,
+          "statistics": {
+            "input": {
+              "groups": 6,
+              "member_visits": 12,
+              "owner_intervals": 6,
+              "stable_groups": 5
+            },
+            "output": {
+              "groups": 2,
+              "member_visits": 32,
+              "owner_intervals": 2,
+              "stable_groups": 0
+            }
+          },
+          "status": "COMPLETE",
+          "timings": {
+            "boundary_rounding": 0.2954803000611719,
+            "coefficient_updates": 0.15673020007670857,
+            "event_generation": 0.03905059999669902,
+            "roots": 0.3958297000499442,
+            "sort": 0.0011613000242505223,
+            "verification": 0.15029000001959503
+          }
+        }
+      ],
+      "method": "fixed_scale_search_matched",
+      "numerical_backend": "torch_resident_v1",
+      "numerical_device": "cuda:0",
+      "orientation": "R1=Q.T",
+      "orthogonality_residual": 1.6934345179540317e-18,
+      "reason": null,
+      "requested_pairs": 1,
+      "resource_diagnostics": null,
+      "root_solver": "torch_complex_shifted_qr_v1",
+      "seconds": 1.0688314999861177,
+      "shared_global_r1": true,
+      "signature": "58843ccbd1a91f78571832955858a8911489715d55d02c342e2619d750b02fce",
+      "status": "COMPLETE",
+      "stopped_by_wall_budget": false,
+      "tokens": 4
+    },
+    {
+      "completed_pairs": 1,
+      "compute_dtype": "float64",
+      "evaluations": 0,
+      "factors": [
+        {
+          "pair": [
+            0,
+            1
+          ],
+          "theta": 0.05230063275869361
+        }
+      ],
+      "ffn": 128,
+      "final": {
+        "budget_a": 0.07631316896296517,
+        "budget_w": 0.06440919194372487,
+        "loss": 0.04703488202909533
+      },
+      "hidden": 32,
+      "host_work": "Python scheduling/scalar decisions and checkpoint/hash I/O; no NumPy/SciPy solver arithmetic",
+      "initial": {
+        "budget_a": 0.07631316896296517,
+        "budget_w": 0.06447128364958418,
+        "loss": 0.05067664554594178
+      },
+      "interval_certified": false,
+      "limits": {
+        "budget_a": 0.07631316896296517,
+        "budget_w": 0.06447128364958418
+      },
+      "log": [
+        {
+          "accepted": true,
+          "baseline": {
+            "budget_a": 0.07631316896296517,
+            "budget_w": 0.06447128364958418,
+            "loss": 0.05067664554594178
+          },
+          "best": {
+            "budget_a": 0.07631316896296517,
+            "budget_w": 0.06440919194372487,
+            "loss": 0.04703488202909532,
+            "theta": 0.05230063275869361
+          },
+          "boundary_rounding_evaluations": 108,
+          "candidate_count": 645,
+          "candidate_policy": "32 lowest predicted feasible candidates; actual full-group verification",
+          "event_count": 108,
+          "event_incidences": 104,
+          "incremental_statistics": [
+            {
+              "code_member_updates": 30,
+              "full_gemm_per_event": 0,
+              "owner_member_updates": 0,
+              "row_column_updates": 30
+            },
+            {
+              "code_member_updates": 21929,
+              "full_gemm_per_event": 0,
+              "owner_member_updates": 549,
+              "row_column_updates": 298
+            }
+          ],
+          "interval_certified": false,
+          "numerical_device": "cuda:0",
+          "pair": [
+            0,
+            1
+          ],
+          "pair_index": 0,
+          "scope": "Torch FP64 numerical cell search; not certified/global optimal",
+          "seconds": 3.453642899985425,
+          "statistics": {
+            "input": {
+              "groups": 10,
+              "member_visits": 20,
+              "owner_intervals": 10,
+              "stable_groups": 10
+            },
+            "output": {
+              "groups": 2,
+              "member_visits": 384,
+              "owner_intervals": 3,
+              "stable_groups": 0
+            }
+          },
+          "status": "COMPLETE",
+          "timings": {
+            "boundary_rounding": 1.7568208998127375,
+            "coefficient_updates": 0.7827636000292841,
+            "event_generation": 0.048121800005901605,
+            "roots": 0.639686599955894,
+            "sort": 0.0013260999985504895,
+            "verification": 0.1651772000186611
+          }
+        }
+      ],
+      "method": "cellquant",
+      "numerical_backend": "torch_resident_v1",
+      "numerical_device": "cuda:0",
+      "orientation": "R1=Q.T",
+      "orthogonality_residual": 1.9626172276517795e-17,
+      "reason": null,
+      "requested_pairs": 1,
+      "resource_diagnostics": null,
+      "root_solver": "torch_complex_shifted_qr_v1",
+      "seconds": 3.464337200013688,
+      "shared_global_r1": true,
+      "signature": "c45c12a263e05ca4540892323fded46c4b66d12ec5261627e5fe19b6a13843c0",
+      "status": "COMPLETE",
+      "stopped_by_wall_budget": false,
+      "tokens": 8
+    },
+    {
+      "completed_pairs": 1,
+      "compute_dtype": "float64",
+      "evaluations": 0,
+      "factors": [
+        {
+          "pair": [
+            0,
+            1
+          ],
+          "theta": 0.04777421430262497
+        }
+      ],
+      "ffn": 128,
+      "final": {
+        "budget_a": 0.07631316896296517,
+        "budget_w": 0.06441492518035145,
+        "loss": 0.04707800589210673
+      },
+      "hidden": 32,
+      "host_work": "Python scheduling/scalar decisions and checkpoint/hash I/O; no NumPy/SciPy solver arithmetic",
+      "initial": {
+        "budget_a": 0.07631316896296517,
+        "budget_w": 0.06447128364958418,
+        "loss": 0.05067664554594178
+      },
+      "interval_certified": false,
+      "limits": {
+        "budget_a": 0.07631316896296517,
+        "budget_w": 0.06447128364958418
+      },
+      "log": [
+        {
+          "accepted": true,
+          "baseline": {
+            "budget_a": 0.07631316896296517,
+            "budget_w": 0.06447128364958418,
+            "loss": 0.05067664554594178
+          },
+          "best": {
+            "budget_a": 0.07631316896296517,
+            "budget_w": 0.06441492518035144,
+            "loss": 0.04707800589210672,
+            "theta": 0.04777421430262497
+          },
+          "boundary_rounding_evaluations": 99,
+          "candidate_count": 589,
+          "candidate_policy": "32 lowest predicted feasible candidates; actual full-group verification",
+          "event_count": 99,
+          "event_incidences": 95,
+          "incremental_statistics": [
+            {
+              "code_member_updates": 30,
+              "full_gemm_per_event": 0,
+              "owner_member_updates": 0,
+              "row_column_updates": 30
+            },
+            {
+              "code_member_updates": 231,
+              "full_gemm_per_event": 0,
+              "owner_member_updates": 0,
+              "row_column_updates": 194
+            }
+          ],
+          "interval_certified": false,
+          "numerical_device": "cuda:0",
+          "pair": [
+            0,
+            1
+          ],
+          "pair_index": 0,
+          "scope": "Torch FP64 numerical cell search; not certified/global optimal",
+          "seconds": 2.6853600000031292,
+          "statistics": {
+            "input": {
+              "groups": 10,
+              "member_visits": 20,
+              "owner_intervals": 10,
+              "stable_groups": 10
+            },
+            "output": {
+              "groups": 2,
+              "member_visits": 384,
+              "owner_intervals": 3,
+              "stable_groups": 0
+            }
+          },
+          "status": "COMPLETE",
+          "timings": {
+            "boundary_rounding": 1.243549999955576,
+            "coefficient_updates": 0.6629781001829542,
+            "event_generation": 0.0487466000195127,
+            "roots": 0.5223428000463173,
+            "sort": 0.0012697999773081392,
+            "verification": 0.14927629998419434
+          }
+        }
+      ],
+      "method": "fixed_scale_search_matched",
+      "numerical_backend": "torch_resident_v1",
+      "numerical_device": "cuda:0",
+      "orientation": "R1=Q.T",
+      "orthogonality_residual": 6.320278894556822e-19,
+      "reason": null,
+      "requested_pairs": 1,
+      "resource_diagnostics": null,
+      "root_solver": "torch_complex_shifted_qr_v1",
+      "seconds": 2.6956615000090096,
+      "shared_global_r1": true,
+      "signature": "4f2ae508dd919e1f58174aa71032707627f391cb1ed92d5ff120f2da701f1d32",
+      "status": "COMPLETE",
+      "stopped_by_wall_budget": false,
+      "tokens": 8
+    }
+  ],
+  "scope": "Same-GPU synthetic performance/timeout probe only; no real G1 evidence",
+  "source_hashes": {
+    "src/cellquant/tensor_math.py": "d4699846fb996fac28cc837c80d00fa616ade7fd936a7f33b8a0a703d586edaf",
+    "src/cellquant/tensor_solver.py": "44dd583d9cc99f6620c70db7418b45b7aba5b8f8ee19e112e5a5e0a6be5fa426"
+  },
+  "source_type": "synthetic_math"
+}

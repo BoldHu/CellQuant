@@ -1,0 +1,97 @@
+{
+  "source_type": "real_layer",
+  "scope": "User-saved in-progress log observation only; not complete G1 evidence",
+  "observed_run_dir": "/content/CellQuant/runs/experiments/2026-11-17T081006.337925_0000_a3db20ca9b",
+  "original_notebook_sha256": "58e803d3ccbc2f9e1ec95b5ac890d02aa4cb91a61f077dd4bfb50c452f0f25f3",
+  "redactions": 1,
+  "cloud_run_executed_by_agent": false,
+  "cloud_result_files_independently_read": false,
+  "model_placement_observed": {
+    "parameter_bytes_by_device": {
+      "cuda:0": 13476831232
+    },
+    "all_parameters_cuda": true,
+    "cpu_offload": false
+  },
+  "observed_saved_methods": [
+    {
+      "seed": 11,
+      "method": "hadamard_shared",
+      "status": "COMPLETE",
+      "solve_and_evaluation_seconds": 11.32,
+      "result_path_reported": "/content/CellQuant/runs/experiments/2026-11-17T081006.337925_0000_a3db20ca9b/seed_11/hadamard_shared/pilot_result.json"
+    },
+    {
+      "seed": 11,
+      "method": "givens_ste_matched",
+      "status": "COMPLETE",
+      "solve_and_evaluation_seconds": 519.36,
+      "result_path_reported": "/content/CellQuant/runs/experiments/2026-11-17T081006.337925_0000_a3db20ca9b/seed_11/givens_ste_matched/pilot_result.json"
+    },
+    {
+      "seed": 11,
+      "method": "angle_grid_matched",
+      "status": "COMPLETE",
+      "solve_and_evaluation_seconds": 237.14,
+      "result_path_reported": "/content/CellQuant/runs/experiments/2026-11-17T081006.337925_0000_a3db20ca9b/seed_11/angle_grid_matched/pilot_result.json"
+    },
+    {
+      "seed": 11,
+      "method": "fixed_scale_search_matched",
+      "status": "RESOURCE_BLOCKED",
+      "solve_and_evaluation_seconds": 313.07,
+      "result_path_reported": "/content/CellQuant/runs/experiments/2026-11-17T081006.337925_0000_a3db20ca9b/seed_11/fixed_scale_search_matched/pilot_result.json"
+    },
+    {
+      "seed": 11,
+      "method": "cellquant",
+      "status": "RESOURCE_BLOCKED",
+      "solve_and_evaluation_seconds": 313.07,
+      "result_path_reported": "/content/CellQuant/runs/experiments/2026-11-17T081006.337925_0000_a3db20ca9b/seed_11/cellquant/pilot_result.json"
+    },
+    {
+      "seed": 23,
+      "method": "hadamard_shared",
+      "status": "COMPLETE",
+      "solve_and_evaluation_seconds": 11.22,
+      "result_path_reported": "/content/CellQuant/runs/experiments/2026-11-17T081006.337925_0000_a3db20ca9b/seed_23/hadamard_shared/pilot_result.json"
+    },
+    {
+      "seed": 23,
+      "method": "givens_ste_matched",
+      "status": "COMPLETE",
+      "solve_and_evaluation_seconds": 547.66,
+      "result_path_reported": "/content/CellQuant/runs/experiments/2026-11-17T081006.337925_0000_a3db20ca9b/seed_23/givens_ste_matched/pilot_result.json"
+    }
+  ],
+  "latest_saved_event": {
+    "event": "progress",
+    "status": "RUNNING",
+    "phase": "g1.solve.pair",
+    "details": {
+      "seed": 23,
+      "method": "angle_grid_matched",
+      "pair_index": 20,
+      "pair_count": 128,
+      "device": "cuda:0"
+    },
+    "elapsed_seconds": 2093.54,
+    "phase_elapsed_seconds": 35.48,
+    "process_rss_gib": 2.114,
+    "system_available_gib": 47.059,
+    "process_cpu_seconds": 2119.99,
+    "progress_sequence": 713,
+    "updated_at_utc": "2026-11-17T08:45:01.726457+00:00",
+    "cuda_allocated_gib": 4.043,
+    "cuda_reserved_gib": 7.395
+  },
+  "estimate": {
+    "remaining_minutes": [
+      15,
+      20
+    ],
+    "basis": "Seed 11 grid took about 4 min; fixed-scale and CellQuant each blocked after about 5 min; seed 23 STE nearly finished",
+    "conditional_on": "Seed 23 following similar timings; termination estimate, not successful completion"
+  },
+  "scientific_status": "INCOMPLETE; seed 11 fixed-scale and CellQuant RESOURCE_BLOCKED; exact solver.reason not yet available"
+}

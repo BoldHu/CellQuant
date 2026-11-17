@@ -86,6 +86,33 @@ BACKUP_AREAS = []
 
 结果指针文件把 notebook 绑定到本次唯一 run；后面的 G1 评估单元自动读取该 run 的真实 `G1_evidence.json`，不再默认评估空模板。运行开关、工程 PASS 和进程退出码不替代 G1 科学门槛。
 
+### 若事件方法在第一对坐标超时
+
+2026-11-17 的真实 L4 运行中，两个 seed 的 STE/grid 都完成了 128 对；CellQuant 与固定尺度搜索均在第一对触发 `Pair wall-clock budget exceeded: 300s`，完成对数为 0。该轮结果为 RESOURCE_BLOCKED，不能当作完整 G1、方法质量 FAIL 或 G1 PASS。顶层 `reason:null` 是汇总遗漏；新版本会将每个方法的实际原因写入顶层结果、日志和 notebook 报错。
+
+先保存该轮结果，在项目根目录执行已有备份命令：
+
+```bash
+python -m cellquant.workspace backup --areas runs
+```
+
+同步新代码后，在同一服务器重启 kernel 并重跑 01 初始化/预检查；保留缓存、原配置与旧 run。在 01 的预检查单元设定：
+
+```python
+RUN_REAL_MODEL = True
+RUN_PAIR_PROFILE = True
+```
+
+然后运行原执行单元。这个诊断入口复用正式模型加载、融合和完整真实面板采集，只对第一个 seed 的第一个原定坐标对运行固定尺度搜索与 CellQuant。角域、完整通道、FP64、事件 cap、单对 300 秒及同方法时间预算均按原配置保留；不重跑完整 STE/grid，不读 held-out 成绩，不产生 G1 证据。结果是 `PROFILE_COMPLETE` 或明确的阻塞状态，单对完成也不证明 128 对能在整个方法预算内完成。日志中的 `search_phase`、事件数、`cells_completed/cell_count` 用于定位吞吐瓶颈。
+
+命令行等价入口为：
+
+```bash
+python -u -m cellquant.experiment --config runs/prepared/g1_gpu/config.json --profile-pair
+```
+
+诊断报告保存在本次新 run 的 `pair_profile.json`，每个方法的明细在 `pair_profile/seed_11/<method>/profile_result.json`；它们不会被 G1 聚合器接受。若仍超时，应根据阶段和事件吞吐优化实现，不能仅把 300 秒调大、缩小角域或删除对照。明确能执行原预算的完整方案后，再设置 `RUN_PAIR_PROFILE=False` 做新的正式运行。代码变化后不强行恢复旧优化器断点或把旧基线混为新协议结果。
+
 ## 4. 长作业诊断、结束和备份
 
 若预检查报告 `GPU-resident capture estimates ... insufficient`，先区分总容量、配置预算与当前空闲量。新版本将它们写入 `preflight["readiness"]["gpu_memory"]` 和错误文本。`currently_free` 表示当前空闲不足；`configured_budget` 表示预算上限不足；`total_capacity` 表示整卡容量不足。这个估计不是实测峰值，也不是 G1 成绩。

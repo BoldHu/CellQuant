@@ -164,3 +164,37 @@ def test_preparation_or_weight_failure_stops_before_backup(tmp_path, monkeypatch
         exec(cell("00_Colab_GitHub_Workspace.ipynb", "if PREPARE_G1_INPUTS:"), ns)
     assert "backup_g1_inputs" not in calls
     assert "G1 输入准备、权重校验和 Drive 备份已完成" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('profile,legacy,returncode',[(False,False,2),(False,True,2),(True,False,2),(True,False,0)])
+def test_notebook_reports_saved_failure_and_profile_never_scores_g1(tmp_path,profile,legacy,returncode,capsys):
+    from cellquant.runtime import atomic_json,read_json
+    ns=context(tmp_path);out=tmp_path/'logs';out.mkdir()
+    run=tmp_path/'run';run.mkdir()
+    reason='seed=11 cellquant: Pair wall-clock budget exceeded: 300s'
+    atomic_json(run/'result.json',{'source_type':'unit_test_fixture',
+        'status':'RESOURCE_BLOCKED' if returncode else 'PROFILE_COMPLETE','reason':None if legacy else reason})
+    if legacy:
+        atomic_json(run/'seed_11/cellquant/pilot_result.json',{'source_type':'unit_test_fixture',
+            'seed':11,'method':'cellquant','status':'RESOURCE_BLOCKED',
+            'solver':{'reason':'Pair wall-clock budget exceeded: 300s','log':[]}})
+    commands=[]
+    def command(argv,*args,**kwargs):
+        commands.append(argv)
+        atomic_json(argv[argv.index('--result-index')+1],{'run_dir':str(run)})
+        return {'returncode':returncode}
+    ns.update(OUT=out,RUN_REAL_MODEL=True,RUN_PAIR_PROFILE=profile,PILOT_CONFIG_PATH=tmp_path/'config.json',
+        PILOT_RUN_DIR=None,preflight={'readiness':{'status':'READY','missing':[]}},
+        stream_command=command,read_json=read_json,atomic_json=atomic_json)
+    script=cell('01_Colab_Real_Layer_Pilot.ipynb','process = stream_command(')
+    if returncode:
+        with pytest.raises(RuntimeError,match='Pair wall-clock budget exceeded: 300s') as error:exec(script,ns)
+        assert str(run) in str(error.value)
+    else:exec(script,ns)
+    assert ('--profile-pair' in commands[0])==profile
+    assert ns['PILOT_RUN_DIR']==run
+    if profile:
+        def forbidden(*args,**kwargs):raise AssertionError('Pair profile must not score G1')
+        ns['evaluate_file']=forbidden
+        exec(cell('01_Colab_Real_Layer_Pilot.ipynb','default_evidence = PILOT_RUN_DIR'),ns)
+        assert 'NOT_RUN' in capsys.readouterr().out and not (out/'G1.json').exists()

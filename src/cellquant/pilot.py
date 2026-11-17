@@ -98,6 +98,7 @@ def profile_prepared_pair(config,prepared,output,*,execution_fingerprint,progres
         def emit(phase,**details):report(progress,'profile.'+phase,seed=seed,method=method,**details)
         dest=output/'pair_profile'/f'seed_{seed}'/method;dest.mkdir(parents=True,exist_ok=True)
         cfg=SolverConfig(theta_limit=settings.get('theta_limit',np.pi/4),backend='torch',device=device,
+            cell_batch_size=settings.get('cell_batch_size',1024),
             compute_dtype=settings.get('compute_dtype','float64'),event_limit_per_pair=settings.get('event_limit_per_pair',200000),
             seconds_per_pair=settings.get('seconds_per_pair',300.),wall_seconds=method_budget,
             checkpoint_path=str(dest/'rotation_state.pt'),execution_fingerprint=execution_fingerprint)
@@ -178,6 +179,7 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
                 elif saved and method in {'givens_ste_matched','angle_grid_matched'}:
                     raise ValueError('Partial grid/STE resume is unsupported; do not reset its wall budget silently')
             cfg=SolverConfig(theta_limit=config['solver'].get('theta_limit',np.pi/4),
+                cell_batch_size=config['solver'].get('cell_batch_size',1024),
                 backend=config['solver'].get('backend','numpy_reference'),compute_dtype=config['solver'].get('compute_dtype','float64'),
                 event_limit_per_pair=config['solver'].get('event_limit_per_pair',200000),
                 seconds_per_pair=config['solver'].get('seconds_per_pair',300.),wall_seconds=method_budget,

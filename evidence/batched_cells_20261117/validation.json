@@ -1,0 +1,113 @@
+{
+  "status": "ENGINEERING_CHECKS_PASSED_REAL_G1_NOT_RUN_WITH_NEW_ENGINE",
+  "source_type": "synthetic_math",
+  "engine": "torch_batched_output_prefix_v1",
+  "baseline_tests": {
+    "command": ".venv/Scripts/python.exe -m pytest -q",
+    "passed": 213,
+    "warnings": 1,
+    "seconds": 40.67,
+    "log": "pytest_before.log"
+  },
+  "final_tests": {
+    "command": ".venv/Scripts/python.exe -m pytest -q",
+    "passed": 241,
+    "warnings": 1,
+    "seconds": 34.57,
+    "log": "pytest_final.log",
+    "warning": "Windows pytest cache write permission; exit 0"
+  },
+  "gpu_diagnostics": [
+    {
+      "artifact": "full_output_final.json",
+      "case": "full_output",
+      "method": "cellquant",
+      "status": "COMPLETE",
+      "event_count": 48726,
+      "event_incidences": 48716,
+      "pair_seconds": 6.745768199994927,
+      "method_seconds": 13.989758999989135,
+      "peak_allocated_gib": 2.773871421813965,
+      "root_candidate_cells": 99,
+      "timings": {
+        "candidate_search": 5.758120699989377,
+        "cell_coefficients_and_boundaries": 0.56852460000664,
+        "event_generation": 0.19446749999769963,
+        "sort": 0.001128799980506301,
+        "verification": 0.17862109999987297
+      }
+    },
+    {
+      "artifact": "mixed_full_final.json",
+      "case": "mixed_full",
+      "method": "cellquant",
+      "status": "COMPLETE",
+      "event_count": 54786,
+      "event_incidences": 54772,
+      "pair_seconds": 78.63322660000995,
+      "method_seconds": 86.40859269999783,
+      "peak_allocated_gib": 2.881319046020508,
+      "root_candidate_cells": 276,
+      "timings": {
+        "candidate_search": 23.370556799985934,
+        "cell_coefficients_and_boundaries": 46.812177099986,
+        "event_generation": 5.821670600009384,
+        "sort": 0.002348899986827746,
+        "verification": 1.042387299996335
+      }
+    },
+    {
+      "artifact": "fixed_mixed_full_final.json",
+      "case": "mixed_full",
+      "method": "fixed_scale_search_matched",
+      "status": "COMPLETE",
+      "event_count": 52305,
+      "event_incidences": 52291,
+      "pair_seconds": 6.959263500000816,
+      "method_seconds": 14.34034850000171,
+      "peak_allocated_gib": 2.881288528442383,
+      "root_candidate_cells": 85,
+      "timings": {
+        "candidate_search": 3.9771394999988843,
+        "cell_coefficients_and_boundaries": 0.32288140000309795,
+        "event_generation": 1.7667481999960728,
+        "sort": 0.0008261000039055943,
+        "verification": 0.36960249999538064
+      }
+    }
+  ],
+  "comparison_limit": "Serial full-output search stopped at 30 seconds after 911/48725 cells. It did not finish, so no end-to-end speedup ratio is claimed. Mixed case is six input panels and ONE output panel, random tensors/identity Q, not the real nine-site G1.",
+  "retained_failures": [
+    "pytest_cells_first.log: four boundary consistency failures; corrected actual AbsMax/round order without relaxing tolerances",
+    "mixed_full_after.json: intermediate version blocked at the additional 30-second diagnostic cap",
+    "mixed_full_300_after.json: intermediate run; only final artifacts have pre/post source-hash verification"
+  ],
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "empty_G1_status": "INSUFFICIENT_EVIDENCE",
+  "not_run": [
+    "new engine on user Colab L4/pretrained 7B",
+    "full 128-pair real G1 within total method budget",
+    "AutoDL 96GB",
+    "formal GPTQ/downstream evaluation and paper gates"
+  ],
+  "source_hashes": {
+    "src/cellquant/tensor_solver.py": "a7bfd5fb0fc934ca6a677d8fc67531edc0060d5246f1729103c8a6ec80076830",
+    "src/cellquant/tensor_cells.py": "f80cbb9e9d4d07e8997e0f238e676bc88033cba9471fdb05b7a553e93816b08a",
+    "src/cellquant/tensor_math.py": "d4699846fb996fac28cc837c80d00fa616ade7fd936a7f33b8a0a703d586edaf",
+    "src/cellquant/solver.py": "2b8fc6159563e6a4d57f2645937137edb8633eac21fd3275f8f7cb090231dbb6",
+    "src/cellquant/pilot.py": "902f4bb86e6ec23ee320a7323d4f5df9c8f9ea8b804368ca7ab93a18b449432e",
+    "tests/test_tensor_cells.py": "b9daef0e2d0b79b906c85936832f948f243429bbce193ab03933a0d6d296b35b",
+    "scripts/profile_tensor_cells.py": "fc70e797a5dd187ec195ad44f33e74d827e25bfe46dd0542fcb0ee0a6cab8b7c"
+  },
+  "notebooks_edited_by_this_turn": false,
+  "commit_or_push_performed": false,
+  "commands": [
+    ".venv/Scripts/python.exe -m pytest -q",
+    ".venv/Scripts/python.exe scripts/profile_tensor_cells.py --case full_output --reference-module evidence/batched_cells_20261117/before_tensor_solver.py --output evidence/batched_cells_20261117/full_output_before.json",
+    ".venv/Scripts/python.exe scripts/profile_tensor_cells.py --case full_output --output evidence/batched_cells_20261117/full_output_final.json",
+    ".venv/Scripts/python.exe scripts/profile_tensor_cells.py --case mixed_full --seconds-per-pair 300 --output evidence/batched_cells_20261117/mixed_full_final.json",
+    ".venv/Scripts/python.exe scripts/profile_tensor_cells.py --case mixed_full --method fixed_scale_search_matched --seconds-per-pair 300 --output evidence/batched_cells_20261117/fixed_mixed_full_final.json",
+    ".venv/Scripts/python.exe scripts/run_math_checks.py --output runs/batched_cells_20261117/math_reference",
+    ".venv/Scripts/python.exe -m cellquant.gates evaluate --stage G1 --evidence examples/G1_evidence_NOT_RUN.json --output runs/batched_cells_20261117/G1.json"
+  ]
+}

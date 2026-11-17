@@ -20,7 +20,9 @@ from .quantization import torch_quantize
 from .runtime import config_hash
 from .solver import panel_specs, panel_fingerprint
 from .tensor_math import (scalar, basis, affine_roots, owner_intervals, square_coeff,
-                          product_coeff, scale_square, trig_roots, trig_value)
+                          product_coeff, scale_square)
+
+CELL_ENGINE_VERSION = 'torch_batched_output_prefix_v1'
 
 
 def synchronize(device):
@@ -265,6 +267,7 @@ def solve_pair(states,pair,limits,config,*,progress=None):
 
 
 def _solve_pair(states,pair,limits,config,trace,emit):
+    if config.cell_batch_size<1:raise ValueError('cell_batch_size must be positive')
     if not 0 < config.theta_limit < math.pi:raise ValueError('theta_limit must lie in (0, pi)')
     d = states[0].panel.hidden_size
     if len(pair)!=2 or pair[0]==pair[1] or min(pair)<0 or max(pair)>=d:raise ValueError('Invalid pair')
@@ -273,66 +276,39 @@ def _solve_pair(states,pair,limits,config,trace,emit):
     emit('orbit_initialization',force=True)
     orbit=[PanelOrbit(s,pair) for s in states];baseline=aggregate(states);like=states[0].a
     left,right=-config.theta_limit,config.theta_limit
-    timings={k:0. for k in ['event_generation','sort','coefficient_updates','roots','boundary_rounding','verification']}
+    timings={k:0. for k in ['event_generation','sort','cell_coefficients_and_boundaries','candidate_search','verification']}
+    trace['timings']=timings
     stats={s:{k:0 for k in ['owner_intervals','member_visits','stable_groups','groups']} for s in ['input','output']}
-    groups=[];angles=[like.new_tensor([left,right,0.])];keys=[torch.full((3,),-1,device=like.device,dtype=torch.long)];members=[keys[0]]
+    angles=[like.new_tensor([left,right,0.])];orbit_events=[]
     t=time.perf_counter()
     for o in orbit:
+        local_events=[];orbit_events.append(local_events)
         emit('event_generation',force=True,panel_id=o.state.panel.panel_id)
         for gid,g in enumerate(o.groups):
             emit('event_generation',group_id=gid,group_count=len(o.groups))
             a,ids,st=g.enumerate(left,right,config.screen,work)
             for k,v in st.items():stats[o.state.panel.placement][k]+=v
-            angles.append(a);members.append(ids);keys.append(torch.full((len(a),),len(groups),device=like.device,dtype=torch.long));groups.append((o,gid))
+            angles.append(a);local_events.append((a,ids))
             trace['groups_enumerated']+=1
     synchronize(like.device);timings['event_generation']=time.perf_counter()-t;t=time.perf_counter()
     emit('event_sort',force=True,panel_id=None,group_id=None,group_count=None)
-    angles,inverse=torch.unique(torch.cat(angles),sorted=True,return_inverse=True);keys=torch.cat(keys);members=torch.cat(members)
-    event_index=EventIndex(inverse,keys,members,len(angles))
+    angles=torch.unique(torch.cat(angles),sorted=True)
     synchronize(like.device);timings['sort']=time.perf_counter()-t
     trace.update(event_count=len(angles),cell_count=len(angles)-1)
-    def incident(index,all_groups=False):
-        if all_groups:return [(o,g,None) for o,g in groups]
-        selected_keys,selected_members=event_index.at(index);result=[]
-        for key in torch.unique(selected_keys):
-            ids=selected_members[selected_keys==key];o,g=groups[int(key)]
-            result.append((o,g,None if bool((ids<0).any()) else torch.unique(ids)))
-        return result
-    def coefficients():return [sum(o.state.panel.objective_weight*getattr(o,k) for o in orbit) for k in ['loss_coeff','bw','ba']]
+    from .tensor_cells import output_terms,input_term,search_terms,constant_term
+    terms=[];t=time.perf_counter()
+    for o,events in zip(orbit,orbit_events):
+        work.check()
+        if not events:terms.append(constant_term(o.state,angles[[0,-1]]))
+        elif o.state.panel.placement=='output':terms.extend(output_terms(o,events,work,config.cell_batch_size,emit))
+        else:terms.append(input_term(o,events,work,emit,config.cell_batch_size))
+    synchronize(like.device);timings['cell_coefficients_and_boundaries']=time.perf_counter()-t
+    t=time.perf_counter()
+    short_theta,short_loss,search_stats=search_terms(terms,angles,baseline,limits,config,work,trace,emit,config.cell_batch_size)
+    synchronize(like.device);timings['candidate_search']=time.perf_counter()-t
     def feasible(bw,ba):
         if not config.constrain_budgets:return torch.ones_like(bw,dtype=torch.bool)
         return (bw<=limits['budget_w']+config.budget_tolerance*limits['budget_w'].clamp_min(1)) & (ba<=limits['budget_a']+config.budget_tolerance*limits['budget_a'].clamp_min(1))
-    short_theta=like.new_empty(0);short_loss=like.new_empty(0);candidate_count=0;boundary_count=0
-    def consider(theta,lc,bw,ba):
-        nonlocal short_theta,short_loss,candidate_count
-        theta=theta.reshape(-1);candidate_count+=len(theta)
-        losses=trig_value(lc,theta);ok=feasible(trig_value(bw,theta),trig_value(ba,theta))&(losses<baseline['loss'])
-        short_theta=torch.cat((short_theta,theta[ok]));short_loss=torch.cat((short_loss,losses[ok]))
-        if len(short_loss)>32:
-            keep=short_loss.topk(32,largest=False).indices;short_theta,short_loss=short_theta[keep],short_loss[keep]
-    for n in range(len(angles)-1):
-        emit('coefficient_updates',cell_index=n)
-        work.check();lo,hi=angles[n],angles[n+1];mid=lo+(hi-lo)/2;t=time.perf_counter()
-        for o,g,ids in incident(n,n==0):o.replace(g,mid,indices=ids)
-        synchronize(like.device);timings['coefficient_updates']+=time.perf_counter()-t
-        lc,bw,ba=coefficients();t=time.perf_counter();derivative=torch.zeros_like(lc)
-        emit('roots')
-        k=torch.arange(1,5,device=like.device,dtype=like.dtype);derivative[1::2]=k*lc[2::2];derivative[2::2]=-k*lc[1::2]
-        stationary=trig_roots(derivative,lo,hi);cuts=[torch.stack((lo,hi))]
-        if config.constrain_budgets:
-            for c,key in [(bw,'budget_w'),(ba,'budget_a')]:
-                c=c.clone();c[0]-=limits[key];cuts.append(trig_roots(c,lo,hi))
-        cuts=torch.unique(torch.cat(cuts),sorted=True);a,b=cuts[:-1],cuts[1:]
-        candidates=torch.cat((stationary,cuts[1:-1],a+(b-a)/2,torch.nextafter(a,b),torch.nextafter(b,a),a+(b-a)*1e-7,b-(b-a)*1e-7))
-        consider(candidates,lc,bw,ba);synchronize(like.device);timings['roots']+=time.perf_counter()-t;t=time.perf_counter()
-        emit('boundary_rounding')
-        for idx in ([n,n+1] if n==0 else [n+1]):
-            dirty=incident(idx,idx==0 or idx==len(angles)-1);theta=angles[idx]
-            for o,g,_ in dirty:o.replace(g,theta,actual=True)
-            consider(theta,*coefficients());boundary_count+=1
-            for o,g,_ in dirty:o.replace(g,mid)
-        synchronize(like.device);timings['boundary_rounding']+=time.perf_counter()-t
-        trace['cells_completed']=n+1
     t=time.perf_counter();best={**baseline,'theta':like.new_zeros(())}
     emit('verification',force=True)
     for theta in short_theta[short_loss.argsort()]:
@@ -340,9 +316,10 @@ def _solve_pair(states,pair,limits,config,trace,emit):
         actual={key:sum(s.panel.objective_weight*v[key] for s,v in zip(states,measured)) for key in baseline}
         if bool(feasible(actual['budget_w'],actual['budget_a']) & (actual['loss']<best['loss'])):best={**actual,'theta':theta}
     synchronize(like.device);timings['verification']=time.perf_counter()-t
+    work.check()
     return {'status':'COMPLETE','baseline':plain(baseline),'best':plain(best),'accepted':bool(best['theta']!=0),
-            'event_count':len(angles),'event_incidences':work.generated,'candidate_count':candidate_count,
-            'boundary_rounding_evaluations':boundary_count,'statistics':stats,'incremental_statistics':[o.update_stats for o in orbit],
+            'event_count':len(angles),'event_incidences':work.generated,**search_stats,
+            'cell_engine':CELL_ENGINE_VERSION,'statistics':stats,'incremental_statistics':[o.update_stats for o in orbit],
             'timings':timings,'seconds':time.perf_counter()-start,'interval_certified':False,
             'candidate_policy':'32 lowest predicted feasible candidates; actual full-group verification',
             'scope':'Torch FP64 numerical cell search; not certified/global optimal','numerical_device':str(like.device)}
@@ -383,6 +360,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
     import hashlib
     if method not in METHODS:raise ValueError(f'Unknown matched method: {method}')
     if getattr(config,'compute_dtype','float64')!='float64':raise ValueError('This numerical protocol requires FP64; no silent precision change')
+    if config.cell_batch_size<1:raise ValueError('cell_batch_size must be positive')
     numerical_context(config.device);synchronize(config.device);started=time.perf_counter()
     q=torch.as_tensor(q0,dtype=torch.float64,device=config.device).clone();d=len(q)
     panels=list(panels);schedule=[tuple(map(int,p)) for p in schedule]
@@ -399,7 +377,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
     cell=method in {'cellquant','fixed_scale_search_matched'}
     if config.resume and not cell:raise ValueError('Partial grid/STE resume is unsupported')
     # CPU copies here are explicit checksum/serialization work, never solver arithmetic.
-    signature=config_hash({'backend':'torch_resident_v1','method':method,'panels':panel_fingerprint(panels),
+    signature=config_hash({'backend':CELL_ENGINE_VERSION,'method':method,'panels':panel_fingerprint(panels),
         'q0':hashlib.sha256(q.detach().cpu().numpy().tobytes()).hexdigest(),'schedule':schedule,
         'specs':{s.panel.panel_id:[asdict(s.wspec),asdict(s.aspec)] for s in states},'limits':plain(limits),
         'config':{k:v for k,v in asdict(config).items() if k not in {'resume','checkpoint_path'}}})
@@ -475,6 +453,6 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
             'evaluations':evaluations,'completed_pairs':next_pair,'requested_pairs':len(schedule),
             'stopped_by_wall_budget':next_pair<len(schedule) and method!='hadamard_shared','signature':signature,
             'shared_global_r1':True,'orientation':'R1=Q.T','orthogonality_residual':orth,'interval_certified':False,
-            'numerical_backend':'torch_resident_v1','numerical_device':str(q.device),'compute_dtype':'float64',
+            'numerical_backend':CELL_ENGINE_VERSION,'numerical_device':str(q.device),'compute_dtype':'float64',
             'root_solver':'torch_complex_shifted_qr_v1',
             'host_work':'Python scheduling/scalar decisions and checkpoint/hash I/O; no NumPy/SciPy solver arithmetic'}

@@ -1,0 +1,88 @@
+{
+  "source_type": "real_layer",
+  "evidence_kind": "PAIR_PROFILE_ONLY",
+  "provenance": "Parsed user-saved local notebook outputs; cloud result files and remote source revision not independently inspected; experiment not executed by this agent.",
+  "source_notebook": "notebooks/01_Colab_Real_Layer_Pilot.ipynb",
+  "source_notebook_sha256": "a60ac3deb9d31c01334eaf7e057f81cd25e20ecac450341b3f2b23bb25109926",
+  "run_dir": "/content/CellQuant/runs/experiments/2026-11-17T102020.290922_0000_29bbe398e6",
+  "status": "RESOURCE_BLOCKED",
+  "finished_at_utc": "2026-11-17T10:32:14.611179+00:00",
+  "elapsed_seconds": 712.44,
+  "model_placement": {
+    "parameter_bytes_by_device": {
+      "cuda:0": 13476831232
+    },
+    "all_parameters_cuda": true,
+    "cpu_offload": false
+  },
+  "model_released": {
+    "event": "progress",
+    "status": "RUNNING",
+    "phase": "g1.model_released",
+    "details": {
+      "reason": "all seed panels captured; panels remain on CUDA"
+    },
+    "elapsed_seconds": 93.74,
+    "phase_elapsed_seconds": 0.0,
+    "process_rss_gib": 1.518,
+    "system_available_gib": 47.122,
+    "process_cpu_seconds": 120.86,
+    "progress_sequence": 145,
+    "updated_at_utc": "2026-11-17T10:21:55.911889+00:00",
+    "cuda_allocated_gib": 2.461,
+    "cuda_reserved_gib": 3.299
+  },
+  "methods": [
+    {
+      "seed": 11,
+      "method": "fixed_scale_search_matched",
+      "pair_index": 0,
+      "reason": "Pair wall-clock budget exceeded: 300s",
+      "pair": [
+        547,
+        526
+      ],
+      "groups_enumerated": 1158,
+      "event_incidences": 149012,
+      "event_count": 148903,
+      "cells_completed": 19958,
+      "cell_count": 148902,
+      "panel_id": null,
+      "group_id": null,
+      "group_count": null,
+      "cell_index": 19958,
+      "seconds": 300.0063560519993,
+      "search_phase": "coefficient_updates",
+      "cell_fraction_completed": 0.13403446562168406,
+      "cuda_allocated_gib": 5.333,
+      "cuda_reserved_gib": 7.395
+    },
+    {
+      "seed": 11,
+      "method": "cellquant",
+      "pair_index": 0,
+      "reason": "Pair wall-clock budget exceeded: 300s",
+      "pair": [
+        547,
+        526
+      ],
+      "groups_enumerated": 1158,
+      "event_incidences": 152050,
+      "event_count": 151941,
+      "cells_completed": 16236,
+      "cell_count": 151940,
+      "panel_id": null,
+      "group_id": null,
+      "group_count": null,
+      "cell_index": 16236,
+      "seconds": 300.001955619,
+      "search_phase": "coefficient_updates",
+      "cell_fraction_completed": 0.10685797025141504,
+      "cuda_allocated_gib": 5.458,
+      "cuda_reserved_gib": 7.395
+    }
+  ],
+  "scientific_gate_status": "INSUFFICIENT_EVIDENCE",
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "interpretation": "Model loaded on CUDA then explicitly freed after all seed panels were frozen on CUDA. Both first-pair searches exceed the existing 300-second cap. This profile provides performance diagnostics, not G1 quality evidence or a complete pair solution."
+}

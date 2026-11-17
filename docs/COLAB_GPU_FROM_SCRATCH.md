@@ -113,6 +113,18 @@ python -u -m cellquant.experiment --config runs/prepared/g1_gpu/config.json --pr
 
 诊断报告保存在本次新 run 的 `pair_profile.json`，每个方法的明细在 `pair_profile/seed_11/<method>/profile_result.json`；它们不会被 G1 聚合器接受。若仍超时，应根据阶段和事件吞吐优化实现，不能仅把 300 秒调大、缩小角域或删除对照。明确能执行原预算的完整方案后，再设置 `RUN_PAIR_PROFILE=False` 做新的正式运行。代码变化后不强行恢复旧优化器断点或把旧基线混为新协议结果。
 
+2026-11-17 的后续修正新增 `tensor_cells.py`：输出组编码增量用 GPU 前缀和处理，稳定/固定尺度的输入使用精确秩二更新；不稳定输入完整行的边界采用缓存乘积与编码差更新。候选仍在所有面板合并的目标上选择。保持原有 FP64、角度、事件 cap、300 秒单对和方法总预算。
+
+将本地源码提交并 push 后，在 Colab 项目终端运行 `git pull --ff-only`，重启**同一服务器的 kernel**，重跑 01 初始化与预检查即可，无需重新分配服务器或下载缓存。可在 01 执行前确认实际加载了新引擎：
+
+```python
+from cellquant.tensor_solver import CELL_ENGINE_VERSION
+print(CELL_ENGINE_VERSION)
+assert CELL_ENGINE_VERSION == "torch_batched_output_prefix_v1"
+```
+
+继续保持 `RUN_REAL_MODEL=True`、`RUN_PAIR_PROFILE=True`，用原执行单元启动新 run。日志将显示 `batched_output_coefficients`、`batched_constant_scale_input`、`input_coefficients`、`batched_candidates`。`local_cell_index/local_cell_count` 表示当前面板的系数进度，`cells_completed/cell_count` 表示合并后的候选搜索进度；前者运行时后者可能仍为零。最新本地检查见 `evidence/batched_cells_20261117/`，真实 L4 的新版首对和完整 128 对尚待执行；不要把合成案例或单对完成当成完整 G1 合格。
+
 ## 4. 长作业诊断、结束和备份
 
 若预检查报告 `GPU-resident capture estimates ... insufficient`，先区分总容量、配置预算与当前空闲量。新版本将它们写入 `preflight["readiness"]["gpu_memory"]` 和错误文本。`currently_free` 表示当前空闲不足；`configured_budget` 表示预算上限不足；`total_capacity` 表示整卡容量不足。这个估计不是实测峰值，也不是 G1 成绩。

@@ -6,6 +6,8 @@
 
 2026-11-16：Colab G1 默认改为**完整模型驻留 GPU + PyTorch CUDA 数值求解**，包含事件、增量系数、GPU QR 求根与五种匹配方法。采集完所有 seed 后释放基础模型，面板继续留在 GPU；不会静默回退 CPU。新服务器从 [GPU 完整操作指南](docs/COLAB_GPU_FROM_SCRATCH.md) 开始，使用新的 `runs/prepared/g1_gpu/config.json`。本地已运行实际 CUDA 小模型、完整维度合成面板与回归检查；真实 7B 的质量和加速比仍须云端实测。
 
+2026-11-17：用户真实 L4 运行确认事件搜索首对 300 秒超时。后续增加 PyTorch 批量输出前缀和、输入秩二/边界增量及批量候选筛选，保持原科学门槛和时间预算。更新代码后先运行 01 的 `RUN_PAIR_PROFILE=True`；新版真实 7B 和完整 128 对尚未验证，不能宣称 G1 已通过。实际检查及失败记录见 [批量求解证据](evidence/batched_cells_20261117/)。
+
 - 已复现原有 62 项测试；2026-11-15 构建 116 项通过，新增工作流后全套 125 项通过，包含本机可执行的 CUDA 检查。
 - 合成 G0：3 seeds、24 cases，真实计算为 PASS；完整 d=4096、FFN=11008 工程 smoke 已运行，使用少 tokens/窄角域。
 - 随机小 LLaMA 的 FP 融合/旋转、GPTQ、RTN 恢复、MHA/GQA、R1/R2 训练和恢复已实际执行。
@@ -35,7 +37,7 @@ Windows 当前项目解释器为 `.venv/Scripts/python.exe`；不要依赖不可
 | 模块 | 用途 |
 |---|---|
 | `quantization.py`, `events.py`, `solver.py` | 对称 RTN、完整组事件、输入/输出侧解析系数、增量更新、共享 Q、风险约束 |
-| `tensor_math.py`, `tensor_solver.py` | PyTorch CUDA 面板、事件/排序、增量系数、移位 QR 数值根、匹配 STE/grid/fixed-scale；CPU 参考用于对照 |
+| `tensor_math.py`, `tensor_solver.py`, `tensor_cells.py` | PyTorch CUDA 面板、事件/排序、批量输出前缀和、输入增量、移位 QR 数值根、匹配 STE/grid/fixed-scale；CPU 参考用于对照 |
 | `baselines.py`, `capture.py`, `pilot.py` | 同面板 Hadamard/STE/grid/fixed-scale、逐层真实采集与 G1 |
 | `spinquant_adapter.py`, `spinquant_train.py` | 上游 overlay、R1=Q.T 与全部 R2、CE/SGDG、GPTQ、恢复 |
 | `data.py`, `experiment.py` | 固定 revisions、独立文档划分、权重完整性、统一实验后端 |

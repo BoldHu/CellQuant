@@ -1,0 +1,114 @@
+{
+  "case": "mixed_full",
+  "elapsed_seconds": 37.694681399996625,
+  "engine_source": "src/cellquant/tensor_solver.py",
+  "environment": {
+    "compatibility_claim": "CPU tooling only; GPU kernels require target-device tests",
+    "created_at_utc": "2026-11-17T11:17:53.863978+00:00",
+    "cuda": {
+      "available": true,
+      "bf16_supported": true,
+      "devices": [
+        {
+          "compute_capability": [
+            8,
+            6
+          ],
+          "index": 0,
+          "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+          "total_gib": 3.99951171875
+        }
+      ],
+      "nvidia_smi": "NVIDIA GeForce RTX 3050 Laptop GPU, 546.30, 4096 MiB, 8.6",
+      "status": "DEVICE_DETECTED",
+      "torch_cuda_build": "11.8"
+    },
+    "executable": "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+    "machine": "AMD64",
+    "packages": {
+      "accelerate": "0.34.2",
+      "datasets": "2.20.0",
+      "fast-hadamard-transform": null,
+      "flash-attn": null,
+      "huggingface-hub": "0.36.2",
+      "lm_eval": "0.4.14.dev0",
+      "nbclient": "0.11.0",
+      "nbformat": "5.11.1",
+      "numpy": "2.4.6",
+      "psutil": "7.2.2",
+      "pyarrow": "26.0.1",
+      "safetensors": "0.8.0",
+      "scipy": "1.17.1",
+      "tokenizers": "0.19.1",
+      "torch": "2.6.0+cu118",
+      "transformers": "4.44.2",
+      "triton": null
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.18",
+    "schema_version": "1.0"
+  },
+  "evidence_kind": "THROUGHPUT_DIAGNOSTIC_ONLY",
+  "peak_allocated_bytes": 2639955456,
+  "scope": "Full matrix axes and angle domain where requested; random data, identity Q, not pretrained layers or G1. mixed_full has six input panels and ONE output panel.",
+  "solver": {
+    "completed_pairs": 0,
+    "compute_dtype": "float64",
+    "evaluations": 0,
+    "factors": [],
+    "final": {
+      "budget_a": 0.5323964417021048,
+      "budget_w": 0.5228244120936969,
+      "loss": 0.3537000721938277
+    },
+    "host_work": "Python scheduling/scalar decisions and checkpoint/hash I/O; no NumPy/SciPy solver arithmetic",
+    "initial": {
+      "budget_a": 0.5323964417021048,
+      "budget_w": 0.5228244120936969,
+      "loss": 0.3537000721938277
+    },
+    "interval_certified": false,
+    "limits": {
+      "budget_a": 0.5323964417021048,
+      "budget_w": 0.5228244120936969
+    },
+    "log": [],
+    "numerical_backend": "torch_batched_output_prefix_v1",
+    "numerical_device": "cuda:0",
+    "orientation": "R1=Q.T",
+    "orthogonality_residual": 0.0,
+    "reason": "Pair wall-clock budget exceeded: 30s",
+    "requested_pairs": 1,
+    "resource_diagnostics": {
+      "cell_count": 54785,
+      "cells_completed": 0,
+      "event_count": 54786,
+      "event_incidences": 54772,
+      "group_count": null,
+      "group_id": null,
+      "groups_enumerated": 1154,
+      "local_cell_count": 1193,
+      "local_cell_index": 886,
+      "output_row": 1,
+      "pair": [
+        0,
+        1
+      ],
+      "panel_id": "synthetic.input.4",
+      "phase": "input_coefficients",
+      "seconds": 30.010431299975608
+    },
+    "root_solver": "torch_complex_shifted_qr_v1",
+    "seconds": 37.572013299999526,
+    "shared_global_r1": true,
+    "signature": "74808179f0e43c95707aab7283732f4961eb818e559547f5da9cdf2b3c42196d",
+    "status": "RESOURCE_BLOCKED",
+    "stopped_by_wall_budget": true
+  },
+  "source_hashes": {
+    "src/cellquant/tensor_cells.py": "84a28ce842c3d3a9dd365f644a482637db2759316714fbc0267006bf228129bb",
+    "src/cellquant/tensor_math.py": "d4699846fb996fac28cc837c80d00fa616ade7fd936a7f33b8a0a703d586edaf",
+    "src/cellquant/tensor_solver.py": "ebd66ff2d4b78ba53f9da2ce46d0047989d990b265af8a8ef14fe88fdfe7e4fe"
+  },
+  "source_type": "synthetic_math"
+}

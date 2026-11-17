@@ -1,0 +1,171 @@
+{
+  "case": "full_output",
+  "elapsed_seconds": 14.125139300012961,
+  "engine_source": "src/cellquant/tensor_solver.py",
+  "environment": {
+    "compatibility_claim": "CPU tooling only; GPU kernels require target-device tests",
+    "created_at_utc": "2026-11-17T11:33:09.343240+00:00",
+    "cuda": {
+      "available": true,
+      "bf16_supported": true,
+      "devices": [
+        {
+          "compute_capability": [
+            8,
+            6
+          ],
+          "index": 0,
+          "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+          "total_gib": 3.99951171875
+        }
+      ],
+      "nvidia_smi": "NVIDIA GeForce RTX 3050 Laptop GPU, 546.30, 4096 MiB, 8.6",
+      "status": "DEVICE_DETECTED",
+      "torch_cuda_build": "11.8"
+    },
+    "executable": "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+    "machine": "AMD64",
+    "packages": {
+      "accelerate": "0.34.2",
+      "datasets": "2.20.0",
+      "fast-hadamard-transform": null,
+      "flash-attn": null,
+      "huggingface-hub": "0.36.2",
+      "lm_eval": "0.4.14.dev0",
+      "nbclient": "0.11.0",
+      "nbformat": "5.11.1",
+      "numpy": "2.4.6",
+      "psutil": "7.2.2",
+      "pyarrow": "26.0.1",
+      "safetensors": "0.8.0",
+      "scipy": "1.17.1",
+      "tokenizers": "0.19.1",
+      "torch": "2.6.0+cu118",
+      "transformers": "4.44.2",
+      "triton": null
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.18",
+    "schema_version": "1.0"
+  },
+  "evidence_kind": "THROUGHPUT_DIAGNOSTIC_ONLY",
+  "peak_allocated_bytes": 2978421760,
+  "scope": "Full matrix axes and angle domain where requested; random data, identity Q, not pretrained layers or G1. mixed_full has six input panels and ONE output panel.",
+  "solver": {
+    "completed_pairs": 1,
+    "compute_dtype": "float64",
+    "evaluations": 0,
+    "factors": [
+      {
+        "pair": [
+          0,
+          1
+        ],
+        "theta": -0.08979461973781104
+      }
+    ],
+    "final": {
+      "budget_a": 0.0843295096341149,
+      "budget_w": 0.08348085876649046,
+      "loss": 0.056607226967799754
+    },
+    "host_work": "Python scheduling/scalar decisions and checkpoint/hash I/O; no NumPy/SciPy solver arithmetic",
+    "initial": {
+      "budget_a": 0.0843295096341149,
+      "budget_w": 0.0834819249391039,
+      "loss": 0.056612195639624
+    },
+    "interval_certified": false,
+    "limits": {
+      "budget_a": 0.0843295096341149,
+      "budget_w": 0.0834819249391039
+    },
+    "log": [
+      {
+        "accepted": true,
+        "baseline": {
+          "budget_a": 0.0843295096341149,
+          "budget_w": 0.0834819249391039,
+          "loss": 0.056612195639624
+        },
+        "batch_size": 1024,
+        "best": {
+          "budget_a": 0.0843295096341149,
+          "budget_w": 0.08348085876649046,
+          "loss": 0.05660722696779975,
+          "theta": -0.08979461973781104
+        },
+        "boundary_rounding_evaluations": 48726,
+        "candidate_count": 292421,
+        "candidate_policy": "32 lowest predicted feasible candidates; actual full-group verification",
+        "cell_engine": "torch_batched_output_prefix_v1",
+        "event_count": 48726,
+        "event_incidences": 48716,
+        "incremental_statistics": [
+          {
+            "code_event_updates": 48716,
+            "code_member_updates": 0,
+            "full_gemm_per_event": 0,
+            "group_projection_rebases": 52,
+            "owner_member_updates": 0,
+            "row_column_updates": 0
+          }
+        ],
+        "interval_certified": false,
+        "numerical_device": "cuda:0",
+        "pair": [
+          0,
+          1
+        ],
+        "pair_index": 0,
+        "root_candidate_cells": 99,
+        "scope": "Torch FP64 numerical cell search; not certified/global optimal",
+        "seconds": 6.745768199994927,
+        "statistics": {
+          "input": {
+            "groups": 0,
+            "member_visits": 0,
+            "owner_intervals": 0,
+            "stable_groups": 0
+          },
+          "output": {
+            "groups": 2,
+            "member_visits": 99072,
+            "owner_intervals": 9,
+            "stable_groups": 0
+          }
+        },
+        "status": "COMPLETE",
+        "timings": {
+          "candidate_search": 5.758120699989377,
+          "cell_coefficients_and_boundaries": 0.56852460000664,
+          "event_generation": 0.19446749999769963,
+          "sort": 0.001128799980506301,
+          "verification": 0.17862109999987297
+        }
+      }
+    ],
+    "numerical_backend": "torch_batched_output_prefix_v1",
+    "numerical_device": "cuda:0",
+    "orientation": "R1=Q.T",
+    "orthogonality_residual": 1.3595291852448744e-19,
+    "reason": null,
+    "requested_pairs": 1,
+    "resource_diagnostics": null,
+    "root_solver": "torch_complex_shifted_qr_v1",
+    "seconds": 13.989758999989135,
+    "shared_global_r1": true,
+    "signature": "005b0d4d225782f6dd635d043138767f448d52f81a684cc3f7fd0d80f646f0c9",
+    "status": "COMPLETE",
+    "stopped_by_wall_budget": false
+  },
+  "source_hashes": {
+    "D:\\python_project\\quant-llm\\scripts\\profile_tensor_cells.py": "fc70e797a5dd187ec195ad44f33e74d827e25bfe46dd0542fcb0ee0a6cab8b7c",
+    "src/cellquant/solver.py": "2b8fc6159563e6a4d57f2645937137edb8633eac21fd3275f8f7cb090231dbb6",
+    "src/cellquant/tensor_cells.py": "f80cbb9e9d4d07e8997e0f238e676bc88033cba9471fdb05b7a553e93816b08a",
+    "src/cellquant/tensor_math.py": "d4699846fb996fac28cc837c80d00fa616ade7fd936a7f33b8a0a703d586edaf",
+    "src/cellquant/tensor_solver.py": "a7bfd5fb0fc934ca6a677d8fc67531edc0060d5246f1729103c8a6ec80076830"
+  },
+  "source_type": "synthetic_math",
+  "sources_unchanged_during_run": true
+}

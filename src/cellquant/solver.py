@@ -68,6 +68,7 @@ class CalibrationPanel:
 @dataclass
 class SolverConfig:
     backend: str = "numpy_reference"
+    cell_batch_size: int = 1024
     compute_dtype: str = "float64"
     theta_limit: float = math.pi/4
     event_limit_per_pair: int = 200000

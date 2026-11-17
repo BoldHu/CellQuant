@@ -4,11 +4,11 @@
 
 | 组件 | 代码状态 | 已执行的证据与限制 |
 |---|---|---|
-| 原 CPU 参考与基础设施 | 保留并修正零组物理 scale 风险 | 原 62 项测试复现；当前全套 213 项通过（含可执行 CUDA 检查） |
+| 原 CPU 参考与基础设施 | 保留并修正零组物理 scale 风险 | 原 62 项测试复现；当前全套 241 项通过（含实际 CPU/CUDA 数值对照） |
 | 共享 global Q、多面板输入侧 WQ.T/QX、输出侧 QB | IMPLEMENTED | FP64 增量胞元系数、风险约束、实际边界 rounding；3 seeds/24 cases 合成 G0 PASS |
-| 完整维度 | IMPLEMENTED / RESOURCE_BLOCKED_AT_FULL_SEARCH | 本机 4096×11008、128 tokens、±π/4 的单输出面板产生 48725 个区间，30 秒诊断预算处理 979 个后阻塞；用户真实 G1 首对 300 秒仍未完成 |
+| 完整维度 | SYNTHETIC_PAIR_COMPLETE / REAL_G1_BLOCKED | 新批量引擎在 4096×11008、128 tokens、±π/4 的单输出合成案例完整处理 48725 区间，单对约 6.75 秒；六输入加一输出合成混合单对约 78.63 秒。真实九面板新版尚未验证 |
 | 筛选与事件增量 | IMPLEMENTED_CPU_REFERENCE / TORCH_CUDA | 输入稳定组筛选、输出完整行 GPU support envelope；事件排序、增量系数和 QR 数值根均在张量设备计算，小例已与 CPU 对照 |
-| CUDA dense GEMM/量化/求解 | IMPLEMENTED_PYTORCH / REAL_SEARCH_RESOURCE_BLOCKED | 模型与核心数学已驻留 CUDA；小区间根排除和事件索引有回归及同卡合成计时，完整事件吞吐仍是瓶颈；没有完整真实 G1 加速结论 |
+| CUDA dense GEMM/量化/求解 | BATCHED_PYTORCH_ENGINEERING_VALIDATED / REAL_G1_NOT_RUN_WITH_NEW_ENGINE | 输出编码投影前缀和、稳定/固定尺度输入秩二更新、完整行输入边界点值更新及批量候选筛选已验证；不稳定输入和 QR 仍有串行成本，完整 128 对预算尚未证明 |
 | Hadamard / angle-grid / Givens STE / fixed-scale | IMPLEMENTED | 相同面板、坐标预算、约束、墙钟上限；小矩阵验证。grid/STE 中途 optimizer 恢复 NOT_IMPLEMENTED |
 | 真实层采集与 Colab G1 | GPU_RESIDENT_RUN / RESOURCE_BLOCKED | 用户 L4 日志确认全模型 CUDA、两 seed 采集完成；Hadamard/STE/grid 完成，CellQuant/fixed-scale 均首对 300 秒超时；G1 证据不足。新单对诊断模式不生成 G1 |
 | SpinQuant 固定上游 / overlay / R.bin | IMPLEMENTED | commit 8f47aa3… 已核对、tracked tree clean；禁 embedding centering、保 gamma，导出全部 R2 |
@@ -18,7 +18,7 @@
 | 固定数据与实验后端 | IMPLEMENTED / REAL_PIPELINE_NOT_RUN | contract 1.0、revision/token/源码/环境指纹、唯一 run_id、完整分片 SHA、原子结果、资源采样 |
 | WikiText/C4 与六任务 | IMPLEMENTED / INTERFACE_VALIDATED | 固定 harness commit+六任务 revision/metric；六任务 local fixtures 实际跑通；真实分数 NOT_RUN |
 | 配对分析 / G2–G4 构造 | IMPLEMENTED | token 加权 NLL 与 paired seed/document/item bootstrap；空结果准确不足，不生成表/图 |
-| 五本 notebook | DEFAULT_PATH_EXECUTED | IPython inprocess，默认 smoke/manifest-only；真实 Colab/AutoDL notebook 会话未验证 |
+| 六本 notebook | DEFAULT_PATH_EXECUTED / COLAB_G1_DIAGNOSED | 用户 Colab 旧引擎的 G1 与单对诊断已执行并超时；新版 G1 和 AutoDL 云端会话尚未验证 |
 | 目标 RTX PRO 6000 Blackwell / 优化 FHT | NOT_RUN / BLOCKED | 本机 RTX 3050 Laptop 4GiB；FHT、FlashAttention、Triton 缺失 |
 | 2026 强基线、正式消融、论文主表 | NOT_IMPLEMENTED / NOT_RUN | 不能由官方论文数字或本地 fixtures 补填 |
 
@@ -139,3 +139,31 @@ seed 11 的 Hadamard、STE、网格报告 COMPLETE；固定尺度搜索与 CellQ
 实际本地验证：完整 213 passed, 1 warning in 30.43s（仅 Windows pytest 缓存写入权限警告，exit 0）；六本 notebook schema/语法通过，只清除修改单元输出，其他用户单元保持。4 个同 GPU 小合成对照前后最终目标/预算一致，耗时降低约 1.33–3.53 倍，仅代表这些小工程案例。完整 4096×11008、128 tokens、±π/4 的单输出合成面板产生 48725 区间，在 30 秒诊断预算内只处理 979 个后 RESOURCE_BLOCKED；该限制被保留，没有算作 PASS。可见完整事件遍历吞吐仍不足，尚未解决真实 G1 的执行瓶颈，不能宣称优化后正式 G1 已可运行完毕。
 
 下一步先备份原 runs，再同步代码、重启同一服务器 kernel，使用新单对诊断入口定位真实面板的阶段/吞吐；保留原配置，不混用旧源码断点或直接重跑完整 sweep。G1 仍为 INSUFFICIENT_EVIDENCE。代码未提交/push，AutoDL/G2–G4 未运行。
+
+## 2026-11-17 — 真实 Colab 单对诊断再次超时
+
+用户已执行新的 `RUN_PAIR_PROFILE=True` 入口。保存的 01 日志中，run `2026-11-17T102020.290922_0000_29bbe398e6` 于 10:32:14 UTC（北京时间 18:32:14）结束，总耗时 712.44 秒，状态 `RESOURCE_BLOCKED`。seed 11 的第一对 `[547, 526]`：固定尺度搜索在 300 秒内处理 19958/148902 个区间（13.40%），CellQuant 处理 16236/151940 个区间（10.69%），两者均触发原有单对时间上限，未完成一个坐标对。这些是工程诊断，不是 G1 质量成绩；G1 保持 `INSUFFICIENT_EVIDENCE`。
+
+该次模型放置报告确认所有参数在 `cuda:0`，共 13476831232 bytes，`cpu_offload=false`。93.74 秒采集完所有 seed 面板后，代码显式释放基础模型，面板仍在 CUDA。CellQuant 搜索超时时活动张量占 5.458 GiB、缓存分配器保留 7.395 GiB，因此后期约 8 GB 的驱动显存占用符合当前流程。显存下降不能用于判断是否改用 CPU，也不能用于推断计算吞吐。
+
+事件已经枚举并排序；当前实现逐区间执行系数更新、根求解和实际边界舍入，Python 循环及每区间多次 CUDA 同步仍存在。日志证实区间遍历速度不足，但没有内核级 profiler 数据，不能精确分摊各算子的耗时。后续须优化批量处理和同步，再验证完整维度的数值一致性与真实单对吞吐；现有优化尚未解决真实 G1 的预算问题，直接重跑全量不能视为修复。
+
+原始结构化日志和解析记录：`evidence/g1_pair_profile_colab_20261117/progress.jsonl`、`observation.json`。来源仅为用户保存的 notebook 输出，未独立读取云端结果文件或验证云端源码 revision。本轮只归档证据、更新文档，未修改求解代码、notebook、预算或门槛，未重新执行测试或云端实验。
+
+## 2026-11-17 — GPU 批量区间计算与完整维度验证
+
+针对真实首对 300 秒超时，新增 `tensor_cells.py`，引擎标识 `torch_batched_output_prefix_v1`。输出侧按 owner 区间批量累加编码投影的变化；稳定/固定解码尺度的输入保留完整原乘积，只重算两个变化通道的外积；固定解码尺度的风险仍跟踪动态 AbsMax。不稳定输入继续用完整双侧增量系数，完整行边界以已有乘积与编码差直接计算点值，避免来回重建整组多项式。所有面板的系数在共同事件并集上合并后统一选角，保持一个共享 Q、原事件集合、FP64、原角域、300 秒单对和方法总预算。
+
+先复现原有 **213 passed, 1 warning in 40.67s**；最终全套 **241 passed, 1 warning in 34.57s**。警告仅为 Windows pytest 缓存写入权限，退出码为 0。新增对照涵盖输入/输出、动态/固定尺度、完整/多组、不同批次大小、同时事件、零尺度、实际边界与物理风险。最初四项输出边界测试失败，定位为 AbsMax 与代入的浮点运算顺序改变了 tie 舍入；已按实际量化器顺序修复，未放宽测试容差。CPU 数学检查通过，空 G1 仍返回 `INSUFFICIENT_EVIDENCE`，门槛 SHA256 不变。
+
+本机 RTX 3050 Laptop 的最终 CUDA 合成记录（同一工作站，均非预训练模型）：
+
+| 案例 | 全部区间数 | 单对搜索及复核 | 含初始化/接受更新的方法总耗时 | 状态 |
+|---|---:|---:|---:|---|
+| 完整 4096×11008 输出，128 tokens，±π/4 | 48725 | 6.75 秒 | 13.99 秒 | COMPLETE |
+| 六个 64×4096 输入 + 一个完整输出，动态尺度 | 54785 | 78.63 秒 | 86.41 秒 | COMPLETE |
+| 同一混合面板，固定解码尺度 | 52304 | 6.96 秒 | 14.34 秒 | COMPLETE |
+
+峰值分配显存约 2.77/2.88/2.88 GiB。串行旧版在同一输出案例的 30 秒诊断上限仅完成 911/48725 区间，没有完成耗时，故不报告完整搜索加速比。中间版本的混合案例在额外设置的 30 秒诊断上限阻塞，保留该失败记录；正式 300 秒上限未改变。最终动态混合案例仍偏慢，不能将单对完成推断成全部 128 对符合方法预算，更不能推出真实质量或效率收益。
+
+命令、失败和成功日志、源文件前后 hash、完整报告见 `evidence/batched_cells_20261117/validation.json`。最终三项 GPU 运行前后源码一致。真实 L4/7B 新版首对、完整 G1、AutoDL 96GB 与 G2–G4 **NOT_RUN**；本机显存不足以加载 7B，且未直接连接用户 Colab。更新源码后按 `docs/COLAB_GPU_FROM_SCRATCH.md` 重启同一 kernel，以 `RUN_PAIR_PROFILE=True` 或 `python -u -m cellquant.experiment --config runs/prepared/g1_gpu/config.json --profile-pair` 测真实首对。Notebook 配置/输出未修改，代码未提交/push。

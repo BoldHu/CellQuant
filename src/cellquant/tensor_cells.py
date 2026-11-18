@@ -329,12 +329,25 @@ def input_term(orbit, events, work, emit, batch_size=1024):
 
 
 def _root_possible(coeff,left,right):
-    degree=(coeff.shape[-1]-1)//2;mid=left+(right-left)/2
-    k=torch.arange(1,degree+1,device=coeff.device,dtype=coeff.dtype)
-    bound=(right-left).abs()/2*(k*(coeff[...,1::2].abs()+coeff[...,2::2].abs())).sum(-1)
-    norm=coeff.abs().sum(-1)
-    guard=64*torch.finfo(coeff.dtype).eps*norm.clamp_min(torch.finfo(coeff.dtype).tiny)
-    return (norm>0)&(trig_value(coeff,mid).abs()<=bound+guard)
+    """Keep cells where a root cannot be excluded by midpoint Taylor bounds."""
+    half_width = (right - left) / 2
+    midpoint = left + half_width
+    cosine, sine = coeff[..., 1::2], coeff[..., 2::2]
+    k = torch.arange(1, cosine.shape[-1] + 1, device=coeff.device, dtype=coeff.dtype)
+    phase = midpoint[..., None] * k
+    cos_mid, sin_mid = phase.cos(), phase.sin()
+    value = coeff[..., 0] + (cosine * cos_mid + sine * sin_mid).sum(-1)
+    slope = (k * (sine * cos_mid - cosine * sin_mid)).sum(-1)
+    amplitude = cosine.abs() + sine.abs()
+    max_slope = (k * amplitude).sum(-1)
+    max_curvature = (k.square() * amplitude).sum(-1)
+    # Across this cell, |f-f(mid)| <= h |f'(mid)| + h^2 sup|f''|/2.
+    # Small f'(mid) is common when harmonic terms cancel each other.
+    bound = half_width * torch.minimum(max_slope, slope.abs() + half_width * max_curvature / 2)
+    norm = coeff.abs().sum(-1)
+    scale = norm + half_width * max_slope + half_width.square() * max_curvature
+    guard = 64 * torch.finfo(coeff.dtype).eps * scale.clamp_min(torch.finfo(coeff.dtype).tiny)
+    return (norm > 0) & (value.abs() <= bound + guard)
 
 
 def search_terms(terms,angles,baseline,limits,config,work,trace,emit,batch_size):

@@ -21,6 +21,7 @@ def prepare_matrix(matrix_path,output,*,include_tests=False):
         job=next(j for j in selected if j['method']=='cellquant')
         cfg=read_json(job['config_path']);cfg['seeds']=sorted({j['seed'] for j in selected})
         cfg['solver'].pop('schedule_seed',None)
+        cfg['solver'].update(matrix.get('solver', {}))
         # Preserve upstream full R1+R2 CE budget with a dedicated train pool.
         training=[read_json(j['config_path']).get('spinquant_training') for j in selected if j['method']=='spinquant_full']
         if not training or not all(training):raise ValueError('Explicit full SpinQuant training protocol is required')

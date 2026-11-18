@@ -20,12 +20,27 @@ import numpy as np
 from .runtime import atomic_json,read_json,sha256_file,config_hash,environment_report,utc_now,huggingface_cache_paths
 from .data import immutable_revision,load_token_manifest,verify_disjoint
 from .gates import evaluate_file
+from .events import ResourceLimit
 
 
 BACKEND_CONTRACT_VERSION='1.0'
 
 
 class ExperimentBlocked(RuntimeError):pass
+
+
+def _model_solver_config(settings, output, fingerprint):
+    """Use the backend recorded in the frozen model-level protocol."""
+    from .solver import SolverConfig
+    backend = settings.get('backend', 'numpy_reference')
+    tensor = backend == 'torch'
+    return SolverConfig(
+        backend=backend, device=settings.get('device', 'cuda:0' if tensor else 'cpu'),
+        compute_dtype=settings.get('compute_dtype', 'float64'), cell_batch_size=settings.get('cell_batch_size', 1024),
+        theta_limit=settings.get('theta_limit', math.pi/4), wall_seconds=settings.get('wall_seconds', 3600),
+        event_limit_per_pair=settings.get('event_limit_per_pair', 200000), seconds_per_pair=settings.get('seconds_per_pair', 300),
+        checkpoint_path=str(output / ('rotation_state.pt' if tensor else 'rotation_state.npz')),
+        execution_fingerprint=fingerprint)
 
 
 def preflight(config,root=None):
@@ -220,7 +235,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     import torch
     from .spinquant_adapter import (activate_overlay,fixed_r2,fuse_norms,rotate_model,export_spinquant_rotation,
         install_online_graph,configure_quantization,gptq_quantize,compare_logits,measure_rtn_transfer,panel_quant_specs)
-    from .solver import hadamard_rotation,pair_schedule,SolverConfig
+    from .solver import hadamard_rotation,pair_schedule
     from .baselines import fit_baseline
     from .evaluation import evaluate_nll,evaluate_tasks
     from .capture import capture_panels
@@ -283,11 +298,13 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
             prepared=None
             if resident:
                 from .pilot import prepare_pilot_inputs
-                prepared=prepare_pilot_inputs(config,model,graph_identity=graph_identity,progress=progress.step)
-                # The base model is no longer needed once every seed's panels
-                # are frozen. Free it; do not offload a 7B copy to host RAM.
+                with measured('capture'):
+                    prepared=prepare_pilot_inputs(config,model,graph_identity=graph_identity,
+                                                  progress=progress.step,profile_only=profile_pair)
                 del model;model=None;gc.collect();torch.cuda.empty_cache()
-                progress.step('g1.model_released',reason='all seed panels captured; panels remain on CUDA')
+                progress.step('g1.model_released',captured_seeds=list(prepared['seeds']),
+                              captured_splits=['fit'] if profile_pair else ['fit','heldout'],
+                              reason='requested panels captured and resident on CUDA')
             if profile_pair:
                 from .pilot import profile_prepared_pair
                 summary=profile_prepared_pair(config,prepared,output,execution_fingerprint=fingerprint['sha256'],progress=progress.step,pair_count=profile_count)
@@ -307,9 +324,11 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
             atomic_json(output/'execution_fingerprint.json',fingerprint)
             if fingerprint['status']!='VERIFIED':raise ExperimentBlocked('Execution provenance incomplete: '+str(fingerprint['missing']))
             q0=hadamard_rotation(model.config.hidden_size,seed);checkpoint=output/'R.bin'
+            solver_cfg = _model_solver_config(config.get('solver', {}), output, fingerprint['sha256'])
+            solver_state = Path(solver_cfg.checkpoint_path)
             resume_dir=Path(config['resume_run_dir']).resolve() if config.get('resume_run_dir') else None
             resume_signature=config_hash({'config':{k:v for k,v in config.items() if k not in {'resume_run_dir','result_path'}},'execution':fingerprint['sha256']})
-            reused=False;training_resume=None;solver_resume=False
+            reused=False;training_resume=None
             if resume_dir:
                 import shutil
                 old_config=read_json(resume_dir/'config.json');old_fp=read_json(resume_dir/'execution_fingerprint.json')
@@ -327,8 +346,8 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                     candidates=[p for p in (resume_dir/'training').glob('checkpoint-*') if (p/'rotation_signature.json').is_file()]
                     if not candidates:raise ExperimentBlocked('No completed rotation training checkpoint exists yet')
                     training_resume=str(max(candidates,key=lambda p:int(p.name.split('-')[-1])))
-                elif method in {'cellquant','fixed_scale_search_matched'} and (resume_dir/'rotation_state.npz').is_file():
-                    shutil.copy2(resume_dir/'rotation_state.npz',output/'rotation_state.npz');solver_resume=True
+                elif method in {'cellquant','fixed_scale_search_matched'} and (resume_dir/solver_state.name).is_file():
+                    shutil.copy2(resume_dir/solver_state.name,solver_state);solver_cfg.resume=True
                 else:raise ExperimentBlocked('No recoverable method checkpoint; grid/STE partial resume is not implemented')
                 # Training model class must not be used for fused inference.
                 if reused and method in {'spinquant_full','spinquant_r1_control'}:
@@ -351,11 +370,24 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                 model,tokenizer=_load_model(config)
             audit_ids=torch.tensor(parts['dev'][0]['tokens'][None,:min(64,len(parts['dev'][0]['tokens']))],device='cuda')
             if method!='fp_reference':
+                runtime_dtype = getattr(torch,config['runtime']['dtype'])
+                def audit_logits():
+                    with torch.inference_mode():
+                        return model(audit_ids,use_cache=False).logits.float().cpu()
                 with measured('fp_reference'):
-                    model.float().to('cuda')
-                    with torch.inference_mode():original=model(audit_ids,use_cache=False).logits.cpu()
+                    model.to('cuda')
+                    native_original = audit_logits()
+                    model.float()
+                    original = native_original if runtime_dtype == torch.float32 else audit_logits()
                 with measured('fusion'):
-                    model.cpu();fuse_norms(model)
+                    fuse_norms(model)
+                with measured('fp_equivalence'):
+                    fused_error = compare_logits(original, audit_logits(), token_ids=audit_ids)
+                    if fused_error['relative_rms']>1e-4 or abs(fused_error['mean_nll_delta'])>1e-4:
+                        atomic_json(output/'fp_equivalence.json',{'norm_fusion':fused_error})
+                        raise ExperimentBlocked('FP32 norm fusion equivalence failed')
+                with measured('fusion'):
+                    model.cpu()
                     if method not in {'spinquant_full','spinquant_r1_control'} and not reused:
                         export_spinquant_rotation(np.eye(len(q0)),r2,output/'fixed_R.bin')
                         rotate_model(model,output/'fixed_R.bin');install_online_graph(model,quant,quantized=False)
@@ -366,13 +398,10 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                         with measured('capture'):
                             panels=capture_panels(model,parts['fit'],seed=seed,device='cuda',graph_identity=graph_identity,**panel_cfg)
                         settings=config['solver'];schedule=pair_schedule(len(q0),settings['pair_budget'],settings.get('schedule_seed',seed))
-                        cfg=SolverConfig(theta_limit=settings.get('theta_limit',math.pi/4),wall_seconds=settings.get('wall_seconds',3600),
-                            event_limit_per_pair=settings.get('event_limit_per_pair',200000),seconds_per_pair=settings.get('seconds_per_pair',300),
-                            checkpoint_path=str(output/'rotation_state.npz'),execution_fingerprint=fingerprint['sha256'],resume=solver_resume)
-                        from .quantization import QuantSpec
                         with measured('solve'):
-                            fitted=fit_baseline(method,panels,q0,panel_quant_specs(model,panels,quant),schedule,cfg)
+                            fitted=fit_baseline(method,panels,q0,panel_quant_specs(model,panels,quant),schedule,solver_cfg)
                             q=fitted.pop('q');atomic_json(output/'solver.json',fitted)
+                            if fitted['status']=='RESOURCE_BLOCKED':raise ResourceLimit(fitted['reason'])
                             if fitted['status']!='COMPLETE':raise ExperimentBlocked('Rotation search incomplete: '+str(fitted['reason']))
                         del panels
                     export_spinquant_rotation(q,r2,checkpoint)
@@ -382,16 +411,18 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                     if method in {'spinquant_full','spinquant_r1_control'} or reused:install_online_graph(model,quant,quantized=False)
                 with measured('fp_equivalence'):
                     model.float().to('cuda')
-                    with torch.inference_mode():rotated=model(audit_ids,use_cache=False).logits.cpu()
-                    equivalence=compare_logits(original,rotated)
-                    target=audit_ids[:,1:].cpu().reshape(-1)
-                    def nll(z):return float(torch.nn.functional.cross_entropy(z[:,:-1].reshape(-1,z.shape[-1]),target))
-                    equivalence['mean_nll_delta']=nll(rotated)-nll(original)
+                    rotated = audit_logits()
+                    equivalence = compare_logits(original, rotated, token_ids=audit_ids)
+                    equivalence['norm_fusion'] = fused_error
+                    model.to(dtype=runtime_dtype)
+                    native_rotated = rotated if runtime_dtype == torch.float32 else audit_logits()
+                    equivalence['runtime_dtype'] = config['runtime']['dtype']
+                    equivalence['runtime_dtype_rotation'] = compare_logits(native_original, native_rotated, token_ids=audit_ids)
                     equivalence['audit_token_sha256']=hashlib.sha256(audit_ids.cpu().numpy().tobytes()).hexdigest()
                     equivalence['basis']='FP32 from runtime-loaded base weights'
                     atomic_json(output/'fp_equivalence.json',equivalence)
                     if equivalence['relative_rms']>1e-4 or abs(equivalence['mean_nll_delta'])>1e-4:raise ExperimentBlocked('FP32 equivalence failed; quantization not executed')
-                model.to(dtype=getattr(torch,config['runtime']['dtype'])).cpu()
+                model.cpu()
                 rtn_dev=None
                 if config.get('measure_rtn_transfer',stage in {'G2','canary'}):
                     with measured('rtn_transfer_diagnostic'):
@@ -439,6 +470,10 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                           rotation_checkpoint_sha256=sha256_file(checkpoint) if checkpoint.exists() else None,
                           rmsnorm_embedding_centering_disabled=method!='fp_reference',development_only_evaluation=stage in {'G2','canary'},
                           model_weight_manifest_path=str(output/'weights_manifest.json'),model_weight_manifest_sha256=sha256_file(output/'weights_manifest.json'))
+        if stage=='G1':
+            result.update(peak_gpu_allocated_bytes=torch.cuda.max_memory_allocated(),
+                          peak_gpu_reserved_bytes=torch.cuda.max_memory_reserved(),
+                          visible_gpu_bytes=torch.cuda.get_device_properties(0).total_memory)
         result['resources']=monitor.stop()
         atomic_json(output/'resources.json',result['resources'])
         atomic_json(output/'result.json',result)
@@ -450,7 +485,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     except (KeyboardInterrupt,Exception) as exc:
         token=os.environ.get('HF_TOKEN');message=f'{type(exc).__name__}: {exc}'
         if token:message=message.replace(token,'[REDACTED]')
-        result={**base,'status':'INTERRUPTED' if isinstance(exc,KeyboardInterrupt) else 'BLOCKED' if isinstance(exc,ExperimentBlocked) else 'RESOURCE_BLOCKED' if isinstance(exc,torch.cuda.OutOfMemoryError) else 'FAILED',
+        result={**base,'status':'INTERRUPTED' if isinstance(exc,KeyboardInterrupt) else 'BLOCKED' if isinstance(exc,ExperimentBlocked) else 'RESOURCE_BLOCKED' if isinstance(exc,(torch.cuda.OutOfMemoryError,ResourceLimit)) else 'FAILED',
                 'phase':progress.state['phase'],'reason':message,'timings':timings}
         result['resources']=monitor.stop();atomic_json(output/'resources.json',result['resources'])
         atomic_json(output/'result.json',result)

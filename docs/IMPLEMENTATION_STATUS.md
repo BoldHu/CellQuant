@@ -1,14 +1,16 @@
 # 实现状态与证据边界
 
-更新：2026-11-17。以下“已实现”描述代码；实验结论单独列出。整个研究尚未完成。
+更新于 2026-11-18。真实 G1–G4 仍缺完整证据。
+
+**当前可进入 A100 真实层测试。** 代码使用 `torch_batched_bilateral_prefix_v3`。真实 L4 上一次完成的是 8 对工程诊断，20.33 秒/对来自旧版用户保存的日志。新版在本机 RTX 3050 Laptop 的完整轴混合合成案例上各重复三次，单对搜索中位数为 20.34 → 3.48 秒，方法耗时为 27.83 → 10.97 秒。事件数、候选数、最终角度、实测损失和两项风险一致。当前本地回归 310 项通过。实际 A100 时间与 7B held-out 误差待测。[实测明细](../evidence/a100_readiness_20261118/benchmark.json) · [验证记录](../evidence/a100_readiness_20261118/validation.json) · [A100 测试方案](COLAB_A100_TEST.md)
 
 | 组件 | 代码状态 | 已执行的证据与限制 |
 |---|---|---|
-| 原 CPU 参考与基础设施 | 保留并修正零组物理 scale 风险 | 原 62 项测试复现；当前全套 281 项通过（含实际 CPU/CUDA 数值对照、动态输入批处理与连续前缀诊断） |
+| 原 CPU 参考与基础设施 | 保留并修正零组物理 scale 风险 | 全套 310 项通过，含实际 CPU/CUDA 数值对照、连续共享 Q 和预算耗尽回归 |
 | 共享 global Q、多面板输入侧 WQ.T/QX、输出侧 QB | IMPLEMENTED | FP64 增量胞元系数、风险约束、实际边界 rounding；3 seeds/24 cases 合成 G0 PASS |
 | 完整维度 | REAL_PREFIX8_COMPLETE / FULL_G1_NOT_RUN | 用户 L4 九面板连续 8 对已完成；CellQuant 搜索均值 20.33 秒，128 对预算及 held-out 质量尚未验证。本地合成记录另列 |
 | 筛选与事件增量 | IMPLEMENTED_CPU_REFERENCE / TORCH_CUDA | 输入稳定组筛选、输出完整行 GPU support envelope；事件排序、增量系数和 QR 数值根均在张量设备计算，小例已与 CPU 对照 |
-| CUDA dense GEMM/量化/求解 | BATCHED_PYTORCH / REAL_PREFIX8_COMPLETE | 真实前缀显示动态输入更新瓶颈；新增完整行动态输入批处理并保留双侧交叉项，本地同卡验证。新版真实 L4 尚未执行，完整方法预算不变 |
+| CUDA dense GEMM/量化/求解 | BATCHED_PYTORCH / NEW_GPU_PREFIX_NOT_RUN | 稳定输入组阈值批量枚举、窄胞元二阶余项筛选、输出两行更新通过本地同卡测试。真实 7B 上新版速度待测 |
 | Hadamard / angle-grid / Givens STE / fixed-scale | IMPLEMENTED | 相同面板、坐标预算、约束、墙钟上限；小矩阵验证。grid/STE 中途 optimizer 恢复 NOT_IMPLEMENTED |
 | 真实层采集与 Colab G1 | GPU_RESIDENT_RUN / PROFILE_COMPLETE / G1_INSUFFICIENT | 最新前 8 对 CellQuant/fixed-scale 均完成，整轮 354.38 秒；CellQuant 搜索部分外推 43.36 分钟超过 24 分钟预算。未执行本版完整五方法或 held-out 评估 |
 | SpinQuant 固定上游 / overlay / R.bin | IMPLEMENTED | commit 8f47aa3… 已核对、tracked tree clean；禁 embedding centering、保 gamma，导出全部 R2 |
@@ -21,6 +23,8 @@
 | 六本 notebook | DEFAULT_PATH_EXECUTED / COLAB_PREFIX8_COMPLETE | 01 连续 8 对诊断已完成；保留当前运行摘要，新输入引擎需在同一前缀重测，正式 G1 与 AutoDL 尚待执行 |
 | 目标 RTX PRO 6000 Blackwell / 优化 FHT | NOT_RUN / BLOCKED | 本机 RTX 3050 Laptop 4GiB；FHT、FlashAttention、Triton 缺失 |
 | 2026 强基线、正式消融、论文主表 | NOT_IMPLEMENTED / NOT_RUN | 不能由官方论文数字或本地 fixtures 补填 |
+
+前缀诊断现只采集第一个 seed 的 fit 面板，正式 G1 仍采集两种子的 fit/dev。耗时摘要增加含更新和 checkpoint 的完整方法外推。G1 的摘要、恢复与证据汇总会检查旧记录的实际完成对数。新准备的 G2 和正式矩阵显式冻结 CUDA 求解器，历史 NumPy 协议仍可复现。模型级 FP 审计增加单独的 Norm 融合测量和实际运行精度的输出偏差。G2 的三路 FP32 证据需要每个运行同时有融合及最终旋转测量。
 
 ## 科学门槛
 

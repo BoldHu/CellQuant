@@ -89,6 +89,29 @@ def test_grouped_and_dense_unstable_cases_use_existing_path(device):
     assert not batch.can_batch(ts.PanelOrbit(s, (0, 5)))
 
 
+@pytest.mark.parametrize('group_size,pair', [(-1, (5, 0)), (4, (1, 0)), (4, (5, 0))])
+@pytest.mark.parametrize('fixed', [False, True])
+def test_batched_stable_events_preserve_group_member_and_budget(device, group_size, pair, fixed):
+    s = make_state(device, 'ties_zero')
+    q = torch.eye(s.panel.hidden_size, dtype=torch.float64, device=device)
+    spec = QuantSpec(group_size=group_size)
+    state = ts.PanelState(s.panel, q, spec, spec, fixed=fixed)
+    state.accept((2, 3), .21)
+    orbit = ts.PanelOrbit(state, pair)
+    batched_work, scalar_work = WorkBudget(), WorkBudget()
+    events = batch.stable_group_events(orbit, -.78, .78, batched_work)
+    assert events and set(events) == {i for i, g in enumerate(orbit.groups) if g.stable}
+    for gid, (angles, members, stats) in events.items():
+        ref_angles, ref_members, ref_stats = orbit.groups[gid].enumerate(-.78, .78, True, scalar_work)
+        assert stats == ref_stats
+        # Compare every incidence, including endpoints and duplicated roots.
+        actual = sorted(zip(members.tolist(), angles.tolist()))
+        expected = sorted(zip(ref_members.tolist(), ref_angles.tolist()))
+        np.testing.assert_array_equal(np.array(actual)[:, 0], np.array(expected)[:, 0])
+        np.testing.assert_allclose(np.array(actual)[:, 1], np.array(expected)[:, 1], atol=2e-15, rtol=0)
+    assert batched_work.generated == scalar_work.generated
+
+
 def test_full_hidden_axis_dynamic_batch(device):
     s = make_state(device, 'bilateral', 4096)
     orbit = ts.PanelOrbit(s, (0, 5))

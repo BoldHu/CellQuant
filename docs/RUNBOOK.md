@@ -41,13 +41,15 @@ python scripts/run_harness_smoke.py --output runs/local_harness_fixture
 
 ## Colab G1
 
+A100 请按[真实前缀、正式 G1 与服务器验收](COLAB_A100_TEST.md)执行。以下使用同一 GPU 驻留配置。
+
 运行 notebook 00，产生实际 `runs/00_math/production/G0_evidence.json`。再准备固定 revision 与真实数据：
 
 ```bash
-python scripts/prepare_experiment.py --config configs/colab_pilot.json --output runs/prepared/g1
-python scripts/cache_model.py --config runs/prepared/g1/config.json
-python -m cellquant.experiment --config runs/prepared/g1/config.json --preflight
-python -m cellquant.experiment --config runs/prepared/g1/config.json
+python scripts/prepare_experiment.py --config configs/colab_pilot.json --output runs/prepared/g1_gpu
+python scripts/cache_model.py --config runs/prepared/g1_gpu/config.json
+python -m cellquant.experiment --config runs/prepared/g1_gpu/config.json --preflight
+python -m cellquant.experiment --config runs/prepared/g1_gpu/config.json --profile-pairs 8
 ```
 
 准备脚本读取 HF_TOKEN 环境变量或现有 HF 授权，不输出 token；解析 immutable model/tokenizer/WikiText revisions，保存 HF 权重分片的 LFS SHA-256/大小、实际 tokens 与文档划分，不下载基础权重。真正模型阶段会先校验完整分片再加载。
@@ -56,7 +58,7 @@ python -m cellquant.experiment --config runs/prepared/g1/config.json
 
 默认 3 层 × q/up/down、2 种子；每个 seed 的五个方法使用相同冻结面板、Q0、pair schedule、墙钟上限、风险预算及固定 R2/R3/R4。q/up 允许抽输出行；down 保留完整 hidden×FFN。实际结果在唯一 `runs/experiments/<run_id>`，其中的 `G1_evidence.json` 来自原始 held-out 记录。设置 notebook 01 的 `CELLQUANT_PILOT_CONFIG` 和 `CELLQUANT_G1_EVIDENCE` 指向这些真实文件。
 
-本机可用 CPU RAM 约 2GiB、GPU 4GiB，不能装载 7B。当前实现用 CPU 暂存全模型和完整面板，preflight 对 7B/8B 至少要求 24GiB 可用 CPU RAM；这是最低检查，不是足够内存保证。普通低内存 Colab 可能阻塞，高 RAM 环境仍须实测。T4 用 FP16并单独记录；换平台或 dtype 后重新跑对照。
+默认 G1 将全模型置于 CUDA，采集结束后释放基础模型，面板继续驻留 CUDA。24 GiB 可用 CPU RAM 的检查适用于 CPU 暂存配置。T4 用 FP16 并单独记录；换平台或 dtype 后重新跑对照。
 
 ## 迁移、canary 与完整 SpinQuant
 

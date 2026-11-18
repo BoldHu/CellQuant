@@ -1,0 +1,111 @@
+{
+  "G0": "PASS",
+  "G0_metrics": {
+    "accepted_update_increase_count": 0,
+    "budget_violation_count": 0,
+    "cell_loss_prediction_abs_error_max": 1.3383391617161067e-15,
+    "fp64_orthogonality_rel_error_max": 7.851684725819548e-17,
+    "fp64_product_rel_error_max": 2.99558524132532e-16,
+    "input_output_direction_cases_pass": true,
+    "math_case_count": 24,
+    "math_seed_count": 3,
+    "reference_implementation_audited": true,
+    "rounding_boundary_cases_pass": true,
+    "screened_vs_full_loss_rel_error_max": 0.0
+  },
+  "date": "2026-11-18",
+  "device": {
+    "compute_capability": [
+      8,
+      6
+    ],
+    "index": 0,
+    "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+    "total_gib": 3.99951171875
+  },
+  "expected_empty_G1": "INSUFFICIENT_EVIDENCE",
+  "fht_backend": "torch_reference",
+  "full_dimension": {
+    "device": "cuda:0",
+    "initialization_and_one_direct_seconds": 3.582332199992379,
+    "nmse": 0.06268615180331497,
+    "peak_allocated_bytes": 2496415232,
+    "scope": "Full reduction/hidden dimensions; two-token engineering memory/GEMM probe only, not 7B/G1/full event-search throughput",
+    "source_type": "synthetic_math",
+    "tokens": 2,
+    "weight_shape": [
+      4096,
+      11008
+    ]
+  },
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "gpu_controls": {
+    "angle_grid_matched": "COMPLETE",
+    "cellquant": "COMPLETE",
+    "fixed_scale_search_matched": "COMPLETE",
+    "givens_ste_matched": "COMPLETE",
+    "hadamard_shared": "COMPLETE"
+  },
+  "gpu_resident": "PASS_ENGINEERING_ONLY",
+  "logs": {
+    "runs\\a100_review_20261118_150928\\empty_g1.log": "5c8a65557d8c5c773eed103a3e331cd85f029f1e21f0a419e003b60caa67c4ff",
+    "runs\\a100_review_20261118_150928\\g0_final.log": "79144a0d39925b7a6a37b98537c035716be8a6025adb0b3268eafa26b682ef5e",
+    "runs\\a100_review_20261118_150928\\gpu.log": "f0e718cad9f394552172eab04929aa55f9e92d96ce6498f09b26d0a710594898",
+    "runs\\a100_review_20261118_150928\\math.log": "a2bb4ca521a2b5962ed2b17bb5a9175e64b03e45695961ac0862e583c36a9446",
+    "runs\\a100_review_20261118_150928\\nb_00.log": "38c9012978e19ce5cc8bf052645e620d0a1043a5445634b99c7a2e78aa1d3320",
+    "runs\\a100_review_20261118_150928\\nb_01.log": "040fcea0d392dd451142bcc3cd580713f01a771a0cd52cd1ab39a9d13944f55c",
+    "runs\\a100_review_20261118_150928\\pytest_release.log": "f9307b00516debe06abc5605b9cf06e72b93b0beba1914e2912e43a3fa840183",
+    "runs\\a100_review_20261118_150928\\spinquant.log": "7e2281b4ac74e1dc59cab2fc5ba0184cef4bf8e42c68dd79b1ebf7f9bbe1616a"
+  },
+  "math_reference": "PASS",
+  "not_run": [
+    "A100 or new L4 pretrained 7B prefix",
+    "complete real G1",
+    "target 96GB GPU canary / G2",
+    "G3/full",
+    "optimized FHT extension on this local machine"
+  ],
+  "notebooks": {
+    "00_Colab_GitHub_Workspace.ipynb": {
+      "default_path": "executed_offline_inprocess",
+      "executed_copy": "runs\\a100_review_20261118_150928\\00_default.ipynb",
+      "schema_and_python_syntax": "PASS"
+    },
+    "00_Colab_Preflight_and_Math.ipynb": {
+      "schema_and_python_syntax": "PASS"
+    },
+    "01_Colab_Real_Layer_Pilot.ipynb": {
+      "default_path": "executed_offline_inprocess",
+      "executed_copy": "runs\\a100_review_20261118_150928\\01_default.ipynb",
+      "schema_and_python_syntax": "PASS"
+    },
+    "02_AutoDL_Migration_and_Canary.ipynb": {
+      "schema_and_python_syntax": "PASS"
+    },
+    "03_Full_Experiments.ipynb": {
+      "schema_and_python_syntax": "PASS"
+    },
+    "04_Paper_Analysis.ipynb": {
+      "schema_and_python_syntax": "PASS"
+    }
+  },
+  "pytest_summary": "310 passed in 70.44s (0:01:10)",
+  "source_type": "unit_test_fixture",
+  "spinquant_commit": "8f47aa3f00e8662caf1a484153920a07e5281c3a",
+  "tiny_spinquant": {
+    "fusion": {
+      "max_absolute": 4.470348358154297e-08,
+      "mean_nll_delta": 3.5180729440753566e-09,
+      "relative_rms": 1.0300063388572453e-07
+    },
+    "gptq": "EXECUTED_FINITE",
+    "resume_parameter_max_error": 0.0,
+    "rotation": {
+      "max_absolute": 7.450580596923828e-08,
+      "mean_nll_delta": -7.025411363770218e-10,
+      "relative_rms": 1.7735275138324674e-07
+    },
+    "status": "PASS_TINY_STRUCTURE_ONLY"
+  },
+  "validation_scope": "Local engineering and math checks only."
+}

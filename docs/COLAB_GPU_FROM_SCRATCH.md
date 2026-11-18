@@ -1,12 +1,14 @@
 # 新 Colab 服务器：GPU 驻留 G1，从环境到测试
 
+A100 的同卡计时、正式 G1 验收和租卡条件见[本轮测试方案](COLAB_A100_TEST.md)。
+
 本流程使用 `00_Colab_GitHub_Workspace.ipynb` 和 `01_Colab_Real_Layer_Pilot.ipynb`。旧 CPU 实验保留；新协议保存到 `runs/prepared/g1_gpu/`。不要恢复旧优化器继续跑，也不要覆盖旧准备配置。CPU 数学参考仍用于验证；真实 G1 使用 PyTorch CUDA 后端。
 
 ## 0. 先把本地修改同步到 GitHub
 
 本次代码不会因为新建 Colab 服务器而自动出现在 GitHub。先在 VS Code 审查并提交本轮核心代码、配置、脚本、测试、说明和两本 notebook，再 push 到 `BoldHu/CellQuant` 的 `master`。
 
-提交前将 notebook 的 `HF_TOKEN` 清为空字符串，并清除含凭据的输出；令牌只在云端运行时填写。不要把 `.cache/`、模型权重或活动 `runs/` 加入 Git。保存的脱敏验证记录位于 `evidence/gpu_resident_20261116/`。
+初始化 notebook 从 Colab Secrets 或进程环境读取 `HF_TOKEN`。提交前检查暂存文件与 notebook 输出。缓存、模型权重和活动 `runs/` 位于 Git 工作集之外。
 
 ```bash
 git status --short
@@ -27,7 +29,6 @@ VS Code 连接新 Colab 服务器后，在 workspace notebook 顶部确认 `sys.
 打开更新后的 `notebooks/00_Colab_GitHub_Workspace.ipynb`。顶部设置：
 
 ```python
-HF_TOKEN = "在云端填写有模型访问权限的 token"
 RESTORE_AREAS = ["models", "datasets", "runs"]
 RESTORE_RUNS_CONFLICT = "separate"
 RUN_G0 = True
@@ -82,7 +83,7 @@ BACKUP_AREAS = []
 
 运行真实 G1 单元后，日志先给出唯一 `run_dir` 和 PID。加载完成会打印 `model_placement`，并写入 `model_placement.json`：所有模型参数必须在 CUDA。之后依次显示融合、fit/held-out、seed、层号、方法、面板和坐标对。每 30 秒心跳记录 CPU RSS、可用 RAM、CUDA allocated/reserved。
 
-所有 seed 面板采集完后出现 `g1.model_released`：这表示不再需要基础模型，已释放其显存，**不是搬回 RAM**。共享 Q、拟合/held-out 面板及求解状态继续保留在 GPU。显存下降到面板工作集大小属于这一阶段的预期行为。
+完成本次所需面板采集后，`g1.model_released` 会记录采集的 seeds 和 splits。前缀仅使用首个 seed 的 fit 面板；正式 G1 使用每个 seed 的 fit 和 held-out 面板。此时基础模型释放，共享 Q、面板和求解状态继续保留在 GPU。
 
 结果指针文件把 notebook 绑定到本次唯一 run；后面的 G1 评估单元自动读取该 run 的真实 `G1_evidence.json`，不再默认评估空模板。运行开关、工程 PASS 和进程退出码不替代 G1 科学门槛。
 

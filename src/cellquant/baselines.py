@@ -52,17 +52,24 @@ def fit_baseline(method,panels,q0,specs,schedule,config=None,*,grid_points=129,s
                 v=evaluate(pair,float(theta));count+=1
                 feasible=not config.constrain_budgets or all(v[k]<=limits[k]+config.budget_tolerance*max(1.,limits[k]) for k in limits)
                 if feasible and v['loss']<best['loss']:best=dict(v,theta=float(theta))
+            if hasattr(proposals,'close'):proposals.close()
+            if not count:break
             accepted=best['theta']!=0.
             if accepted:
                 for state in states:state.accept(pair,best['theta'])
                 rotate_rows(q,pair,best['theta']);factors.append({'pair':list(pair),'theta':best['theta']})
             log.append({'pair_index':index,'pair':list(pair),'best':best,'baseline':baseline,'accepted':accepted,'evaluations':count})
-    return {'status':'COMPLETE','q':q,'initial':initial,'final':aggregate(states),'limits':limits,
-            'factors':factors,'log':log,'seconds':time.perf_counter()-start,'evaluations':evaluations,
+    orth=float(np.linalg.norm(q.T@q-np.eye(len(q)))/math.sqrt(len(q)))
+    elapsed=time.perf_counter()-start
+    blocked=method!='hadamard_shared' and (len(log)<len(schedule) or elapsed>config.wall_seconds)
+    return {'status':'RESOURCE_BLOCKED' if blocked else 'COMPLETE',
+            'reason':'Wall-clock budget exhausted' if blocked else None,
+            'q':q,'initial':initial,'final':aggregate(states),'limits':limits,
+            'factors':factors,'log':log,'seconds':elapsed,'evaluations':evaluations,
             'completed_pairs':len(log),'requested_pairs':len(schedule),
             'stopped_by_wall_budget':len(log)<len(schedule) and method!='hadamard_shared',
             'shared_global_r1':True,'orientation':'R1=Q.T',
-            'orthogonality_residual':float(np.linalg.norm(q.T@q-np.eye(len(q)))/math.sqrt(len(q)))}
+            'orthogonality_residual':orth}
 
 
 def _ste_proposals(states,pair,config,steps,lr):

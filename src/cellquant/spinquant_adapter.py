@@ -330,11 +330,20 @@ def gptq_quantize(model,blocks,quantization,*,device='cuda',checkpoint_dir=None,
         if rotary is not None:rotary.to(rotary_device)
 
 
-def compare_logits(reference,actual):
+def compare_logits(reference,actual,*,token_ids=None):
     import torch
     r,a=reference.double(),actual.double()
-    return {'relative_rms':float(torch.linalg.norm(a-r)/torch.linalg.norm(r).clamp_min(1e-30)),
+    result={'relative_rms':float(torch.linalg.norm(a-r)/torch.linalg.norm(r).clamp_min(1e-30)),
             'max_absolute':float((a-r).abs().max())}
+    if token_ids is not None:
+        target=token_ids[:,1:].reshape(-1).to(r.device)
+        def nll(logits):
+            scores=logits[:,:-1].reshape(-1,logits.shape[-1])
+            return torch.nn.functional.cross_entropy(scores,target)
+        result['mean_nll_delta']=float(nll(a)-nll(r))
+    if not all(math.isfinite(v) for v in result.values()):
+        raise ValueError('Nonfinite logits or NLL in floating-point equivalence audit')
+    return result
 
 
 def panel_quant_specs(model,panels,quantization):

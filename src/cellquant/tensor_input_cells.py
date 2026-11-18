@@ -9,6 +9,50 @@ incremental solver, without dropping events or members.
 import torch
 
 
+def stable_group_events(orbit, left, right, work):
+    """Enumerate screened input groups together, retaining per-member incidences."""
+    from .tensor_math import affine_roots
+    by_block = {}
+    for gid, group in enumerate(orbit.groups):
+        if group.stable:
+            by_block.setdefault((group.side, group.start), []).append(gid)
+    events = {}
+    state = orbit.state
+    i, j = orbit.pair
+    for (side, start), gids in by_block.items():
+        values, scales = (state.a, state.sw) if side == 'w' else (state.x.T, state.sx)
+        group = orbit.groups[gids[0]]
+        width = len(group.coeff)
+        moving = sorted(index for index in (i, j) if start <= index < start + width)
+        member_ids = torch.tensor([index - start for index in moving], device=values.device)
+        thresholds = torch.arange(group.spec.qmin + .5, group.spec.qmax, dtype=values.dtype, device=values.device)
+        stats = {'owner_intervals': 1, 'member_visits': len(moving), 'stable_groups': 1, 'groups': 1}
+        for offset in range(0, len(gids), 128):
+            work.check()
+            batch = gids[offset:offset+128]
+            rows = torch.tensor([orbit.groups[gid].row for gid in batch], device=values.device)
+            u, v = values[rows, i], values[rows, j]
+            zero = torch.zeros_like(u)
+            rotating = {i: torch.stack((zero, u, -v), -1), j: torch.stack((zero, v, u), -1)}
+            coeff = torch.stack([rotating[index] for index in moving], 1)
+            sc = torch.stack((scales[rows, start//width, 0], zero, zero), -1)
+            equations = coeff[:, None] - thresholds[None, :, None, None] * sc[:, None, None, :]
+            roots, eq = affine_roots(equations, left, right)
+            work.check(len(roots))
+            owner = eq // (len(thresholds) * len(moving))
+            endpoints = values.new_tensor([left, right]).repeat(len(batch))
+            points = torch.cat((endpoints, roots))
+            members = torch.cat((eq.new_full((len(endpoints),), -1), member_ids[eq % len(moving)]))
+            buckets = torch.cat((torch.arange(len(batch), device=values.device).repeat_interleave(2), owner))
+            order = buckets.argsort(stable=True)
+            # Only segment lengths leave the device. Sorting by group keeps
+            # coincident angles and their distinct rounding incidences.
+            lengths = buckets.bincount(minlength=len(batch)).tolist()
+            for gid, a, ids in zip(batch, points[order].split(lengths), members[order].split(lengths)):
+                events[gid] = a, ids, stats
+    return events
+
+
 def unstable_rows(orbit):
     return ([g.row for g in orbit.groups if g.side == 'w' and not g.stable],
             [g.row for g in orbit.groups if g.side == 'a' and not g.stable])

@@ -8,6 +8,7 @@
   "gate_report_path": "runs/gates/G1.json",
   "gate_evidence_path": "runs/gates/G1_evidence.json",
   "backend_module": "cellquant.experiment",
+  "solver": {"backend": "torch", "device": "cuda:0", "compute_dtype": "float64"},
   "run_default": false,
   "jobs": [
     {

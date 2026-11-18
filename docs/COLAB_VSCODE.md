@@ -74,23 +74,7 @@ python scripts/prepare_spinquant.py
 
 已有 SpinQuant checkout 时核对 commit/clean tree，不重复 clone。FHT 在目标 torch/CUDA 下安装和探测，具体要求见 [运行手册](RUNBOOK.md)。基础安装不会伪称 FHT 已支持。
 
-LLaMA 需要 HF 账号已获模型访问权。按用户当前偏好，workspace notebook 顶部配置单元统一提供全局变量；只在该处填写真实值：
-
-```python
-HF_TOKEN = ""  # 在本地填写令牌，提交 notebook 前恢复为空字符串
-```
-
-先运行顶部配置，再运行 notebook 中的 HF 登录单元。它将同一令牌写入当前进程的 `HF_TOKEN` 环境变量，`logged_command` 子进程会继承；不打印令牌。VS Code 扩展环境不依赖浏览器 Colab Secrets API。另开的 terminal 不会继承 notebook 的进程环境，下载命令优先在 notebook 中运行。含真实令牌的 notebook 不提交到 GitHub。
-
-若准备数据在 workspace notebook，而真实执行在 01 的另一个 kernel，可在工作区初始化后用以下方式登录：
-
-```python
-from huggingface_hub import login
-if not HF_TOKEN.strip():
-    raise ValueError("先填写并运行顶部 HF_TOKEN 配置")
-os.environ["HF_TOKEN"] = HF_TOKEN.strip()
-login(token=os.environ["HF_TOKEN"], add_to_git_credential=False)
-```
+LLaMA 需要 HF 账号已获模型访问权。将只读令牌存入 Colab Secrets，名称为 `HF_TOKEN`，授权 workspace notebook 读取；也可在启动内核前提供同名环境变量。设置 `PREPARE_G1_INPUTS=True` 后执行登录单元。若 VS Code 内核无法访问 Colab Secrets，可在该运行时的私密输入框用 `getpass.getpass()` 给内存变量 `HF_TOKEN` 赋值，再运行登录单元。
 
 该方式在当前进程设置令牌，并将登录凭据保存到当前 VM 的 `.cache/huggingface/token` / `stored_tokens`，供同一服务器中完成工作区初始化的其他 kernel 使用；不会写入 Git 凭据，也不进入项目的 Drive 快照。销毁 VM 后需重新登录。HF 账号必须已获目标模型访问权，令牌登录本身不授予 gated model 权限。登录失败时先处理权限，不进入模型下载。
 
@@ -98,16 +82,16 @@ login(token=os.environ["HF_TOKEN"], add_to_git_credential=False)
 
 workspace notebook 现已直接包含“准备真实 G1 输入：校准数据、模型权重与 Drive 备份”单元。上方 HF 权限检查下载的小型 `config.json` 不包含模型权重。先将顶部 `PREPARE_G1_INPUTS=True` 并运行配置单元，再运行该准备单元；它依次执行数据准备、真实预检查、权重下载/校验、Drive 备份。默认 False 不下载大模型。只有全部步骤成功才输出准备完成；预检查不为 READY 或下载校验失败均会停止。
 
-该流程默认生成 `runs/prepared/g1/config.json`。已有冻结配置会复用，权重仍重新校验，文件不会被覆盖；若准备目录有失败残留且没有完整配置，保留原目录，设置新的 `CELLQUANT_PILOT_CONFIG`（文件名为 `config.json`），并确保 01 使用相同路径。另一个 notebook kernel 不继承当前 kernel 临时设置的环境变量，非默认路径需分别配置。
+该流程默认生成 `runs/prepared/g1_gpu/config.json`。已有冻结配置会复用，权重仍重新校验，文件不会被覆盖；若准备目录有失败残留且没有完整配置，保留原目录，设置新的 `CELLQUANT_PILOT_CONFIG`（文件名为 `config.json`），并确保 01 使用相同路径。另一个 notebook kernel 不继承当前 kernel 临时设置的环境变量，非默认路径需分别配置。
 
 也可手动分步运行相同脚本：先准备版本与真实校准数据，再独立下载并核验模型：
 
 ```python
 logged_command([sys.executable, "scripts/prepare_experiment.py",
                 "--config", "configs/colab_pilot.json",
-                "--output", "runs/prepared/g1"], "prepare_g1")
+                "--output", "runs/prepared/g1_gpu"], "prepare_g1")
 logged_command([sys.executable, "scripts/cache_model.py",
-                "--config", "runs/prepared/g1/config.json"], "cache_model")
+                "--config", "runs/prepared/g1_gpu/config.json"], "cache_model")
 logged_command([sys.executable, "-m", "cellquant.workspace", "backup",
                 "--areas", "models", "datasets", "runs"], "backup_inputs")
 ```
@@ -120,7 +104,7 @@ logged_command([sys.executable, "-m", "cellquant.workspace", "backup",
 
 ```python
 logged_command([sys.executable, "-m", "cellquant.experiment",
-                "--config", "runs/prepared/g1/config.json", "--preflight"], "g1_preflight")
+                "--config", "runs/prepared/g1_gpu/config.json", "--preflight"], "g1_preflight")
 ```
 
 查看真实 `preflight.json`；只有 READY 才在 notebook 01 设置实际配置并显式启动 G1，或运行同一命令去掉 `--preflight`。preflight 的进程正常退出并不代表 READY，缺证据/资源仍是 BLOCKED。

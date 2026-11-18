@@ -1,0 +1,336 @@
+{
+  "base_commit": "1b2caf08e9944b1dc83f2eb5cf96b9111f33234d",
+  "case": "Six 64 x 4096 input weights, one 4096 x 11008 output weight, 128 tokens, FP64, full groups, +/- pi/4.",
+  "command": "python scripts/profile_tensor_cells.py --case mixed_full --pairs 1 --seconds-per-pair 300 --output <new.json>",
+  "date": "2026-11-18",
+  "environment": {
+    "compatibility_claim": "CPU tooling only; GPU kernels require target-device tests",
+    "created_at_utc": "2026-11-18T07:22:56.645222+00:00",
+    "cuda": {
+      "available": true,
+      "bf16_supported": true,
+      "devices": [
+        {
+          "compute_capability": [
+            8,
+            6
+          ],
+          "index": 0,
+          "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+          "total_gib": 3.99951171875
+        }
+      ],
+      "nvidia_smi": "NVIDIA GeForce RTX 3050 Laptop GPU, 546.30, 4096 MiB, 8.6",
+      "status": "DEVICE_DETECTED",
+      "torch_cuda_build": "11.8"
+    },
+    "executable": "D:\\python_project\\quant-llm\\.venv\\Scripts\\python.exe",
+    "machine": "AMD64",
+    "packages": {
+      "accelerate": "0.34.2",
+      "datasets": "2.20.0",
+      "fast-hadamard-transform": null,
+      "flash-attn": null,
+      "huggingface-hub": "0.36.2",
+      "lm_eval": "0.4.14.dev0",
+      "nbclient": "0.11.0",
+      "nbformat": "5.11.1",
+      "numpy": "2.4.6",
+      "psutil": "7.2.2",
+      "pyarrow": "26.0.1",
+      "safetensors": "0.8.0",
+      "scipy": "1.17.1",
+      "tokenizers": "0.19.1",
+      "torch": "2.6.0+cu118",
+      "transformers": "4.44.2",
+      "triton": null
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.18",
+    "schema_version": "1.0"
+  },
+  "evidence_kind": "SAME_DEVICE_THROUGHPUT_DIAGNOSTIC",
+  "measurements": [
+    {
+      "best": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898,
+        "theta": -0.6841242698168808
+      },
+      "candidate_count": 328758,
+      "event_count": 54786,
+      "event_incidences": 54772,
+      "final": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898
+      },
+      "method_seconds": 35.564501400018344,
+      "pair": [
+        0,
+        1
+      ],
+      "peak_allocated_bytes": 3093792768,
+      "raw_report_path": "runs/a100_review_20261118_150928/before.json",
+      "raw_report_sha256": "e61b1340e0e8bd311f53f40fe12eaa3dad343d247e810b3abf14c9089bb51827",
+      "root_candidate_cells": 276,
+      "seconds": 27.530211599980248,
+      "source_sha256": {
+        "profile_tensor_cells.py": "f67e42ab8441f351d3a0c8910767476784d2f81bea71f2e452e947cadf05616c",
+        "solver.py": "2b8fc6159563e6a4d57f2645937137edb8633eac21fd3275f8f7cb090231dbb6",
+        "tensor_cells.py": "35c6fce74e969aebb383f1715ba992a76c7434f0d994a5d6dbb33b876475a522",
+        "tensor_input_cells.py": "1377e8bbd9829effd8cf4ab82535f6dd509083fbe35f6b03333801e857b92abb",
+        "tensor_math.py": "d4699846fb996fac28cc837c80d00fa616ade7fd936a7f33b8a0a703d586edaf",
+        "tensor_solver.py": "d02f0d1ffbd637e17a6fdbc9ee758664015957595b2fbdf284f5c9c8fb99e460"
+      },
+      "timings": {
+        "candidate_search": 17.855591699975776,
+        "cell_coefficients_and_boundaries": 1.6716007000068203,
+        "event_generation": 6.222909100004472,
+        "sort": 0.010853100015083328,
+        "verification": 0.4731435000139754
+      },
+      "version": "torch_batched_bilateral_prefix_v2"
+    },
+    {
+      "best": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898,
+        "theta": -0.6841242698168808
+      },
+      "candidate_count": 328758,
+      "event_count": 54786,
+      "event_incidences": 54772,
+      "final": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898
+      },
+      "method_seconds": 10.971784399996977,
+      "pair": [
+        0,
+        1
+      ],
+      "peak_allocated_bytes": 2639955456,
+      "raw_report_path": "runs/a100_review_20261118_150928/after.json",
+      "raw_report_sha256": "1b69f9ff5384c74cd9ada4bd1337507fc27aac0f3f160e9fa1721be8845e8799",
+      "root_candidate_cells": 23,
+      "seconds": 3.483993100002408,
+      "source_sha256": {
+        "profile_tensor_cells.py": "f67e42ab8441f351d3a0c8910767476784d2f81bea71f2e452e947cadf05616c",
+        "solver.py": "2b8fc6159563e6a4d57f2645937137edb8633eac21fd3275f8f7cb090231dbb6",
+        "tensor_cells.py": "bac1da558db49058dbf9b167298294733931aec9acaa4f13442364f18cdbcaec",
+        "tensor_input_cells.py": "5ba2e710a1c282ad2d49b62d4eecf34ce098ea4590aff1975b93e0cdad0aafe9",
+        "tensor_math.py": "d4699846fb996fac28cc837c80d00fa616ade7fd936a7f33b8a0a703d586edaf",
+        "tensor_solver.py": "54a49ca365cc506540e64d1f1f3adf3219db0514f3d9b93139379ce970e9dfe9"
+      },
+      "timings": {
+        "candidate_search": 2.007775899983244,
+        "cell_coefficients_and_boundaries": 0.6784345000050962,
+        "event_generation": 0.28339820000110194,
+        "sort": 0.0011651999957393855,
+        "verification": 0.4492807000060566
+      },
+      "version": "torch_batched_bilateral_prefix_v3"
+    },
+    {
+      "best": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898,
+        "theta": -0.6841242698168808
+      },
+      "candidate_count": 328758,
+      "event_count": 54786,
+      "event_incidences": 54772,
+      "final": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898
+      },
+      "method_seconds": 19.495572999992874,
+      "pair": [
+        0,
+        1
+      ],
+      "peak_allocated_bytes": 3093792768,
+      "raw_report_path": "runs/a100_review_20261118_150928/before_2.json",
+      "raw_report_sha256": "210d889a53588e65ca8051334e9db013bb2ed11c72e7449d713739b5917d672a",
+      "root_candidate_cells": 276,
+      "seconds": 11.99781410000287,
+      "source_sha256": {
+        "profile_tensor_cells.py": "6684709d93c7a82d2cc2672ab1b7410d424ce8993ede6d8dded6209126544667",
+        "solver.py": "f7bccd4a1bae314d80111a2c426308442b04d5bb8bb10c4df64afd1bf9905c8e",
+        "tensor_cells.py": "b9ac52cb74e28733d0b9d611dc1b2bf3bb29b80391fc6219f3a2872c1237c1e1",
+        "tensor_input_cells.py": "af61ebbcfa3ce928f604911a73d51ce0cad95409d418e45c9df18d81a829dc39",
+        "tensor_math.py": "483a89dfa64e3c242113ee7ef61c6e21d7c32da07b27ddceabe4246ba8267bf9",
+        "tensor_solver.py": "eaced3489353f227aa1e7220ace3d909ab23b25e7bc4dddc41dbeabecafe61f7"
+      },
+      "timings": {
+        "candidate_search": 7.955753700021887,
+        "cell_coefficients_and_boundaries": 0.6498033000098076,
+        "event_generation": 2.382722999987891,
+        "sort": 0.0019151000014971942,
+        "verification": 0.4190296999877319
+      },
+      "version": "torch_batched_bilateral_prefix_v2"
+    },
+    {
+      "best": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898,
+        "theta": -0.6841242698168808
+      },
+      "candidate_count": 328758,
+      "event_count": 54786,
+      "event_incidences": 54772,
+      "final": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898
+      },
+      "method_seconds": 10.413214400003199,
+      "pair": [
+        0,
+        1
+      ],
+      "peak_allocated_bytes": 2639955456,
+      "raw_report_path": "runs/a100_review_20261118_150928/after_2.json",
+      "raw_report_sha256": "19382dfab4d72117448b91c54f34c138685f309a851578c4daa55b29ffb54406",
+      "root_candidate_cells": 23,
+      "seconds": 3.1693919000099413,
+      "source_sha256": {
+        "profile_tensor_cells.py": "f67e42ab8441f351d3a0c8910767476784d2f81bea71f2e452e947cadf05616c",
+        "solver.py": "2b8fc6159563e6a4d57f2645937137edb8633eac21fd3275f8f7cb090231dbb6",
+        "tensor_cells.py": "bac1da558db49058dbf9b167298294733931aec9acaa4f13442364f18cdbcaec",
+        "tensor_input_cells.py": "5ba2e710a1c282ad2d49b62d4eecf34ce098ea4590aff1975b93e0cdad0aafe9",
+        "tensor_math.py": "d4699846fb996fac28cc837c80d00fa616ade7fd936a7f33b8a0a703d586edaf",
+        "tensor_solver.py": "54a49ca365cc506540e64d1f1f3adf3219db0514f3d9b93139379ce970e9dfe9"
+      },
+      "timings": {
+        "candidate_search": 1.7960285999870393,
+        "cell_coefficients_and_boundaries": 0.663495899992995,
+        "event_generation": 0.24255229998379946,
+        "sort": 0.0009159000182989985,
+        "verification": 0.4152819000009913
+      },
+      "version": "torch_batched_bilateral_prefix_v3"
+    },
+    {
+      "best": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898,
+        "theta": -0.6841242698168808
+      },
+      "candidate_count": 328758,
+      "event_count": 54786,
+      "event_incidences": 54772,
+      "final": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898
+      },
+      "method_seconds": 27.833512899989728,
+      "pair": [
+        0,
+        1
+      ],
+      "peak_allocated_bytes": 3093792768,
+      "raw_report_path": "runs/a100_review_20261118_150928/before_3.json",
+      "raw_report_sha256": "b4c61449b91eb53df302aeee89d4acec62da3a69091ca47d67442e8a428ea24b",
+      "root_candidate_cells": 276,
+      "seconds": 20.34189160002279,
+      "source_sha256": {
+        "profile_tensor_cells.py": "6684709d93c7a82d2cc2672ab1b7410d424ce8993ede6d8dded6209126544667",
+        "solver.py": "f7bccd4a1bae314d80111a2c426308442b04d5bb8bb10c4df64afd1bf9905c8e",
+        "tensor_cells.py": "b9ac52cb74e28733d0b9d611dc1b2bf3bb29b80391fc6219f3a2872c1237c1e1",
+        "tensor_input_cells.py": "af61ebbcfa3ce928f604911a73d51ce0cad95409d418e45c9df18d81a829dc39",
+        "tensor_math.py": "483a89dfa64e3c242113ee7ef61c6e21d7c32da07b27ddceabe4246ba8267bf9",
+        "tensor_solver.py": "eaced3489353f227aa1e7220ace3d909ab23b25e7bc4dddc41dbeabecafe61f7"
+      },
+      "timings": {
+        "candidate_search": 13.03295039999648,
+        "cell_coefficients_and_boundaries": 1.2883110000111628,
+        "event_generation": 4.064554800017504,
+        "sort": 0.0015910000074654818,
+        "verification": 0.644390100002056
+      },
+      "version": "torch_batched_bilateral_prefix_v2"
+    },
+    {
+      "best": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898,
+        "theta": -0.6841242698168808
+      },
+      "candidate_count": 328758,
+      "event_count": 54786,
+      "event_incidences": 54772,
+      "final": {
+        "budget_a": 0.5323964417021048,
+        "budget_w": 0.522824169346751,
+        "loss": 0.3535114562070898
+      },
+      "method_seconds": 12.888216699997429,
+      "pair": [
+        0,
+        1
+      ],
+      "peak_allocated_bytes": 2639955456,
+      "raw_report_path": "runs/a100_review_20261118_150928/after_3.json",
+      "raw_report_sha256": "a836a5b4763436ba20f001b26286a64dfaecfe8de5ca4ced6fbb05d3fb6d60bb",
+      "root_candidate_cells": 23,
+      "seconds": 5.577664999989793,
+      "source_sha256": {
+        "profile_tensor_cells.py": "f67e42ab8441f351d3a0c8910767476784d2f81bea71f2e452e947cadf05616c",
+        "solver.py": "2b8fc6159563e6a4d57f2645937137edb8633eac21fd3275f8f7cb090231dbb6",
+        "tensor_cells.py": "bac1da558db49058dbf9b167298294733931aec9acaa4f13442364f18cdbcaec",
+        "tensor_input_cells.py": "5ba2e710a1c282ad2d49b62d4eecf34ce098ea4590aff1975b93e0cdad0aafe9",
+        "tensor_math.py": "d4699846fb996fac28cc837c80d00fa616ade7fd936a7f33b8a0a703d586edaf",
+        "tensor_solver.py": "54a49ca365cc506540e64d1f1f3adf3219db0514f3d9b93139379ce970e9dfe9"
+      },
+      "timings": {
+        "candidate_search": 3.2515118999872357,
+        "cell_coefficients_and_boundaries": 1.2140214999963064,
+        "event_generation": 0.41816349999862723,
+        "sort": 0.0017997999966610223,
+        "verification": 0.5774524000007659
+      },
+      "version": "torch_batched_bilateral_prefix_v3"
+    }
+  ],
+  "median": {
+    "torch_batched_bilateral_prefix_v2": {
+      "median_stage_seconds": {
+        "candidate_search": 13.03295039999648,
+        "cell_coefficients_and_boundaries": 1.2883110000111628,
+        "event_generation": 4.064554800017504,
+        "sort": 0.0019151000014971942,
+        "verification": 0.4731435000139754
+      },
+      "method_seconds": 27.833512899989728,
+      "peak_allocated_bytes": 3093792768,
+      "seconds": 20.34189160002279
+    },
+    "torch_batched_bilateral_prefix_v3": {
+      "median_stage_seconds": {
+        "candidate_search": 2.007775899983244,
+        "cell_coefficients_and_boundaries": 0.6784345000050962,
+        "event_generation": 0.28339820000110194,
+        "sort": 0.0011651999957393855,
+        "verification": 0.4492807000060566
+      },
+      "method_seconds": 10.971784399996977,
+      "peak_allocated_bytes": 2639955456,
+      "seconds": 3.483993100002408
+    }
+  },
+  "sampling": "Three separate processes per implementation on the same local GPU and seed 861, alternating before/after. Each fits one pair from identity Q with no checkpoint writing. Baseline source hashes verified against the Git blobs allowing Windows line endings.",
+  "scope": "Engineering fixture. No pretrained weights, formal 9-site result, A100 throughput, or held-out quality.",
+  "source_type": "synthetic_math"
+}

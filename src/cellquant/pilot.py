@@ -15,15 +15,30 @@ from .gates import evaluate_file
 from .progress import report
 
 
+def _incomplete_reason(row):
+    solver = row.get('solver', {})
+    if row.get('status') != 'COMPLETE' or solver.get('status', 'COMPLETE') != 'COMPLETE':
+        return solver.get('reason') or 'Incomplete method; no solver reason was recorded'
+    if row.get('method') in METHODS and row['method'] != 'hadamard_shared':
+        requested = solver.get('requested_pairs')
+        done = solver.get('completed_pairs', len(solver.get('log', [])))
+        if requested is None or requested <= 0 or done != requested or solver.get('stopped_by_wall_budget'):
+            return f'Incomplete coordinate schedule: {done}/{requested} pairs'
+        if solver.get('seconds', 0) > row.get('wall_budget_seconds', math.inf):
+            return 'Total solver wall-clock budget exhausted'
+    return None
+
+
 def summarize_pilot_results(paths):
     """Summarize execution failures, without assigning a scientific gate result."""
     paths=list(paths);incomplete=[]
     for path in paths:
         row=read_json(path)
-        if row.get('status')=='COMPLETE':continue
+        reason = _incomplete_reason(row)
+        if reason is None:continue
         solver=row.get('solver',{})
         incomplete.append({'seed':row.get('seed'),'method':row.get('method'),
-            'status':row.get('status'),'reason':solver.get('reason') or 'Incomplete method; no solver reason was recorded',
+            'status':'RESOURCE_BLOCKED' if row.get('status')=='COMPLETE' else row.get('status'),'reason':reason,
             'completed_pairs':solver.get('completed_pairs',len(solver.get('log',[]))),
             'requested_pairs':solver.get('requested_pairs'),
             'resource_diagnostics':solver.get('resource_diagnostics'),
@@ -58,12 +73,13 @@ def panel_metrics(panels,q,specs,device='cpu',*,progress=None):
     return rows
 
 
-def prepare_pilot_inputs(config,model,*,graph_identity,progress=None):
-    """Capture all seeds with the entire model on GPU, then allow its release."""
+def prepare_pilot_inputs(config,model,*,graph_identity,progress=None,profile_only=False):
+    """Capture the panels consumed by this run before releasing the model."""
     from .spinquant_adapter import panel_quant_specs
     from .tensor_solver import synchronize
     device=config['runtime']['model_device'];formal=config['formal_pilot'];seeds={}
-    for seed in config['seeds']:
+    requested_seeds = config['seeds'][:1] if profile_only else config['seeds']
+    for seed in requested_seeds:
         _,parts=load_token_manifest(config['data']['token_manifests'][str(seed)])
         verify_disjoint(parts['fit'],parts['dev'])
         kwargs=dict(layers=formal['layers'],projections=formal['projections'],input_weight_rows=formal['input_weight_rows'],
@@ -73,9 +89,10 @@ def prepare_pilot_inputs(config,model,*,graph_identity,progress=None):
             progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split='fit',**d),**kwargs)
         specs=panel_quant_specs(model,fit,config['quantization']);synchronize(device)
         seconds=time.perf_counter()-start
-        held=capture_panels(model,parts['dev'],tokens_per_panel=formal['heldout_tokens_per_panel'],
-            progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split='heldout',**d),**kwargs)
-        seeds[seed]={'fit':fit,'heldout':held,'specs':specs,'capture_seconds':seconds}
+        seeds[seed]={'fit':fit,'specs':specs,'capture_seconds':seconds}
+        if not profile_only:
+            seeds[seed]['heldout']=capture_panels(model,parts['dev'],tokens_per_panel=formal['heldout_tokens_per_panel'],
+                progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split='heldout',**d),**kwargs)
     return {'seeds':seeds,'hidden_size':model.config.hidden_size,
             'model_parameter_billions':sum(p.numel() for p in model.parameters())/1e9}
 
@@ -109,7 +126,8 @@ def analyze_profile_budget(records,configured_pairs,method_budget):
         row={'method':record.get('method'),'profile_status':record.get('status'),
              'completed_pairs':completed,'requested_profile_pairs':requested,
              'observed_method_seconds':solver.get('seconds'),'mean_pair_search_seconds':None,
-             'projected_full_search_seconds':None,'assessment':'INCOMPLETE_PROFILE'}
+             'projected_full_search_seconds':None,'projected_method_seconds':None,
+             'projected_method_headroom_seconds':None,'assessment':'INCOMPLETE_PROFILE'}
         if record.get('status')=='COMPLETE' and completed==requested==len(log) and completed>0:
             if not all(isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v) and v>0 for v in seconds):
                 row['assessment']='MISSING_VALID_TIMINGS'
@@ -118,12 +136,19 @@ def analyze_profile_budget(records,configured_pairs,method_budget):
                 row.update(mean_pair_search_seconds=mean,min_pair_search_seconds=min(seconds),
                     max_pair_search_seconds=max(seconds),projected_full_search_seconds=projection,
                     assessment='PROJECTED_SEARCH_EXCEEDS_METHOD_BUDGET' if projection>method_budget else 'SEARCH_COMPONENT_ESTIMATE_WITHIN_BUDGET')
+                loop = solver.get('this_invocation_pair_loop_seconds')
+                elapsed = solver.get('seconds')
+                if (isinstance(loop, (float, int)) and isinstance(elapsed, (float, int))
+                        and math.isfinite(elapsed) and 0 < loop <= elapsed):
+                    estimate = elapsed + (configured_pairs - completed) * loop / completed
+                    row.update(projected_method_seconds=estimate,
+                               projected_method_headroom_seconds=method_budget-estimate)
         rows.append(row)
     return {'configured_pair_count':configured_pairs,'method_budget_seconds':method_budget,
             'budget_seconds_per_configured_pair_before_other_overhead':method_budget/configured_pairs,
             'methods':rows,'full_run_readiness':'NOT_ESTABLISHED_BY_PROFILE',
             'assumption':'Remaining pairs have the same mean search time as this prefix; this is neither a runtime guarantee nor a confidence interval.',
-            'excluded_costs':'Initialization, accepted-Q refresh and checkpoint overhead; their time is included only in observed_method_seconds.',
+            'excluded_costs':'Search-only estimates exclude setup, Q updates and checkpoints. Method estimates charge measured setup/finalization once and extrapolate the continuous pair loop including updates and checkpoints. Both exclude capture and held-out scoring.',
             'scope':'Engineering resource diagnosis only; no held-out result or G1 qualification.'}
 
 
@@ -219,7 +244,7 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
                 import shutil
                 prior=Path(config['resume_run_dir'])/f'seed_{seed}'/method
                 saved=read_json(prior/'pilot_result.json') if (prior/'pilot_result.json').exists() else None
-                if saved and saved['status']=='COMPLETE':
+                if saved and _incomplete_reason(saved) is None:
                     if sha256_file(saved['q_path'])!=saved['q_sha256'] or sha256_file(saved['data_manifest_path'])!=saved['data_manifest_sha256']:
                         raise ValueError('Completed pilot checkpoint integrity mismatch')
                     shutil.copy2(saved['q_path'],dest/'Q.npz');saved['q_path']=str((dest/'Q.npz').resolve())
@@ -251,7 +276,7 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
                 'context_lengths':sorted({len(b['tokens']) for b in fit+heldout}),
                 'capture_seconds':capture_seconds,'total_calibration_seconds':capture_seconds+result['seconds'],
                 'q_path':str((dest/'Q.npz').resolve()),'q_sha256':sha256_file(dest/'Q.npz'),'solver':result,
-                'heldout':panel_metrics(heldout_panels,q,specs,cfg.device,progress=method_progress)}
+                'heldout':panel_metrics(heldout_panels,q,specs,cfg.device,progress=method_progress) if result['status']=='COMPLETE' else []}
             path=atomic_json(dest/'pilot_result.json',row);records.append(path)
             method_progress('method.saved',result_path=str(path),solver_status=result['status'],solver_reason=result.get('reason'))
         del fit_panels,heldout_panels,q0
@@ -273,7 +298,7 @@ def build_g1_evidence(paths,output,*,g0_evidence_path):
             rows.append(row);refs.append({'path':str(Path(path).resolve()),'sha256':sha256_file(path)})
         seeds=sorted({r['seed'] for r in rows});by={(r['seed'],r['method']):r for r in rows}
         if len(by)!=len(rows):raise ValueError('Duplicate seed/method pilot results')
-        complete=all((s,m) in by and by[s,m]['status']=='COMPLETE' for s in seeds for m in METHODS)
+        complete=all((s,m) in by and _incomplete_reason(by[s,m]) is None for s in seeds for m in METHODS)
         metrics={'g0_pass':evaluate_file('G0',g0_evidence_path)['status']=='PASS',
             'calibration_seed_count':len(seeds),'real_model_parameter_billions':min(r['model_parameter_billions'] for r in rows),
             'matched_solver_controls_complete':complete,

@@ -212,6 +212,46 @@ def test_event_index_preserves_all_simultaneous_members(device):
         assert actual_keys.device.type==device
 
 
+def test_midpoint_screen_preserves_tangent_and_crossing_roots(device):
+    from cellquant.tensor_cells import _root_possible
+    # The original first-derivative bound cannot exclude the first row.
+    coeff=tensor([[1.0001,-1,0],[1,-1,0],[0,0,1],[0,0,0]],device)
+    hi=coeff.new_full((4,),.001)
+    assert _root_possible(coeff,-hi,hi).tolist()==[False,True,True,False]
+    rng=np.random.default_rng(4733)
+    for degree in [2,4]:
+        rows=[];lower=[];upper=[]
+        for _ in range(25):
+            row=rng.normal(size=degree*2+1)
+            for root in _trig_roots(row,-.78,.78):
+                rows.append(row);lower.append(root-1e-7);upper.append(root+2e-7)
+        assert rows and _root_possible(tensor(np.stack(rows),device),tensor(lower,device),tensor(upper,device)).all()
+
+
+@pytest.mark.parametrize('fixed',[False,True])
+def test_output_accept_matches_dense_refresh_for_overlapping_pairs(device,fixed,monkeypatch):
+    rng=np.random.default_rng(899)
+    panel=CalibrationPanel('down','output',rng.normal(size=(8,16)),rng.normal(size=(16,7)))
+    q=tensor(np.eye(8),device);spec=QuantSpec(group_size=4)
+    state=ts.PanelState(panel,q,spec,spec,fixed=fixed)
+    reference=ts.PanelState(panel,q,spec,spec,fixed=fixed)
+    original=ts.torch_quantize
+    calls=[]
+    def measured(values,*args,**kwargs):
+        calls.append(tuple(values.shape))
+        return original(values,*args,**kwargs)
+    monkeypatch.setattr(ts,'torch_quantize',measured)
+    for pair,theta in [((5,2),.32),((2,3),-.51),((5,3),.72)]:
+        calls.clear()
+        state.accept(pair,theta)
+        assert calls==[(2,16)]
+        ts.rotate_rows(reference.a,pair,theta)
+        ts.rotate_rows(reference.target,pair,theta)
+        reference.refresh()
+        for name in ('a','target','ah','sw','physical_sw','xh','sx','error','loss','bw','ba'):
+            torch.testing.assert_close(getattr(state,name),getattr(reference,name),rtol=2e-13,atol=1e-13)
+
+
 def test_resource_failure_records_phase_and_unfinished_pair(device,tmp_path):
     rng=np.random.default_rng(94)
     p=CalibrationPanel('fixture.output','output',rng.normal(size=(4,8)),rng.normal(size=(8,2)))

@@ -32,3 +32,27 @@ def test_complete_execution_summary_does_not_mean_gate_pass(tmp_path):
     path=atomic_json(tmp_path/'complete.json',{'source_type':'unit_test_fixture','status':'COMPLETE'})
     result=summarize_pilot_results([path])
     assert result=={'status':'COMPLETE','reason':None,'incomplete_methods':[]}
+
+
+def test_old_budget_truncated_complete_is_ineligible_for_summary_and_gate(tmp_path):
+    from cellquant.baselines import METHODS
+    from cellquant.pilot import build_g1_evidence
+    from cellquant.runtime import read_json,sha256_file
+    artifact=atomic_json(tmp_path/'fixture_artifact.json',{'source_type':'unit_test_fixture'})
+    refs={k:str(artifact) for k in ['q_path','data_manifest_path']}
+    refs.update({k:sha256_file(artifact) for k in ['q_sha256','data_manifest_sha256']})
+    # Construct malformed historical rows for the rejection branch only.
+    paths=[]
+    for method in METHODS:
+        row={**refs,'source_type':'real_layer','status':'COMPLETE','seed':11,'method':method,
+             'model_parameter_billions':7,'hardware_sha256':'fixture','fit_documents':['fit'],
+             'heldout_documents':['dev'],'context_lengths':[2048],'heldout':[],
+             'solver':{'shared_global_r1':True,'requested_pairs':128,
+                       'completed_pairs':6 if method=='angle_grid_matched' else 128}}
+        paths.append(atomic_json(tmp_path/f'{method}.json',row))
+    summary=summarize_pilot_results(paths)
+    assert summary['status']=='RESOURCE_BLOCKED' and '6/128' in summary['reason']
+    output=tmp_path/'gate'
+    gate=build_g1_evidence(paths,output,g0_evidence_path='examples/G0_evidence_NOT_RUN.json')
+    assert gate['status']=='INSUFFICIENT_EVIDENCE'
+    assert read_json(output/'G1_evidence.json')['metrics']=={}

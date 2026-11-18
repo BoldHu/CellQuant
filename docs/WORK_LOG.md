@@ -193,3 +193,14 @@ seed 11 的 Hadamard、STE、网格报告 COMPLETE；固定尺度搜索与 CellQ
 - 数值验证先复现 257 passed/57.73 秒；针对性 50 passed/31.77 秒；完整 281 passed/83.22 秒。均只有 Windows pytest 缓存权限警告，退出码 0。数学检查 PASS，空 G1 INSUFFICIENT_EVIDENCE。新增 CPU/实际 CUDA 检查比较全部边界、胞元内点、零尺度、双侧交叉项、原增量系数、完整 d=4096 与连续共享 Q 更新。
 - 同一 RTX 3050 Laptop、相同 seed/完整轴随机案例：原输入增量搜索 49.7708 秒，新批处理 20.0957 秒；系数/边界 31.1689→1.2110 秒，方法含初始化/更新 57.2919→27.6085 秒；最终角度/损失/风险完全相同，54785 区间，峰值分配均 2.8813 GiB。这是六输入加一个完整输出的单次合成工程检查，不能替代真实九位置 L4 或完整 128 对实验。
 - 更新 README、实现状态、数学范围和 Colab 指南；01 只更新一个说明单元，保留用户代码/开关/输出。实际记录及命令见 `evidence/input_batch_20261117/validation.json`。新引擎真实 L4 的下一步是同步源码后在原 01 重跑同样 8 对，确认瓶颈改善和预算余量；随后才尝试正式两种子五方法 128 对及真实 G1。未提交/push，未加载本机 7B，未执行新引擎云端 G1/AutoDL。
+
+## 2026-11-18 · A100 前的性能与验收修正
+
+- 从根提交 `1b2caf08e9944b1dc83f2eb5cf96b9111f33234d` 复核 Colab notebook 实际入口、SpinQuant 上游与用户的 L4 输出。8 对合计 354.38 秒，动态搜索平均 20.33 秒/对。没有该次运行的内核时间线或 SM 采样。
+- 在 Torch 路径批量计算输入组半径筛选标记和稳定组的阈值方程。对损失导数和预算交点使用带 FP64 保护的中点 Taylor 余项筛选。接受输出侧更新时只重算两个完整行，固定解码尺度下另存物理尺度。新增 CPU/CUDA 回归覆盖跨组、同时事件、固定尺度、切根及重叠坐标连续更新。
+- 修正前缀模式多采集另外三个 seed/split 组合的问题，增加采集计时和 GPU 峰值记录。方法耗时外推包括初始化、接受更新和 checkpoint，摘要保留原搜索分量。修正 STE/grid 未跑完整坐标表也可能返回 COMPLETE 的路径，并在 G1 汇总和恢复时复核旧记录。
+- 原服务器模型级入口构造 SolverConfig 时忽略 backend/device。现在从冻结矩阵选择求解器和对应断点格式。G2 另测合法 Norm 融合与原模型的 FP32 偏差，补记最终旋转在实际模型 dtype 的误差。诊断和方法改动未触碰上游 checkout、量化规则、预算或 gate_rules。
+- 初始化 notebook 从环境变量或 Colab Secrets 读取 HF 凭据，清除工作树里的明文值。已提示用户撤销历史提交中的令牌。00/01 默认走离线或预检路径。用户的历史运行输出保留在工作树，传输的 notebook 使用空输出。
+- 本机 RTX 3050 Laptop、Python 3.11.18、Torch 2.6.0+cu118。同一完整维度混合随机案例两版各跑三次，54,786 个事件角、54,785 个区间、328,758 个候选。单对搜索中位数 20.342 → 3.484 秒，方法中位数 27.834 → 10.972 秒，峰值分配 2.881 → 2.459 GiB。该脚本使用六个输入面板和一个输出面板，每个进程一对，无 checkpoint 写入。每次的角度、最终真实损失和风险相同。[原始计时与哈希](../evidence/a100_readiness_20261118/benchmark.json)
+- 首次全套回归暴露一个新增测试的断言位置错误和四个旧引擎标签断言，修正后最终 **310 passed in 70.44s**。CPU 数学和 G0 PASS，空 G1 正确返回 INSUFFICIENT_EVIDENCE。实际 CUDA tiny SpinQuant 的融合/旋转相对 RMS 为 1.03e-7 / 1.77e-7，GPTQ 完成且输出有限。GPU 驻留五方法及 4096×11008 形状检查通过，FHT 路径为 torch_reference。六本 notebook schema/语法通过，修改的 00/01 默认路径在本地执行完毕。[验证记录](../evidence/a100_readiness_20261118/validation.json)
+- 在 `runs/a100_review_20261118_150928/` 保留各次运行。使用 `python -m pytest -q`、`scripts/run_math_checks.py`、`scripts/run_production_checks.py`、`scripts/run_gpu_resident_checks.py --full-dimension --fht-backend torch_reference`、`scripts/run_spinquant_smoke.py --device cuda --gptq --fht-backend torch_reference` 和 `scripts/profile_tensor_cells.py --case mixed_full --pairs 1 --seconds-per-pair 300`。A100、新版真实 L4、完整 G1 和目标机 G2–G4 未运行，原因是本机 4 GiB GPU 且没有连接到目标运行时。云端命令及投入依据见 [A100 测试方案](COLAB_A100_TEST.md)。

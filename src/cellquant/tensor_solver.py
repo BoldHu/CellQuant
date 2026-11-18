@@ -22,7 +22,7 @@ from .solver import panel_specs, panel_fingerprint
 from .tensor_math import (scalar, basis, affine_roots, owner_intervals, square_coeff,
                           product_coeff, scale_square)
 
-CELL_ENGINE_VERSION = 'torch_batched_bilateral_prefix_v2'
+CELL_ENGINE_VERSION = 'torch_batched_bilateral_prefix_v3'
 
 
 def synchronize(device):
@@ -76,18 +76,26 @@ class PanelState:
         xh,_,self.sx = torch_quantize(self.x.T, self.aspec, scales=self.fixed_a)
         self.xh = xh.T;self.error = self.ah@self.xh-self.target
         self.loss = self.error.square().sum()/self.denominator
-        self.bw = risk(dynamic_scales(self.a,self.wspec),self.wg)/self.wnorm
-        self.ba = risk(dynamic_scales(self.x.T,self.aspec),self.ag)/self.anorm
+        self.physical_sw = self.sw if self.fixed_w is None else dynamic_scales(self.a,self.wspec)
+        physical_sx = self.sx if self.fixed_a is None else dynamic_scales(self.x.T,self.aspec)
+        self.bw = risk(self.physical_sw,self.wg)/self.wnorm
+        self.ba = risk(physical_sx,self.ag)/self.anorm
+
+    def _output_rows(self, rows, theta):
+        a, target = self.a[rows], self.target[rows]
+        rotate_rows(a, (0, 1), theta)
+        rotate_rows(target, (0, 1), theta)
+        frozen = None if self.fixed_w is None else self.fixed_w[rows]
+        ah, _, scales = torch_quantize(a, self.wspec, scales=frozen)
+        physical = scales if frozen is None else dynamic_scales(a, self.wspec)
+        return a, target, ah, physical, ah @ self.xh - target
 
     def direct(self, pair, theta):
         if self.panel.placement == 'output':
-            rows = list(pair);a = self.a[rows].clone();y = self.target[rows].clone()
-            rotate_rows(a,(0,1),theta);rotate_rows(y,(0,1),theta)
-            frozen = None if self.fixed_w is None else self.fixed_w[rows]
-            ah = torch_quantize(a,self.wspec,scales=frozen)[0]
-            error = ah@self.xh-y
+            rows = list(pair)
+            _, _, _, physical, error = self._output_rows(rows, theta)
             return {'loss':self.loss+(error.square().sum()-self.error[rows].square().sum())/self.denominator,
-                    'budget_w':self.bw+(risk(dynamic_scales(a,self.wspec),self.wg)-risk(dynamic_scales(self.a[rows],self.wspec),self.wg))/self.wnorm,
+                    'budget_w':self.bw+(risk(physical,self.wg)-risk(self.physical_sw[rows],self.wg))/self.wnorm,
                     'budget_a':self.ba}
         a,x = self.a.clone(),self.x.clone()
         rotate_rows(a.T,pair,theta);rotate_rows(x,pair,theta)
@@ -98,9 +106,19 @@ class PanelState:
                 'budget_a':risk(dynamic_scales(x.T,self.aspec),self.ag)/self.anorm}
 
     def accept(self,pair,theta):
-        if self.panel.placement == 'input':rotate_rows(self.a.T,pair,theta);rotate_rows(self.x,pair,theta)
-        else:rotate_rows(self.a,pair,theta);rotate_rows(self.target,pair,theta)
-        self.refresh()
+        if self.panel.placement == 'input':
+            rotate_rows(self.a.T,pair,theta)
+            rotate_rows(self.x,pair,theta)
+            self.refresh()
+            return
+        # Left rotation changes two complete weight/target rows. All other
+        # rows and the quantized activation are already current.
+        rows = list(pair)
+        a, target, ah, physical, error = self._output_rows(rows, theta)
+        self.a[rows], self.target[rows], self.ah[rows] = a, target, ah
+        self.physical_sw[rows], self.error[rows] = physical, error
+        self.bw = risk(self.physical_sw, self.wg) / self.wnorm
+        self.loss = self.error.square().sum() / self.denominator
 
 
 class GroupOrbit:
@@ -170,18 +188,32 @@ class PanelOrbit:
                     self._add(GroupOrbit('w',row,start,coeff[start:start+state.wg].clone(),state.wspec,False,frozen),state.sw[pair[row],g,0])
         else:
             for side,vectors,spec,g,scales,frozen in [('w',state.a,state.wspec,state.wg,state.sw,state.fixed_w),('a',state.x.T,state.aspec,state.ag,state.sx,state.fixed_a)]:
-                for row,vec in enumerate(vectors):
-                    radius = torch.hypot(vec[i],vec[j])
-                    for start in sorted({i//g*g,j//g*g}):
-                        coeff = vec.new_zeros((g,3));coeff[:,0] = vec[start:start+g]
-                        for index,b,c in [(i,vec[i],-vec[j]),(j,vec[j],vec[i])]:
-                            if start <= index < start+g:
-                                coeff[index-start,0]=0;coeff[index-start,1]=b;coeff[index-start,2]=c
-                        changed = coeff[:,1:].ne(0).any(1)
-                        if not bool(changed.any()):continue
-                        other = coeff[~changed,0].abs();stable = bool(other.numel() and other.max() >= radius)
+                u, v = vectors[:, i], vectors[:, j]
+                radius = torch.hypot(u, v)
+                active = (u != 0) | (v != 0)
+                starts = sorted({i//g*g, j//g*g})
+                blocks, stable, initial = [], [], []
+                for start in starts:
+                    coeff = vectors.new_zeros((len(vectors), g, 3))
+                    coeff[:, :, 0] = vectors[:, start:start+g]
+                    for index, b, c in [(i, u, -v), (j, v, u)]:
+                        if start <= index < start+g:
+                            col = index-start
+                            coeff[:, col, 0] = 0
+                            coeff[:, col, 1], coeff[:, col, 2] = b, c
+                    blocks.append(coeff)
+                    stable.append(coeff[:, :, 0].abs().amax(1) >= radius)
+                    sc = vectors.new_zeros((len(vectors), 3))
+                    sc[:, 0] = scales[:, start//g, 0]
+                    initial.append(sc)
+                # One host transfer for scheduling flags across all rows.
+                flags = torch.stack([active, *stable], dim=1).tolist()
+                for row, (changed, *stable_flags) in enumerate(flags):
+                    if not changed:continue
+                    for block, start in enumerate(starts):
                         fixed = None if frozen is None else frozen[row,start//g,0]
-                        self._add(GroupOrbit(side,row,start,coeff,spec,stable,fixed),scales[row,start//g,0])
+                        self.groups.append(GroupOrbit(side,row,start,blocks[block][row],spec,stable_flags[block],fixed))
+                        self.group_scales.append(initial[block][row])
 
     def _add(self,group,scale):
         self.groups.append(group);sc = group.coeff.new_zeros(3);sc[0] = scale;self.group_scales.append(sc)
@@ -284,9 +316,13 @@ def _solve_pair(states,pair,limits,config,trace,emit):
     for o in orbit:
         local_events=[];orbit_events.append(local_events)
         emit('event_generation',force=True,panel_id=o.state.panel.panel_id)
+        batched = {}
+        if config.screen and o.state.panel.placement == 'input':
+            from .tensor_input_cells import stable_group_events
+            batched = stable_group_events(o, left, right, work)
         for gid,g in enumerate(o.groups):
             emit('event_generation',group_id=gid,group_count=len(o.groups))
-            a,ids,st=g.enumerate(left,right,config.screen,work)
+            a,ids,st=batched[gid] if gid in batched else g.enumerate(left,right,config.screen,work)
             for k,v in st.items():stats[o.state.panel.placement][k]+=v
             angles.append(a);local_events.append((a,ids))
             trace['groups_enumerated']+=1
@@ -398,13 +434,14 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
                   'elapsed_seconds':spent+time.perf_counter()-started,'reason':reason,'resource_diagnostics':resource_diagnostics}
             atomic_torch_save({'q':q.detach(),'metadata':meta},checkpoint)
     save('RUNNING')
+    synchronize(q.device)
+    loop_started = time.perf_counter()
     try:
         if method!='hadamard_shared':
             for index in range(offset,len(schedule)):
                 synchronize(q.device);remaining=config.wall_seconds-spent-(time.perf_counter()-started)
                 if remaining<=0:
-                    if cell:raise ResourceLimit('Total solver wall-clock budget exhausted')
-                    break
+                    raise ResourceLimit('Total solver wall-clock budget exhausted')
                 pair=schedule[index]
                 report(progress,'solve.pair',pair_index=index,pair_count=len(schedule),device=str(q.device))
                 if cell:
@@ -428,6 +465,8 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
                         if feasible and bool(measured['loss']<best['loss']):best={**measured,'theta':theta}
                     # Explicitly close a suspended STE generator to release its graph.
                     if hasattr(proposals,'close'):proposals.close()
+                    if count == 0:
+                        raise ResourceLimit('Pair wall-clock budget exhausted before evaluating a proposal')
                     result={'pair_index':index,'pair':list(pair),'best':plain(best),'baseline':plain(baseline),
                             'accepted':bool(best['theta']!=0),'evaluations':count}
                 if result['accepted']:
@@ -446,10 +485,18 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
             safe['metadata'].update(status='INTERRUPTED',elapsed_seconds=spent+time.perf_counter()-started)
             atomic_torch_save(safe,checkpoint)
         raise
-    synchronize(q.device);save(status)
+    synchronize(q.device)
+    loop_seconds = time.perf_counter() - loop_started
     orth=float(torch.linalg.norm(q.T@q-eye)/math.sqrt(d));synchronize(q.device)
+    save(status)
+    elapsed = spent + time.perf_counter() - started
+    if status == 'COMPLETE' and method != 'hadamard_shared' and elapsed > config.wall_seconds:
+        status, reason = 'RESOURCE_BLOCKED', 'Total solver wall-clock budget exhausted'
+        resource_diagnostics = {'phase': 'method_wall_budget', 'completed_pairs': next_pair}
+        save(status)
     return {'status':status,'reason':reason,'resource_diagnostics':resource_diagnostics,'q':q,'initial':plain(initial),'final':plain(aggregate(states)),
-            'limits':plain(limits),'factors':factors,'log':log,'seconds':spent+time.perf_counter()-started,
+            'limits':plain(limits),'factors':factors,'log':log,'seconds':elapsed,
+            'this_invocation_pair_loop_seconds':loop_seconds,
             'evaluations':evaluations,'completed_pairs':next_pair,'requested_pairs':len(schedule),
             'stopped_by_wall_budget':next_pair<len(schedule) and method!='hadamard_shared','signature':signature,
             'shared_global_r1':True,'orientation':'R1=Q.T','orthogonality_residual':orth,'interval_certified':False,

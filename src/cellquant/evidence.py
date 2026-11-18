@@ -32,7 +32,11 @@ def build_g2(paths,output,*,g1_evidence):
             'rmsnorm_embedding_centering_disabled':all(r['rmsnorm_embedding_centering_disabled'] for r in rows),
             'gptq_pipeline_completed':all('dev' in r['raw'] for r in rows)}
         eq=[r['fp_equivalence'] for r in rows]
-        if all(eq):metrics.update(full_precision_model_equivalence_checked=True,fp32_logits_relative_rms_error=max(e['relative_rms'] for e in eq),fp32_mean_nll_abs_difference=max(abs(e['mean_nll_delta']) for e in eq))
+        if all(e and e.get('norm_fusion') for e in eq):
+            legs=[leg for e in eq for leg in (e,e['norm_fusion'])]
+            metrics.update(full_precision_model_equivalence_checked=True,
+                fp32_logits_relative_rms_error=max(leg['relative_rms'] for leg in legs),
+                fp32_mean_nll_abs_difference=max(abs(leg['mean_nll_delta']) for leg in legs))
         import torch
         schema_valid=True
         for r in rows:

@@ -37,11 +37,11 @@ def run(args):
            'final_weight_mse_clip':True,'gptq_percdamp':.01,'gptq_act_order':False}
     install_online_graph(model,quant,quantized=False)
     with torch.no_grad():rotated=model(ids).logits.cpu()
-    fusion_error=compare_logits(original,fused);rotation_error=compare_logits(original,rotated)
+    fusion_error=compare_logits(original,fused,token_ids=ids);rotation_error=compare_logits(original,rotated,token_ids=ids)
     result={'source_type':'synthetic_math','model':'random_tiny_llama','environment':environment_report(),
             'fht_backend':args.fht_backend,'num_key_value_heads':args.kv_heads,'checkpoint':ck,'fusion':fusion_error,'rotation':rotation_error,
             'extra_online_r1_ops':0,'gptq_status':'NOT_RUN','scope':'Tiny random structure, not pretrained/7B/Blackwell'}
-    if fusion_error['relative_rms']>1e-4 or rotation_error['relative_rms']>1e-4:
+    if any(e['relative_rms']>1e-4 or abs(e['mean_nll_delta'])>1e-4 for e in (fusion_error,rotation_error)):
         result['status']='FAIL';atomic_json(output/'report.json',result);raise AssertionError(result)
     if args.gptq:
         pristine=copy.deepcopy(model).cpu()

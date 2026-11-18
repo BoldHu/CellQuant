@@ -79,3 +79,63 @@ def test_location_specific_complete_groups(method):
     r=fit_baseline(method,panels,np.eye(4),specs,[(0,3)],SolverConfig(theta_limit=.1),ste_steps=3,grid_points=5)
     assert r['final']['loss']<=r['initial']['loss']+1e-12
     assert r['final']['budget_w']<=r['limits']['budget_w']+1e-10
+
+
+@pytest.mark.parametrize('backend',['numpy_reference','torch'])
+@pytest.mark.parametrize('method',['angle_grid_matched','givens_ste_matched'])
+def test_control_hitting_method_budget_does_not_report_complete(backend,method):
+    pytest.importorskip('torch')
+    panel=CalibrationPanel('in','input',np.ones((2,4)),np.ones((4,2)))
+    result=fit_baseline(method,[panel],np.eye(4),QuantSpec(),[(0,1)],
+                        SolverConfig(backend=backend,device='cpu',wall_seconds=0))
+    assert result['status']=='RESOURCE_BLOCKED' and result['reason']
+    assert result['completed_pairs']==0 and result['requested_pairs']==1
+
+
+@pytest.mark.parametrize('profile_only', [True,False])
+def test_prepared_capture_visits_only_consumed_splits(profile_only,monkeypatch):
+    pytest.importorskip('torch')
+    from types import SimpleNamespace
+    from cellquant import pilot, spinquant_adapter
+    calls=[]
+    model=SimpleNamespace(config=SimpleNamespace(hidden_size=4),parameters=lambda: [])
+    parts={'fit':blocks(2)[:1],'dev':blocks(2)[1:]}
+    monkeypatch.setattr(pilot,'load_token_manifest',lambda path: ({},parts))
+    monkeypatch.setattr(spinquant_adapter,'panel_quant_specs',lambda *args: QuantSpec())
+    def capture(model,partition,**kwargs):
+        calls.append((kwargs['seed'],partition[0]['document_id'],kwargs['tokens_per_panel']))
+        return [kwargs['seed']]
+    monkeypatch.setattr(pilot,'capture_panels',capture)
+    config={'runtime':{'model_device':'cpu'},'seeds':[11,23],'quantization':{},
+            'data':{'token_manifests':{'11':'first','23':'second'}},
+            'formal_pilot':{'layers':[0],'projections':['q_proj'],'input_weight_rows':64,
+                            'fit_tokens_per_panel':128,'heldout_tokens_per_panel':256}}
+    prepared=pilot.prepare_pilot_inputs(config,model,graph_identity='fixture',profile_only=profile_only)
+    assert calls==([(11,'0',128)] if profile_only else [(11,'0',128),(11,'1',256),(23,'0',128),(23,'1',256)])
+    assert list(prepared['seeds'])==([11] if profile_only else [11,23])
+    assert ('heldout' in prepared['seeds'][11]) == (not profile_only)
+
+
+def test_frozen_model_solver_selects_matching_backend_and_checkpoint(tmp_path):
+    from cellquant.experiment import _model_solver_config
+    for name in ['autodl_canary','full_experiments']:
+        settings=json.loads(Path(f'configs/{name}.json').read_text(encoding='utf8'))['solver']
+        cfg=_model_solver_config({**settings,'cell_batch_size':37},tmp_path,'fingerprint')
+        assert (cfg.backend,cfg.device,cfg.compute_dtype)==('torch','cuda:0','float64')
+        assert cfg.cell_batch_size==37 and Path(cfg.checkpoint_path).suffix=='.pt'
+    legacy=_model_solver_config({},tmp_path,'fingerprint')
+    assert (legacy.backend,legacy.device,Path(legacy.checkpoint_path).suffix)==('numpy_reference','cpu','.npz')
+
+
+def test_fp_audit_scores_next_tokens_and_rejects_nonfinite_logits():
+    torch=pytest.importorskip('torch')
+    from cellquant.spinquant_adapter import compare_logits
+    reference=torch.zeros((1,3,4),dtype=torch.float32)
+    actual=reference.clone();actual[0,0,2]=1;actual[0,1,3]=2;actual[0,2]=99
+    ids=torch.tensor([[1,2,3]])
+    delta=compare_logits(reference,actual,token_ids=ids)
+    expected=(np.log(np.exp(1)+3)-1+np.log(np.exp(2)+3)-2)/2-np.log(4)
+    assert delta['mean_nll_delta']==pytest.approx(expected)
+    actual[0,0,0]=torch.nan
+    with pytest.raises(ValueError,match='Nonfinite'):
+        compare_logits(reference,actual,token_ids=ids)

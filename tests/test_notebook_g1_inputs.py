@@ -33,6 +33,19 @@ def context(tmp_path):
             "Path": Path, "os": os, "sys": sys}
 
 
+def test_workspace_defaults_and_authentication_do_not_persist_secrets(tmp_path,monkeypatch):
+    import re
+    name="00_Colab_GitHub_Workspace.ipynb"
+    assert not re.search(r"hf_[A-Za-z0-9]{24,}",(ROOT/"notebooks"/name).read_text(encoding="utf-8"))
+    monkeypatch.setenv("HF_TOKEN","unit-test-secret")
+    ns=context(tmp_path)
+    exec(cell(name,"REPO_URL ="),ns)
+    assert ns["HF_TOKEN"]=="unit-test-secret" and ns["PREPARE_G1_INPUTS"] is False
+    # With preparation off, even an existing env credential causes no Hub call.
+    monkeypatch.setitem(sys.modules,"huggingface_hub",None)
+    exec(cell(name,"from huggingface_hub import HfApi, login"),ns)
+
+
 @pytest.mark.parametrize("run_real", [False, True])
 def test_missing_prepared_config_never_starts_a_real_run(tmp_path, monkeypatch, run_real):
     requested = tmp_path / "runs/prepared/g1/config.json"

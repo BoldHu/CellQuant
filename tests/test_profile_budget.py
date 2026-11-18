@@ -33,6 +33,16 @@ def test_fast_prefix_does_not_certify_full_run_or_gate():
     assert r['full_run_readiness']=='NOT_ESTABLISHED_BY_PROFILE'
 
 
+def test_method_projection_charges_fixed_setup_once_and_pair_updates_every_time():
+    data=row([4.]*8)
+    data['solver'].update(seconds=115.,this_invocation_pair_loop_seconds=96.)
+    result=analyze_profile_budget([data],128,1440.)['methods'][0]
+    assert result['projected_full_search_seconds']==512.
+    assert result['projected_method_seconds']==19.+128*12
+    assert result['projected_method_headroom_seconds']==-115.
+    assert analyze_profile_budget([row([4.])],128,1440.)['methods'][0]['projected_method_seconds'] is None
+
+
 @pytest.mark.parametrize('seconds',[[None],[math.nan],[math.inf],[0.],[-1.]])
 def test_missing_or_invalid_timings_never_become_resource_success(seconds):
     r=analyze_profile_budget([row(seconds)],128,1440.)

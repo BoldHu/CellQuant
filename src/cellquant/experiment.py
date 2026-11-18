@@ -38,6 +38,7 @@ def _model_solver_config(settings, output, fingerprint):
         backend=backend, device=settings.get('device', 'cuda:0' if tensor else 'cpu'),
         compute_dtype=settings.get('compute_dtype', 'float64'), cell_batch_size=settings.get('cell_batch_size', 1024),
         theta_limit=settings.get('theta_limit', math.pi/4), wall_seconds=settings.get('wall_seconds', 3600),
+        fit_objective=settings.get('fit_objective', 'sum_nmse'),
         event_limit_per_pair=settings.get('event_limit_per_pair', 200000), seconds_per_pair=settings.get('seconds_per_pair', 300),
         checkpoint_path=str(output / ('rotation_state.pt' if tensor else 'rotation_state.npz')),
         execution_fingerprint=fingerprint)
@@ -61,7 +62,21 @@ def preflight(config,root=None):
     if not source_manifest or not Path(source_manifest).is_file():missing.append('Pinned model shard size/SHA-256 metadata missing')
     elif sha256_file(source_manifest)!=config.get('model_source_manifest_sha256'):missing.append('Model source metadata checksum mismatch')
     if stage=='G1':
+        if (config.get('solver',{}).get('fit_objective')=='relative_site_nmse'
+                and not config.get('g1_confirmation')):
+            missing.append('Prepare the relative-objective confirmation with fresh held-out documents')
         manifests=data.get('token_manifests',{})
+        if config.get('g1_confirmation'):
+            protocol=Path(config.get('protocol_manifest_path') or '.')
+            if not protocol.is_file() or sha256_file(protocol)!=config.get('protocol_sha256'):
+                missing.append('Missing or changed confirmation protocol')
+            else:
+                frozen=read_json(protocol)
+                frozen_manifests=frozen.get('token_manifest_sha256',{})
+                if (frozen.get('g1_confirmation')!=config['g1_confirmation'] or frozen.get('solver')!=config.get('solver')
+                        or set(manifests)!=set(frozen_manifests) or
+                        any(not Path(p).is_file() or sha256_file(p)!=frozen_manifests.get(s) for s,p in manifests.items())):
+                    missing.append('Confirmation objective or fresh validation manifests changed')
         for seed in config.get('seeds',[]):
             if str(seed) not in manifests or not Path(manifests[str(seed)]).is_file():missing.append(f'Missing real fit/dev token manifest for seed {seed}')
         g0=config.get('g0_evidence_path','runs/build_m2/G0_evidence.json')
@@ -72,6 +87,12 @@ def preflight(config,root=None):
         required='G1' if stage in {'G2','canary'} else 'G3'
         gate_evidence=config.get('gate_evidence_path',f'runs/gates/{required}_evidence.json')
         if not Path(gate_evidence).is_file() or evaluate_file(required,gate_evidence)['status']!='PASS':missing.append(f'Recomputed {required} evidence is required')
+        if required=='G1' and Path(gate_evidence).is_file():
+            provenance=read_json(gate_evidence).get('provenance',{})
+            modes=provenance.get('fit_objectives',['sum_nmse'])
+            if (modes!=[config.get('solver',{}).get('fit_objective','sum_nmse')]
+                    or (modes==['relative_site_nmse'] and not provenance.get('includes_original_grid'))):
+                missing.append('G2 requires the fitted G1 objective and its original-grid comparison')
         protocol=config.get('protocol_manifest_path')
         if not protocol or not Path(protocol).is_file():missing.append('Missing frozen protocol manifest')
         elif sha256_file(protocol)!=config.get('protocol_sha256'):missing.append('Protocol checksum mismatch')
@@ -209,11 +230,11 @@ def _verify_weight_files(config,output):
     atomic_json(Path(output)/'weights_manifest.json',{'revision':config['model_revision'],'files':files})
 
 
-def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False,profile_pairs=None,diagnose_pairs=False):
+def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False,profile_pairs=None,diagnose_pairs=False,screen_objective=False):
     config=read_json(config) if isinstance(config,(str,Path)) else copy.deepcopy(config)
     profile_pair=profile_pair or profile_pairs is not None
-    if diagnose_pairs and profile_pair:
-        raise ValueError('Choose either pair profiling or the fit-only coordinate diagnostic')
+    if sum((bool(profile_pair), diagnose_pairs, screen_objective)) > 1:
+        raise ValueError('Choose either pair profiling, the coordinate diagnostic, or the objective screen')
     profile_count=1 if profile_pairs is None else profile_pairs
     if profile_pair:
         from .pilot import validate_profile_pair_count
@@ -223,24 +244,34 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     output=root/'runs'/'experiments'/run_id;output.mkdir(parents=True)
     atomic_json(output/'config.json',config)
     # The diagnostic writes only its own run directory and optional invocation index.
-    checks = {k: v for k, v in config.items() if k != 'result_path'} if diagnose_pairs else config
+    diagnostic = diagnose_pairs or screen_objective
+    checks = {k: v for k, v in config.items() if k != 'result_path'} if diagnostic else config
     ready=preflight(checks,root)
     if profile_pair and (config.get('stage')!='G1' or not config.get('runtime',{}).get('model_device','').startswith('cuda') or config.get('resume_run_dir')):
         ready['missing'].append('Pair profile requires a GPU-resident G1 config without resume_run_dir')
         ready['status']='BLOCKED'
-    if diagnose_pairs and (config.get('stage') != 'G1' or config.get('resume_run_dir')
+    if diagnostic and (config.get('stage') != 'G1' or config.get('resume_run_dir')
             or not config.get('runtime', {}).get('model_device', '').startswith('cuda')
             or config.get('solver', {}).get('backend') != 'torch'
             or not config['solver'].get('device', '').startswith('cuda')
             or config['solver'].get('compute_dtype') != 'float64'):
         ready['missing'].append('Fit-only diagnostic requires a fresh GPU-resident G1 run with the Torch FP64 solver')
         ready['status']='BLOCKED'
+    if screen_objective:
+        from .objective_screen import validate_screen_config, verify_parent_manifests
+        try:
+            validate_screen_config(config)
+            verify_parent_manifests(config)
+        except ValueError as exc:
+            ready['missing'].append(str(exc))
+            ready['status']='BLOCKED'
     atomic_json(output/'preflight.json',ready)
     base={'schema_version':'1.0','run_id':run_id,'created_at_utc':utc_now(),'run_dir':str(output),
           'config_sha256':config_hash(config),'source_type':'not_run','status':'BLOCKED',
           'execution_mode':'pair_profile_only' if profile_pair else 'experiment'}
     if profile_pair:base['profile_pair_count']=profile_count
     if diagnose_pairs:base['execution_mode']='fit_pair_diagnostic'
+    if screen_objective:base['execution_mode']='fit_objective_screen'
     if preflight_only or ready['status']!='READY':
         result={**base,'readiness':ready,'status':'PREFLIGHT_ONLY' if preflight_only else 'BLOCKED'}
         atomic_json(output/'result.json',result);return result
@@ -312,12 +343,17 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                 from .pilot import prepare_pilot_inputs
                 with measured('capture'):
                     prepared=prepare_pilot_inputs(config,model,graph_identity=graph_identity,
-                                                  progress=progress.step,profile_only=profile_pair,fit_only=diagnose_pairs)
+                                                  progress=progress.step,profile_only=profile_pair,fit_only=diagnose_pairs,
+                                                  screen_objective=screen_objective)
                 del model;model=None;gc.collect();torch.cuda.empty_cache()
                 progress.step('g1.model_released',captured_seeds=list(prepared['seeds']),
-                              captured_splits=['fit'] if profile_pair or diagnose_pairs else ['fit','heldout'],
+                              captured_splits=['fit','screen_validation'] if screen_objective else (['fit'] if profile_pair or diagnose_pairs else ['fit','heldout']),
                               reason='requested panels captured and resident on CUDA')
-            if diagnose_pairs:
+            if screen_objective:
+                from .objective_screen import run_objective_screen
+                summary=run_objective_screen(config,prepared,output,execution_fingerprint=fingerprint['sha256'],progress=progress.step)
+                result={**base,**summary,'timings':timings}
+            elif diagnose_pairs:
                 from .pair_diagnostic import run_pair_diagnostic
                 summary=run_pair_diagnostic(config,prepared,output,progress=progress.step)
                 result={**base,**summary,'timings':timings}
@@ -328,7 +364,11 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
             else:
                 paths=run_pilot(config,model,output,graph_identity=graph_identity,execution_fingerprint=fingerprint['sha256'],progress=progress.step,prepared=prepared)
                 progress.step('g1.evidence')
-                gate=build_g1_evidence(paths,output,g0_evidence_path=config.get('g0_evidence_path','runs/build_m2/G0_evidence.json'))
+                g0=config.get('g0_evidence_path','runs/build_m2/G0_evidence.json')
+                primary=[p for p in paths if p.name=='pilot_result.json']
+                gate=build_g1_evidence(primary,output,g0_evidence_path=g0)
+                if config.get('g1_confirmation'):
+                    gate=build_g1_evidence(paths,output/'including_original_grid',g0_evidence_path=g0,include_original_grid=True)
                 result={**base,'source_type':'real_layer',**summarize_pilot_results(paths),
                         'evidence_kind':'REAL_LAYER_PILOT','gate':gate['status'],
                         'raw_results':[str(p) for p in paths],'timings':timings}
@@ -493,7 +533,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
         result['resources']=monitor.stop()
         atomic_json(output/'resources.json',result['resources'])
         atomic_json(output/'result.json',result)
-        if config.get('result_path') and not diagnose_pairs:
+        if config.get('result_path') and not diagnostic:
             target=root/config['result_path']
             if target.exists() and read_json(target).get('status')=='COMPLETE':raise ExperimentBlocked('Completed result index already exists; choose a new job id')
             atomic_json(target,result)
@@ -519,9 +559,11 @@ def main():
     parser.add_argument('--profile-pair',action='store_true',help='Engineering diagnosis: first G1 pair on full fit panels for both event methods; no G1 evidence')
     parser.add_argument('--profile-pairs',type=int,help='Engineering diagnosis of the first N scheduled pairs with continuous Q updates; original method budget; no G1 evidence')
     parser.add_argument('--diagnose-pairs',action='store_true',help='Compare output error coverage and matched single-pair gains on fit panels at Q0')
+    parser.add_argument('--screen-objective',action='store_true',help='Compare absolute and initial-relative fit losses on a split of the eight calibration documents')
     args=parser.parse_args()
     if args.result_index and Path(args.result_index).exists():raise FileExistsError('Result index already exists; choose a unique path')
-    result=run_experiment(args.config,preflight_only=args.preflight,profile_pair=args.profile_pair,profile_pairs=args.profile_pairs,diagnose_pairs=args.diagnose_pairs)
+    result=run_experiment(args.config,preflight_only=args.preflight,profile_pair=args.profile_pair,profile_pairs=args.profile_pairs,
+                          diagnose_pairs=args.diagnose_pairs,screen_objective=args.screen_objective)
     if args.result_index:atomic_json(args.result_index,{k:result[k] for k in ['run_id','run_dir','status']})
     display={'status':result['status'],'run_dir':result['run_dir'],'reason':result.get('reason'),
                       'incomplete_methods':result.get('incomplete_methods',[]),
@@ -529,8 +571,9 @@ def main():
     if 'profile_pair_count' in result:display['profile_pair_count']=result['profile_pair_count']
     if 'budget_analysis' in result:display['budget_analysis']=result['budget_analysis']
     if 'paired_fit_summary' in result:display['paired_fit_summary']=result['paired_fit_summary']
+    if 'objective_screen' in result:display['objective_screen']=result['objective_screen']
     print(json.dumps(display,ensure_ascii=False,indent=2))
-    return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY','PROFILE_COMPLETE','DIAGNOSTIC_COMPLETE'} else 2
+    return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY','PROFILE_COMPLETE','DIAGNOSTIC_COMPLETE','SCREEN_COMPLETE'} else 2
 
 
 if __name__=='__main__':raise SystemExit(main())

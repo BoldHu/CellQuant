@@ -9,12 +9,35 @@ import copy
 import os
 from cellquant.runtime import atomic_json,read_json,sha256_file,environment_report,config_hash,huggingface_cache_paths
 from cellquant.data import (resolve_revision,wikitext_documents,tokenize_documents,split_train_blocks,
-                            save_token_manifest,verify_disjoint,immutable_revision)
+                            save_token_manifest,load_token_manifest,confirmation_partitions,verify_disjoint,immutable_revision)
 from cellquant.gates import evaluate_file
 
 
-def prepare(config_path,output,*,include_tests=False):
+def prepare(config_path,output,*,include_tests=False,relative_screen=None):
     config=read_json(config_path);output=Path(output).resolve()
+    previous=None
+    parent_dataset_fingerprints=set()
+    if relative_screen is not None:
+        from cellquant.objective_screen import verified_screen, validate_screen_config
+        if config.get('stage')!='G1' or include_tests or config.get('resume_run_dir'):
+            raise ValueError('A confirmation uses a fresh G1 run on training documents')
+        validate_screen_config(config)
+        screen_sha=verified_screen(relative_screen,config)
+        previous={}
+        for seed in config['seeds']:
+            manifest,parts=load_token_manifest(config['data']['token_manifests'][str(seed)])
+            identity=manifest['identity']
+            if (identity['source_split']!='train' or identity['seed']!=seed or
+                    identity['dataset_id']!=config['data']['calibration_dataset'] or
+                    any(identity[k]!=config[k] for k in ('model_revision','tokenizer_revision','dataset_revision'))):
+                raise ValueError('Parent token identity does not match the G1 protocol')
+            previous[seed]=parts
+            parent_dataset_fingerprints.add(identity['dataset_fingerprint'])
+        config['g1_confirmation']={'parent_config_sha256':config_hash(config),'screen_result_sha256':screen_sha,
+            'partition_seed_namespace':20261118,'extra_control':'original_objective_grid',
+            'parent_token_manifests':{s:sha256_file(p) for s,p in config['data']['token_manifests'].items()}}
+        config['solver']['fit_objective']='relative_site_nmse'
+        config.pop('result_path',None)
     if output.exists() and any(output.iterdir()):raise ValueError('Use a new preparation directory; frozen artifacts are immutable')
     output.mkdir(parents=True,exist_ok=True)
     data=config['data'];model_id=config.get('model_id',config.get('formal_pilot',{}).get('model_id'))
@@ -50,6 +73,8 @@ def prepare(config_path,output,*,include_tests=False):
     tokenizer=AutoTokenizer.from_pretrained(model_id,revision=config['tokenizer_revision'],cache_dir=str(cache),token=token,
                                            add_bos_token=False,add_eos_token=False)
     ds=load_dataset(data['calibration_dataset'],data['dataset_config'],split='train',revision=config['dataset_revision'],cache_dir=str(dataset_cache),token=token)
+    if previous is not None and parent_dataset_fingerprints!={ds._fingerprint}:
+        raise ValueError('Confirmation dataset fingerprint changed from the parent calibration corpus')
     context=config.get('formal_pilot',{}).get('context_length',data['sequence_length'])
     blocks=tokenize_documents(wikitext_documents(ds),tokenizer,context)
     env=environment_report();dtype=config['runtime']['dtype']
@@ -58,6 +83,7 @@ def prepare(config_path,output,*,include_tests=False):
         dtype='bfloat16' if env['cuda'].get('bf16_supported') else 'float16'
     config['runtime'].update(dtype=dtype,cache_dir=str(cache),dataset_cache_dir=str(dataset_cache))
     manifests={};formal=config.get('formal_pilot',{})
+    fresh=confirmation_partitions(blocks,previous,formal['heldout_sequences']) if previous is not None else None
     tests={}
     if include_tests:
         g2=config.get('g2_evidence_path','runs/gates/G2_evidence.json')
@@ -75,7 +101,8 @@ def prepare(config_path,output,*,include_tests=False):
         tests['c4_test']=tokenize_documents(documents,tokenizer,context,max_blocks=c4['max_blocks'])
         if len(tests['c4_test'])!=c4['max_blocks']:raise ValueError('Insufficient C4 blocks in the frozen subset')
     for seed in config.get('seeds',[config.get('seed',11)]):
-        fit,dev=split_train_blocks(blocks,formal.get('fit_sequences',data['calibration_samples']),formal.get('heldout_sequences',data.get('dev_sequences',16)),seed)
+        fit,dev=(fresh[seed] if fresh is not None else split_train_blocks(blocks,
+                 formal.get('fit_sequences',data['calibration_samples']),formal.get('heldout_sequences',data.get('dev_sequences',16)),seed))
         verify_disjoint(fit,dev)
         identity={'model_id':model_id,'model_revision':config['model_revision'],'tokenizer_revision':config['tokenizer_revision'],
                   'dataset_id':data['calibration_dataset'],'dataset_revision':config['dataset_revision'],'dataset_fingerprint':ds._fingerprint,
@@ -102,6 +129,7 @@ def prepare(config_path,output,*,include_tests=False):
               'harness_commit':config.get('harness_commit'),
               'tokenization':'per-document nonoverlapping blocks; no BOS; drop short tails',
               'note':'Own matched protocol; do not compare these PPL values to stock concatenated WikiText numbers'}
+    if previous is not None:protocol['g1_confirmation']=config['g1_confirmation']
     protocol_path=atomic_json(output/'protocol.json',protocol)
     config.update(protocol_manifest_path=str(protocol_path),protocol_sha256=sha256_file(protocol_path),protocol_status='FROZEN')
     provenance={'models':{model_id:{'model_revision':config['model_revision'],'tokenizer_revision':config['tokenizer_revision']}},
@@ -116,4 +144,5 @@ def prepare(config_path,output,*,include_tests=False):
 
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--config',required=True);p.add_argument('--output',required=True);p.add_argument('--include-tests',action='store_true')
-    a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests)
+    p.add_argument('--relative-g1-screen',help='Completed objective-screen run for the single fresh G1 confirmation')
+    a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests,relative_screen=a.relative_g1_screen)

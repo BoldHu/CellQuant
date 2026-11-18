@@ -1,6 +1,6 @@
 """Real-layer shared-Q pilot and G1 aggregation from measured artifacts only."""
 from __future__ import annotations
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import math
 from pathlib import Path
 import time
@@ -19,7 +19,7 @@ def _incomplete_reason(row):
     solver = row.get('solver', {})
     if row.get('status') != 'COMPLETE' or solver.get('status', 'COMPLETE') != 'COMPLETE':
         return solver.get('reason') or 'Incomplete method; no solver reason was recorded'
-    if row.get('method') in METHODS and row['method'] != 'hadamard_shared':
+    if row.get('method') in (*METHODS, 'original_objective_grid') and row['method'] != 'hadamard_shared':
         requested = solver.get('requested_pairs')
         done = solver.get('completed_pairs', len(solver.get('log', [])))
         if requested is None or requested <= 0 or done != requested or solver.get('stopped_by_wall_budget'):
@@ -73,26 +73,37 @@ def panel_metrics(panels,q,specs,device='cpu',*,progress=None):
     return rows
 
 
-def prepare_pilot_inputs(config,model,*,graph_identity,progress=None,profile_only=False,fit_only=False):
+def prepare_pilot_inputs(config,model,*,graph_identity,progress=None,profile_only=False,fit_only=False,screen_objective=False):
     """Capture the panels consumed by this run before releasing the model."""
     from .spinquant_adapter import panel_quant_specs
     from .tensor_solver import synchronize
     device=config['runtime']['model_device'];formal=config['formal_pilot'];seeds={}
     requested_seeds = config['seeds'][:1] if profile_only else config['seeds']
     for seed in requested_seeds:
-        _,parts=load_token_manifest(config['data']['token_manifests'][str(seed)])
+        manifest_path=config['data']['token_manifests'][str(seed)]
+        _,parts=load_token_manifest(manifest_path)
         verify_disjoint(parts['fit'],parts['dev'])
+        training, validation = parts['fit'], parts['dev']
+        if screen_objective:
+            if (len(training) != 8 or len({b['document_id'] for b in training}) != 8
+                    or len({b['document_sha256'] for b in training}) != 8):
+                raise ValueError('The objective screen requires eight distinct original fit documents per seed')
+            training, validation = training[:4], training[4:]
+            verify_disjoint(training, validation)
         kwargs=dict(layers=formal['layers'],projections=formal['projections'],input_weight_rows=formal['input_weight_rows'],
                     seed=seed,device=device,graph_identity=graph_identity,resident=True)
         synchronize(device);start=time.perf_counter()
-        fit=capture_panels(model,parts['fit'],tokens_per_panel=formal['fit_tokens_per_panel'],
+        fit=capture_panels(model,training,tokens_per_panel=formal['fit_tokens_per_panel'],
             progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split='fit',**d),**kwargs)
         specs=panel_quant_specs(model,fit,config['quantization']);synchronize(device)
         seconds=time.perf_counter()-start
         seeds[seed]={'fit':fit,'specs':specs,'capture_seconds':seconds}
+        if screen_objective:
+            seeds[seed]['parent_manifest_sha256']=sha256_file(manifest_path)
         if not (profile_only or fit_only):
-            seeds[seed]['heldout']=capture_panels(model,parts['dev'],tokens_per_panel=formal['heldout_tokens_per_panel'],
-                progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split='heldout',**d),**kwargs)
+            split='screen_validation' if screen_objective else 'heldout'
+            seeds[seed][split]=capture_panels(model,validation,tokens_per_panel=formal['heldout_tokens_per_panel'],
+                progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split=split,**d),**kwargs)
     return {'seeds':seeds,'hidden_size':model.config.hidden_size,
             'model_parameter_billions':sum(p.numel() for p in model.parameters())/1e9}
 
@@ -100,6 +111,16 @@ def prepare_pilot_inputs(config,model,*,graph_identity,progress=None,profile_onl
 def pilot_method_budget(config):
     return config['solver'].get('wall_seconds_per_method',
         min(2400.,config.get('gpu_hour_budget',4)*3600/len(METHODS)/len(config['seeds'])))
+
+
+def pilot_solver_config(config, *, checkpoint_path=None, execution_fingerprint=None, resume=False):
+    settings = config['solver']
+    return SolverConfig(backend=settings.get('backend', 'numpy_reference'), device=settings.get('device', 'cpu'),
+        compute_dtype=settings.get('compute_dtype', 'float64'), theta_limit=settings.get('theta_limit', np.pi/4),
+        cell_batch_size=settings.get('cell_batch_size', 1024), event_limit_per_pair=settings.get('event_limit_per_pair', 200000),
+        seconds_per_pair=settings.get('seconds_per_pair', 300.), wall_seconds=pilot_method_budget(config),
+        fit_objective=settings.get('fit_objective', 'sum_nmse'), checkpoint_path=checkpoint_path,
+        execution_fingerprint=execution_fingerprint, resume=resume)
 
 
 def validate_profile_pair_count(config,pair_count):
@@ -171,11 +192,7 @@ def profile_prepared_pair(config,prepared,output,*,execution_fingerprint,progres
     for method in ['fixed_scale_search_matched','cellquant']:
         def emit(phase,**details):report(progress,'profile.'+phase,seed=seed,method=method,**details)
         dest=output/'pair_profile'/f'seed_{seed}'/method;dest.mkdir(parents=True,exist_ok=True)
-        cfg=SolverConfig(theta_limit=settings.get('theta_limit',np.pi/4),backend='torch',device=device,
-            cell_batch_size=settings.get('cell_batch_size',1024),
-            compute_dtype=settings.get('compute_dtype','float64'),event_limit_per_pair=settings.get('event_limit_per_pair',200000),
-            seconds_per_pair=settings.get('seconds_per_pair',300.),wall_seconds=method_budget,
-            checkpoint_path=str(dest/'rotation_state.pt'),execution_fingerprint=execution_fingerprint)
+        cfg=pilot_solver_config(config,checkpoint_path=str(dest/'rotation_state.pt'),execution_fingerprint=execution_fingerprint)
         emit('solve.start',wall_budget_seconds=method_budget,seconds_per_pair=cfg.seconds_per_pair,profile_pair_count=pair_count)
         result=fit_baseline(method,panels,q0,specs,schedule[:pair_count],cfg,progress=emit)
         q=result.pop('q');atomic_npz(dest/'Q.npz',Q=q)
@@ -235,7 +252,11 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
         source_type=next(iter(sources))
         schedule=pair_schedule(len(q0),config['solver']['pair_budget'],seed)
         method_budget=pilot_method_budget(config)
-        for method in formal['methods']:
+        methods=list(formal['methods'])
+        if config.get('g1_confirmation'):methods.append('original_objective_grid')
+        for method in methods:
+            legacy_grid=method=='original_objective_grid'
+            result_file='original_grid_result.json' if legacy_grid else 'pilot_result.json'
             def method_progress(phase,**details):emit(phase,method=method,**details)
             method_progress('solve.start',device=config['solver'].get('device','cpu'),wall_budget_seconds=method_budget)
             dest=output/f'seed_{seed}'/method;dest.mkdir(parents=True,exist_ok=True)
@@ -243,25 +264,21 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
             if config.get('resume_run_dir'):
                 import shutil
                 prior=Path(config['resume_run_dir'])/f'seed_{seed}'/method
-                saved=read_json(prior/'pilot_result.json') if (prior/'pilot_result.json').exists() else None
+                saved=read_json(prior/result_file) if (prior/result_file).exists() else None
                 if saved and _incomplete_reason(saved) is None:
                     if sha256_file(saved['q_path'])!=saved['q_sha256'] or sha256_file(saved['data_manifest_path'])!=saved['data_manifest_sha256']:
                         raise ValueError('Completed pilot checkpoint integrity mismatch')
                     shutil.copy2(saved['q_path'],dest/'Q.npz');saved['q_path']=str((dest/'Q.npz').resolve())
-                    saved['resumed_from']=str(prior.resolve());records.append(atomic_json(dest/'pilot_result.json',saved));continue
+                    saved['resumed_from']=str(prior.resolve());records.append(atomic_json(dest/result_file,saved));continue
                 state_name='rotation_state.pt' if tensor else 'rotation_state.npz'
                 if (prior/state_name).exists() and method in {'cellquant','fixed_scale_search_matched'}:
                     shutil.copy2(prior/state_name,dest/state_name);resume=True
-                elif saved and method in {'givens_ste_matched','angle_grid_matched'}:
+                elif saved and method in {'givens_ste_matched','angle_grid_matched','original_objective_grid'}:
                     raise ValueError('Partial grid/STE resume is unsupported; do not reset its wall budget silently')
-            cfg=SolverConfig(theta_limit=config['solver'].get('theta_limit',np.pi/4),
-                cell_batch_size=config['solver'].get('cell_batch_size',1024),
-                backend=config['solver'].get('backend','numpy_reference'),compute_dtype=config['solver'].get('compute_dtype','float64'),
-                event_limit_per_pair=config['solver'].get('event_limit_per_pair',200000),
-                seconds_per_pair=config['solver'].get('seconds_per_pair',300.),wall_seconds=method_budget,
-                device=config['solver'].get('device','cpu'),checkpoint_path=str(dest/('rotation_state.pt' if tensor else 'rotation_state.npz')),
+            cfg=pilot_solver_config(config,checkpoint_path=str(dest/('rotation_state.pt' if tensor else 'rotation_state.npz')),
                 execution_fingerprint=execution_fingerprint or graph_identity,resume=resume)
-            result=fit_baseline(method,fit_panels,q0,specs,schedule,cfg,progress=method_progress)
+            if legacy_grid:cfg=replace(cfg,fit_objective='sum_nmse')
+            result=fit_baseline('angle_grid_matched' if legacy_grid else method,fit_panels,q0,specs,schedule,cfg,progress=method_progress)
             method_progress('solve.complete',solver_status=result['status'],solver_reason=result.get('reason'),
                             resource_diagnostics=result.get('resource_diagnostics'))
             q=result.pop('q');atomic_npz(dest/'Q.npz',Q=q)
@@ -277,13 +294,13 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
                 'capture_seconds':capture_seconds,'total_calibration_seconds':capture_seconds+result['seconds'],
                 'q_path':str((dest/'Q.npz').resolve()),'q_sha256':sha256_file(dest/'Q.npz'),'solver':result,
                 'heldout':panel_metrics(heldout_panels,q,specs,cfg.device,progress=method_progress) if result['status']=='COMPLETE' else []}
-            path=atomic_json(dest/'pilot_result.json',row);records.append(path)
+            path=atomic_json(dest/result_file,row);records.append(path)
             method_progress('method.saved',result_path=str(path),solver_status=result['status'],solver_reason=result.get('reason'))
         del fit_panels,heldout_panels,q0
     return records
 
 
-def build_g1_evidence(paths,output,*,g0_evidence_path):
+def build_g1_evidence(paths,output,*,g0_evidence_path,include_original_grid=False):
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
     if not paths:
         evidence={'schema_version':'1.0','gate_id':'G1','source_type':'not_run','metrics':{},'provenance':{},'artifact_refs':[]}
@@ -292,13 +309,16 @@ def build_g1_evidence(paths,output,*,g0_evidence_path):
         for path in paths:
             row=read_json(path)
             if row.get('evidence_kind')=='PAIR_PROFILE_ONLY':raise ValueError('Pair profiles cannot form G1 evidence')
+            if row.get('evidence_kind') in {'FIT_OBJECTIVE_SCREEN','FIT_PAIR_DIAGNOSTIC'}:
+                raise ValueError('Diagnostic results cannot form G1 evidence')
             if row.get('source_type')!='real_layer':raise ValueError('Only real-layer artifacts can form G1')
             for k,h in [('q_path','q_sha256'),('data_manifest_path','data_manifest_sha256')]:
                 if sha256_file(row[k])!=row[h]:raise ValueError('Pilot artifact checksum mismatch')
             rows.append(row);refs.append({'path':str(Path(path).resolve()),'sha256':sha256_file(path)})
         seeds=sorted({r['seed'] for r in rows});by={(r['seed'],r['method']):r for r in rows}
         if len(by)!=len(rows):raise ValueError('Duplicate seed/method pilot results')
-        complete=all((s,m) in by and _incomplete_reason(by[s,m]) is None for s in seeds for m in METHODS)
+        required=(*METHODS,'original_objective_grid') if include_original_grid else METHODS
+        complete=all((s,m) in by and _incomplete_reason(by[s,m]) is None for s in seeds for m in required)
         metrics={'g0_pass':evaluate_file('G0',g0_evidence_path)['status']=='PASS',
             'calibration_seed_count':len(seeds),'real_model_parameter_billions':min(r['model_parameter_billions'] for r in rows),
             'matched_solver_controls_complete':complete,
@@ -314,11 +334,18 @@ def build_g1_evidence(paths,output,*,g0_evidence_path):
         metrics['layer_count']=len({p['layer'] for p in rows[0]['heldout']}) if same_sites else 0
         metrics['full_quant_groups_preserved']=all(p['weight_shape'][1]==p['activation_shape'][0] for r in rows for p in r['heldout'])
         metrics['down_projection_output_side_correct']=all(p['placement']=='output' for r in rows for p in r['heldout'] if p['panel_id'].endswith('down_proj')) and any(p['panel_id'].endswith('down_proj') for p in rows[0]['heldout'])
+        policies={r['solver'].get('fit_objective',{'mode':'sum_nmse'})['mode'] for r in rows if r['method'] in METHODS}
         if complete and same_sites:
             sites=sorted(panel_sets[0]);values={key:np.array([next(p['nmse'] for p in row['heldout'] if p['panel_id']==site) for site in sites]) for key,row in by.items()}
             controls=['givens_ste_matched','angle_grid_matched','fixed_scale_search_matched']
+            if include_original_grid:controls.append('original_objective_grid')
             # Same-seed controls must use identical frozen panels/schedule/time/R2.
-            matched=all(len({by[s,m][k] for m in METHODS})==1 for s in seeds for k in ['fit_panel_fingerprint','schedule_sha256','wall_budget_seconds','graph_identity'])
+            matched=all(len({by[s,m][k] for m in required})==1 for s in seeds for k in ['fit_panel_fingerprint','schedule_sha256','wall_budget_seconds','graph_identity','data_manifest_sha256'])
+            matched=matched and len(policies)==1 and all(len({config_hash(by[s,m]['solver'].get(
+                'fit_objective',{'mode':'sum_nmse'})) for m in METHODS})==1 for s in seeds)
+            if include_original_grid:
+                matched=matched and policies=={'relative_site_nmse'} and all(
+                    by[s,'original_objective_grid']['solver']['fit_objective']['mode']=='sum_nmse' for s in seeds)
             metrics['matched_solver_controls_complete']=matched
             new=np.stack([values[s,'cellquant'] for s in seeds]);had=np.stack([values[s,'hadamard_shared'] for s in seeds])
             best=np.stack([np.minimum.reduce([values[s,m] for m in controls]) for s in seeds])
@@ -336,6 +363,7 @@ def build_g1_evidence(paths,output,*,g0_evidence_path):
         if not complete:metrics={}
         evidence={'schema_version':'1.0','gate_id':'G1','source_type':'real_layer','metrics':metrics,
             'provenance':{'raw_results':len(rows),'complete_comparison':complete,'g0_evidence_sha256':sha256_file(g0_evidence_path),
+                          'fit_objectives':sorted(policies),'includes_original_grid':include_original_grid,
                           'aggregation':'mean seed-relative improvement per site, median sites'},'artifact_refs':refs}
     atomic_json(output/'G1_evidence.json',evidence);gate=evaluate_file('G1',output/'G1_evidence.json');atomic_json(output/'G1.json',gate)
     return gate

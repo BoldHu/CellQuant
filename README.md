@@ -4,7 +4,9 @@
 
 **2026-11-18 的正式 A100 G1 已完成，判定为 FAIL。** LLaMA-2-7B 两个 seed、五种方法共 10 份结果齐全。CellQuant 在独立文档上相对 Hadamard 的跨位置中位 NMSE 降幅为 2.569%，相对逐位置最强匹配搜索为 0.017%。同卡校准速度比为 0.264×。当前停在 G1，G2 和全量实验尚未启动。[正式判定](evidence/colab_a100_g1_20261118/G1.json) · [实测分析](docs/IMPLEMENTATION_STATUS.md#a100-正式-g1) · [实验协议](docs/COLAB_A100_TEST.md)
 
-16 份验证文档的配对抽样给出相对最强匹配对照的 95% 区间 [−0.2054%，+0.0482%]。下一次 A100 作业仅在拟合面板比较两张共享坐标表，以及事件搜索和网格在物化 Q 后各自保留的真实降幅。[文档区间](evidence/colab_a100_g1_20261118/document_intervals.json) · [A100 诊断步骤](docs/G1_PAIR_DIAGNOSTIC.md) · [01b notebook](notebooks/01b_Colab_Pair_Diagnostic.ipynb)
+16 份验证文档的配对抽样给出相对最强匹配对照的 95% 区间 [−0.2054%，+0.0482%]。后续 A100 拟合诊断已完成。改变配对后，CellQuant 相对网格的额外收益在一个种子上扩大，在另一个种子上缩小。依据事先记录的条件，停止这条配对修正。[文档区间](evidence/colab_a100_g1_20261118/document_intervals.json) · [A100 诊断结果](evidence/g1_pair_diagnostic_20261118/a100_summary.json) · [诊断协议](docs/G1_PAIR_DIAGNOSTIC.md)
+
+下一轮保留原坐标表，按各位置在拟合文档上的起始 NMSE 归一化目标。01c 先用 32 个连续坐标对做新旧目标与网格的四组比较。短测通过后可在全新的验证文档上做一次正式 G1，并额外保留原目标网格。新版真实 7B 结果待测。[本轮 A100 操作与判据](docs/G1_OBJECTIVE_TRIAL.md) · [01c notebook](notebooks/01c_Colab_Objective_Trial.ipynb)
 
 2026-11-15 已从 CPU 参考扩展到生产事件求解器、匹配对照、真实模型实验入口、SpinQuant/GPTQ 适配、数据与评估流程。当时完成了数学与小模型结构验证。
 

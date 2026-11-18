@@ -18,7 +18,7 @@ from .events import WorkBudget, ResourceLimit
 from .progress import report
 from .quantization import torch_quantize
 from .runtime import config_hash
-from .solver import panel_specs, panel_fingerprint
+from .solver import checkpoint_config, configure_fit_objective, panel_specs, panel_fingerprint
 from .tensor_math import (scalar, basis, affine_roots, owner_intervals, square_coeff,
                           product_coeff, scale_square)
 
@@ -442,6 +442,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=MATCHED_GR
     for panel in panels:
         report(progress,'solve.initialize_panel',panel_id=panel.panel_id,device=str(q.device))
         states.append(PanelState(panel,q,*panel_specs(specs,panel),fixed=method=='fixed_scale_search_matched'))
+    objective=configure_fit_objective(states,config.fit_objective)
     initial=aggregate(states)
     limits={k:initial[k] if budgets is None else scalar(budgets[k],q) for k in ['budget_w','budget_a']}
     cell=method in {'cellquant','fixed_scale_search_matched'}
@@ -450,7 +451,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=MATCHED_GR
     signature=config_hash({'backend':CELL_ENGINE_VERSION,'method':method,'panels':panel_fingerprint(panels),
         'q0':hashlib.sha256(q.detach().cpu().numpy().tobytes()).hexdigest(),'schedule':schedule,
         'specs':{s.panel.panel_id:[asdict(s.wspec),asdict(s.aspec)] for s in states},'limits':plain(limits),
-        'config':{k:v for k,v in asdict(config).items() if k not in {'resume','checkpoint_path'}}})
+        'config':checkpoint_config(config)})
     log=[];factors=[];offset=0;spent=0.;evaluations=0;status='COMPLETE';reason=None;resource_diagnostics=None
     checkpoint=Path(config.checkpoint_path) if config.checkpoint_path else None
     if config.resume:
@@ -517,7 +518,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=MATCHED_GR
         resource_diagnostics = {'phase': 'method_wall_budget', 'completed_pairs': next_pair}
         save(status)
     return {'status':status,'reason':reason,'resource_diagnostics':resource_diagnostics,'q':q,'initial':plain(initial),'final':plain(aggregate(states)),
-            'limits':plain(limits),'factors':factors,'log':log,'seconds':elapsed,
+            'limits':plain(limits),'fit_objective':objective,'factors':factors,'log':log,'seconds':elapsed,
             'this_invocation_pair_loop_seconds':loop_seconds,
             'evaluations':evaluations,'completed_pairs':next_pair,'requested_pairs':len(schedule),
             'stopped_by_wall_budget':next_pair<len(schedule) and method!='hadamard_shared','signature':signature,

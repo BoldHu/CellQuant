@@ -25,7 +25,8 @@ def test_loader_requests_gpu_and_freezes_base_weights(monkeypatch):
     assert all(p.is_cuda and not p.requires_grad for p in actual.parameters())
 
 
-def test_prepared_gpu_pilot_outputs_are_fixtures_and_not_gate_evidence(tmp_path,monkeypatch):
+@pytest.mark.parametrize('confirm', [False, True])
+def test_prepared_gpu_pilot_outputs_are_fixtures_and_not_gate_evidence(tmp_path,monkeypatch,confirm):
     from cellquant import pilot
     from cellquant.solver import CalibrationPanel
     from cellquant.quantization import QuantSpec
@@ -51,12 +52,18 @@ def test_prepared_gpu_pilot_outputs_are_fixtures_and_not_gate_evidence(tmp_path,
         'data':{'token_manifests':{'11':str(manifest)}},'quantization':{},'model_revision':'a'*40,
         'solver':{'backend':'torch','device':'cuda','compute_dtype':'float64','pair_budget':1,'theta_limit':.01,
                   'wall_seconds_per_method':120,'seconds_per_pair':60}}
+    if confirm:
+        config['g1_confirmation']={'fixture':True}
+        config['solver']['fit_objective']='relative_site_nmse'
     rows=pilot.run_pilot(config,None,tmp_path/'pilot',graph_identity='fixture',execution_fingerprint='fixture',prepared=prepared)
-    assert len(rows)==5
+    assert len(rows)==(6 if confirm else 5)
     for path in rows:
         row=read_json(path)
         assert row['source_type']=='unit_test_fixture' and row['status']=='COMPLETE'
         assert row['solver']['numerical_device']=='cuda:0'
+        expected='relative_site_nmse' if confirm and row['method']!='original_objective_grid' else 'sum_nmse'
+        assert row['solver']['fit_objective']['mode']==expected
+        assert (path.name=='original_grid_result.json')==(row['method']=='original_objective_grid')
         assert len(row['heldout'])==2
         assert Path(row['q_path']).is_file()
     with pytest.raises(ValueError,match='Only real-layer'):

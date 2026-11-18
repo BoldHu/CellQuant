@@ -1,0 +1,88 @@
+{
+  "cli_result": {
+    "incomplete_methods": [],
+    "missing": [],
+    "paired_fit_summary": {
+      "11": {
+        "capture_seconds": 3.1336067310003273,
+        "coverage": {
+          "original": 0.06109975516872741,
+          "ranked": 0.07659226277545397
+        },
+        "mean_feasible_replay_gain_pct": {
+          "original": {
+            "cell_minus_grid_pp": 0.0021656277076844074,
+            "cellquant": 0.056800469859690804,
+            "grid": 0.054634842152006396
+          },
+          "ranked": {
+            "cell_minus_grid_pp": 0.007796683813557401,
+            "cellquant": 0.06156824692564104,
+            "grid": 0.05377156311208364
+          }
+        },
+        "mean_single_pair_gain_pct": {
+          "original": {
+            "cell_minus_grid_pp": 0.0035577383647900918,
+            "cellquant": 0.05819258051679649,
+            "grid": 0.054634842152006396
+          },
+          "ranked": {
+            "cell_minus_grid_pp": 0.008121900106769234,
+            "cellquant": 0.061893463218852876,
+            "grid": 0.05377156311208364
+          }
+        },
+        "ranking_seconds": 0.041709741000886424
+      },
+      "23": {
+        "capture_seconds": 2.8022239260008064,
+        "coverage": {
+          "original": 0.06016553086938233,
+          "ranked": 0.07515209544367761
+        },
+        "mean_feasible_replay_gain_pct": {
+          "original": {
+            "cell_minus_grid_pp": 0.00786534867409236,
+            "cellquant": 0.040985811048961214,
+            "grid": 0.033120462374868855
+          },
+          "ranked": {
+            "cell_minus_grid_pp": 0.006089775573058218,
+            "cellquant": 0.08108276148816104,
+            "grid": 0.07499298591510282
+          }
+        },
+        "mean_single_pair_gain_pct": {
+          "original": {
+            "cell_minus_grid_pp": 0.007867534064025149,
+            "cellquant": 0.04098799643889742,
+            "grid": 0.03312046237487227
+          },
+          "ranked": {
+            "cell_minus_grid_pp": 0.00610112912621516,
+            "cellquant": 0.08109411504131969,
+            "grid": 0.07499298591510453
+          }
+        },
+        "ranking_seconds": 0.0022838730001240037
+      }
+    },
+    "reason": null,
+    "run_dir": "/content/CellQuant/runs/experiments/2026-11-18T105702.601853_0000_218faa0e13",
+    "status": "DIAGNOSTIC_COMPLETE"
+  },
+  "colab_output_zip": "/content/CellQuant/runs/01_pilot/pair_diagnostic_856301186d37/pair_diagnostic_2026-11-18T105702.601853_0000_218faa0e13.zip",
+  "elapsed_seconds": 252.45,
+  "evidence_kind": "FIT_PAIR_DIAGNOSTIC_NOTEBOOK_EXTRACT",
+  "finished_at_utc": "2026-11-18T11:01:17.163768+00:00",
+  "first_progress_at_utc": "2026-11-18T10:57:04.716472+00:00",
+  "notebook": "notebooks/01b_Colab_Pair_Diagnostic.ipynb",
+  "notebook_sha256_at_extraction": "eda740e25deb8892bec2558d9700403b29060252fb8d253f9901a684ae0d24d2",
+  "probe_starts_by_seed": {
+    "11": 32,
+    "23": 32
+  },
+  "scope": "Final CLI and repeated notebook summary agree. Fit panels only. Full per-probe files are in the Colab result ZIP.",
+  "source_type": "real_layer"
+}

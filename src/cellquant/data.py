@@ -66,6 +66,43 @@ def split_train_blocks(blocks,fit_count,heldout_count,seed):
     return chosen[:fit_count],chosen[fit_count:]
 
 
+def confirmation_partitions(blocks, previous, count):
+    """Keep the original fits and draw globally unused train documents for a one-shot G1."""
+    used_ids, used_docs, used_tokens = set(), set(), set()
+    for parts in previous.values():
+        for b in [*parts['fit'], *parts['dev']]:
+            used_ids.add(b['document_id'])
+            used_docs.add(b['document_sha256'])
+            used_tokens.add(b['token_ids_sha256'])
+    grouped = {}
+    for b in blocks:
+        if (b['document_id'] not in used_ids and b['document_sha256'] not in used_docs
+                and b['token_ids_sha256'] not in used_tokens):
+            grouped.setdefault(b['document_id'], []).append(b)
+    result = {}
+    for seed in sorted(previous):
+        rng = np.random.default_rng(np.random.SeedSequence([20261118, int(seed)]))
+        chosen = []
+        for doc in rng.permutation(sorted(grouped)).tolist():
+            if doc in used_ids:
+                continue
+            candidates = [b for b in grouped[doc] if b['document_sha256'] not in used_docs
+                          and b['token_ids_sha256'] not in used_tokens]
+            if not candidates:
+                continue
+            selected = candidates[int(rng.integers(len(candidates)))]
+            chosen.append(selected)
+            used_ids.add(doc)
+            used_docs.add(selected['document_sha256'])
+            used_tokens.add(selected['token_ids_sha256'])
+            if len(chosen) == count:
+                break
+        if len(chosen) != count:
+            raise ValueError('Insufficient fresh independent documents for G1 confirmation')
+        result[seed] = (previous[seed]['fit'], chosen)
+    return result
+
+
 def save_token_manifest(output,partitions,identity,*,source_type='real_model'):
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
     if source_type not in {'real_model','unit_test_fixture'}:raise ValueError('Explicit token source required')

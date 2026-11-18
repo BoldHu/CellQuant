@@ -2,6 +2,8 @@
 
 更新于 2026-11-18。LLaMA-2-7B 的正式 A100 试验已完成，G1 为 **FAIL**。G2–G4 尚未执行。
 
+下一轮的拟合目标 `relative_site_nmse` 和 01c 已接入，等待真实 A100 数据。新目标按各拟合位置的起点误差冻结权重，基线使用相同权重，另重跑原目标网格。RTX 3050 Laptop 上两种子、两位置、四维的 32 对短测流程已执行，结果标记为 `FIXTURE_ONLY`。正式投入依次取决于拟合文档内的短测、新文档 G1、全模型 G2 和运行就绪 G3。[本轮协议](G1_OBJECTIVE_TRIAL.md) · [本地验证记录](../evidence/g1_objective_20261118/local_validation.json)
+
 引擎使用 `torch_batched_bilateral_prefix_v3`。本机 RTX 3050 Laptop 上，两版完整轴混合合成案例各重复三次，单对搜索中位数从 20.34 秒降至 3.48 秒，结果一致。本地回归 310 项通过。A100 上新版 CellQuant 完成了两个 seed 各 128 对的正式求解，独立文档上的收益和校准时间见下文。[同卡合成测量](../evidence/a100_readiness_20261118/benchmark.json) · [工程验证](../evidence/a100_readiness_20261118/validation.json) · [A100 协议](COLAB_A100_TEST.md)
 
 | 组件 | 代码状态 | 已执行的证据与限制 |
@@ -20,7 +22,7 @@
 | 固定数据与实验后端 | IMPLEMENTED / G1_EXECUTED | 正式 G1 使用冻结输入与唯一 run_id，证据记录 10 份方法结果的 SHA-256。模型级协议尚待验证 |
 | WikiText/C4 与六任务 | IMPLEMENTED / INTERFACE_VALIDATED | 固定 harness commit+六任务 revision/metric；六任务 local fixtures 实际跑通；真实分数 NOT_RUN |
 | 配对分析 / G2–G4 构造 | IMPLEMENTED | token 加权 NLL 与 paired seed/document/item bootstrap；空结果准确不足，不生成表/图 |
-| 实验 notebook | DEFAULT_PATH_EXECUTED / COLAB_FORMAL_G1_COMPLETE | 00/01 完成 A100 预检、连续 8 对诊断及正式 G1。新增 01b 已验证本地入口，真实拟合面板诊断待执行 |
+| 实验 notebook | DEFAULT_PATH_EXECUTED / COLAB_FORMAL_G1_COMPLETE | 00/01 完成 A100 预检、连续 8 对诊断及正式 G1。01b 已在同一 A100 跑完两个种子的真实拟合面板诊断 |
 | 目标 RTX PRO 6000 Blackwell / 优化 FHT | NOT_RUN / BLOCKED | 本机 RTX 3050 Laptop 4GiB；FHT、FlashAttention、Triton 缺失 |
 | 2026 强基线、正式消融、论文主表 | NOT_IMPLEMENTED / NOT_RUN | 不能由官方论文数字或本地 fixtures 补填 |
 
@@ -57,7 +59,7 @@ CellQuant 在两个 seed 均接受 128/128 个更新，网格均接受 126/128 �
 
 2026-11-18 从正式 01 notebook 中的十份逐块输出归档了 720 条误差与目标能量记录。两个种子各有 8 份独立验证文档，共 16 份。固定这两次拟合，按整篇文档对所有方法和位置共同重采样 10,000 次。相对 Hadamard 的 NMSE 中位降幅为 +2.5689% [1.4791%，3.0102%]，相对角度网格为 +0.0385% [−0.0052%，0.2657%]，相对逐位置最强匹配对照为 +0.0172% [−0.2054%，0.0482%]。最后一项在每次抽样内重新选择对照。这是事后、固定两种子的 95% 百分位区间。[块级摘录](../evidence/colab_a100_g1_20261118/heldout_blocks.json) · [全部对照](../evidence/colab_a100_g1_20261118/document_intervals.json)
 
-新增 01b 和 `--diagnose-pairs`。在原随机坐标表和按初始输出残差选择的等规模坐标表上，分别用 129 点网格及事件搜索探测同一批坐标对。每对从同一初始 Q 出发，用显式更新后的 Q 对完整面板重新量化，逐对报告搜索损失、重算损失及风险。这一复核在 CPU 小矩阵上观察到近舍入边界的计算顺序差异。A100 真实九位置的覆盖率、重算差异和额外收益待测。两个种子各 8 个位置，诊断本身不进入 G1 证据。[协议、解释与运行命令](G1_PAIR_DIAGNOSTIC.md)
+01b 在 A100 对两个种子的真实拟合面板完成了 32 次配对比较，共 64 次单方法评估。每个角度均用显式更新后的共享 Q 重算九个面板。按初始残差选行后，两个种子的输出误差覆盖比例分别由 6.11% 升至 7.66%、由 6.02% 升至 7.52%。CellQuant 相对网格的可行单对平均降幅优势在 seed 11 从 0.00217 升至 0.00780 个百分点，在 seed 23 从 0.00787 降至 0.00609 个百分点。两种子共同扩大优势的条件未满足，按事先记录的决策停止这条配对修正，正式 G1 保持 FAIL。[A100 实测摘要](../evidence/g1_pair_diagnostic_20261118/a100_summary.json) · [诊断协议](G1_PAIR_DIAGNOSTIC.md)
 
 最终本地回归 322 项通过，CPU 数学 PASS，RTX 3050 小面板双种子诊断完成。01b 默认入口在本地执行成功。[本地验证](../evidence/g1_pair_diagnostic_20261118/local_validation.json)
 

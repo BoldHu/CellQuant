@@ -82,6 +82,38 @@ class SolverConfig:
     checkpoint_path: str | None = None
     resume: bool = False
     execution_fingerprint: str | None = None
+    fit_objective: str = 'sum_nmse'
+
+
+def configure_fit_objective(states, mode):
+    """Set only the fit loss unit of fresh states. Risk norms keep their physical units."""
+    if mode == 'sum_nmse':
+        return {'mode': mode}
+    if mode != 'relative_site_nmse':
+        raise ValueError(f'Unknown fit objective: {mode}')
+    floor = 1e-12
+    initial = {s.panel.panel_id: float(s.loss) for s in states}
+    if not all(math.isfinite(x) and x >= 0 for x in initial.values()):
+        raise ValueError('Invalid initial fit-panel NMSE')
+    absolute = sum(s.panel.objective_weight * initial[s.panel.panel_id] for s in states)
+    relative = sum(s.panel.objective_weight * initial[s.panel.panel_id] / max(initial[s.panel.panel_id], floor)
+                   for s in states)
+    # Keep the initial sum on its original numerical scale. An exactly reconstructed
+    # panel has a defined finite weight and still penalizes a subsequent regression.
+    common = absolute / relative if relative else floor
+    weights = {name: common / max(value, floor) for name, value in initial.items()}
+    for state in states:
+        weight = weights[state.panel.panel_id]
+        state.denominator = state.denominator / weight
+        state.loss = state.loss * weight
+    return {'mode': mode, 'floor': floor, 'initial_fit_nmse': initial, 'loss_multipliers': weights}
+
+
+def checkpoint_config(config):
+    values = {k: v for k, v in asdict(config).items() if k not in {'resume', 'checkpoint_path'}}
+    if values['fit_objective'] == 'sum_nmse':
+        del values['fit_objective']  # Preserve the previous default checkpoint signature.
+    return values
 
 
 def _gemm(a, b, device="cpu"):
@@ -467,10 +499,11 @@ def fit_shared_rotation(panels,q0,quant_specs,schedule,budgets=None,config=None,
     for p in panels:
         report(progress,'solve.initialize_panel',panel_id=p.panel_id,device=config.device)
         states.append(PanelState(p,q,*panel_specs(quant_specs,p),device=config.device,fixed=config.fixed_scales))
+    objective=configure_fit_objective(states,config.fit_objective)
     initial=aggregate(states);limits=budgets or {k:initial[k] for k in ("budget_w","budget_a")}
     signature=config_hash({"panels":panel_fingerprint(panels),"q0":hashlib.sha256(q.tobytes()).hexdigest(),
                            "schedule":schedule,"specs":{s.panel.panel_id:[asdict(s.wspec),asdict(s.aspec)] for s in states},"limits":limits,
-                           "config":{k:v for k,v in asdict(config).items() if k not in {"resume","checkpoint_path"}}})
+                           "config":checkpoint_config(config)})
     log=[];factors=[];offset=0;spent_before=0.
     if config.resume:
         if not config.checkpoint_path:raise ValueError("resume needs a checkpoint path")
@@ -522,7 +555,7 @@ def fit_shared_rotation(panels,q0,quant_specs,schedule,budgets=None,config=None,
         raise
     checkpoint(status,next_pair)
     return {"status":status,"reason":reason,"q":q,"factors":factors,"log":log,
-            "initial":initial,"final":aggregate(states),"limits":limits,
+            "initial":initial,"final":aggregate(states),"limits":limits,"fit_objective":objective,
             "orthogonality_residual":float(np.linalg.norm(q.T@q-np.eye(d))/math.sqrt(d)),
             "seconds":spent_before+time.perf_counter()-start,"signature":signature,
             "completed_pairs":next_pair,"requested_pairs":len(schedule),

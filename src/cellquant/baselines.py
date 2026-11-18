@@ -6,7 +6,7 @@ import numpy as np
 
 from .quantization import QuantSpec, torch_quantize
 from .progress import report
-from .solver import (SolverConfig, PanelState, aggregate, rotate_rows,
+from .solver import (SolverConfig, PanelState, aggregate, configure_fit_objective, rotate_rows,
                      fit_shared_rotation,panel_specs)
 
 
@@ -29,6 +29,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config=None,*,grid_points=129,s
     for p in panels:
         report(progress,'solve.initialize_panel',panel_id=p.panel_id,device=config.device)
         states.append(PanelState(p,q,*panel_specs(specs,p),device=config.device))
+    objective=configure_fit_objective(states,config.fit_objective)
     initial=aggregate(states);limits={k:initial[k] for k in ('budget_w','budget_a')}
     factors=[];log=[];evaluations=0
     def evaluate(pair,theta):
@@ -64,7 +65,7 @@ def fit_baseline(method,panels,q0,specs,schedule,config=None,*,grid_points=129,s
     blocked=method!='hadamard_shared' and (len(log)<len(schedule) or elapsed>config.wall_seconds)
     return {'status':'RESOURCE_BLOCKED' if blocked else 'COMPLETE',
             'reason':'Wall-clock budget exhausted' if blocked else None,
-            'q':q,'initial':initial,'final':aggregate(states),'limits':limits,
+            'q':q,'initial':initial,'final':aggregate(states),'limits':limits,'fit_objective':objective,
             'factors':factors,'log':log,'seconds':elapsed,'evaluations':evaluations,
             'completed_pairs':len(log),'requested_pairs':len(schedule),
             'stopped_by_wall_budget':len(log)<len(schedule) and method!='hadamard_shared',

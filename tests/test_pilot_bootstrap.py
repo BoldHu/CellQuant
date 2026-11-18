@@ -52,6 +52,23 @@ def test_document_resampling_pairs_across_seeds_and_reselects_control_on_each_dr
                                np.percentile(draws, [2.5, 97.5]))
 
 
+def test_confirmation_interval_includes_retrained_original_grid():
+    records, frozen, matrices = example()
+    original = []
+    for row in records:
+        if row['method'] == 'angle_grid_matched':
+            grid = copy.deepcopy(row)
+            grid['method'] = 'original_objective_grid'
+            for blocks in grid['panels'].values():
+                for block in blocks:
+                    block['squared_error'] *= .1
+            original.append(grid)
+    frozen['best_control_nmse'] = .1 * matrices([1, 1, 1])['angle_grid_matched']
+    result = paired_document_intervals(records + original, frozen, repetitions=100, include_original_grid=True)
+    assert result['comparisons']['best_matched_per_site'] == result['comparisons']['original_objective_grid']
+    assert result['controls'][-1] == 'original_objective_grid'
+
+
 @pytest.mark.parametrize('issue,reason', [('document','Unpaired'), ('duplicate','duplicate'),
                          ('method','one record'), ('energy','target energy'), ('matrix','frozen G1')])
 def test_mismatched_or_relabelled_results_are_rejected(issue, reason):

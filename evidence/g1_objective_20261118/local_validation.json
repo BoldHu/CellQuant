@@ -1,0 +1,54 @@
+{
+  "base_commit": "28bc6d0af062f7a20faeb956dd5398f20b8c7314",
+  "cpu_math_report_sha256": "bd9ee0172ced77f666e2be91fb320d3f1642000c8a48615fd2c29d143238fdf7",
+  "cpu_math_status": "PASS",
+  "cuda_fixture": {
+    "artifacts": 10,
+    "decision": "FIXTURE_ONLY",
+    "device": "NVIDIA GeForce RTX 3050 Laptop GPU",
+    "dimension": 4,
+    "pairs": 32,
+    "seconds": 57.51600000000326,
+    "seeds": [
+      11,
+      23
+    ],
+    "sites": 2,
+    "source_type": "unit_test_fixture",
+    "theta_limit": 0.025
+  },
+  "cuda_fixture_summary_sha256": "4d1b4f517e8818a5678fe49d6c7802818408895c13e237d63916abb374b2fabd",
+  "fit_objective": "relative_site_nmse",
+  "g2_to_g4": "NOT_RUN",
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "historical_document_intervals_matches": 5,
+  "historical_g1": "FAIL",
+  "notebook_checks": [
+    "nbformat schema",
+    "default execution, no model run",
+    "IPython %run with mocked subprocess for STOP and TEST_ONE_G1; checked distinct stage calls and zip counts"
+  ],
+  "pytest": "334 passed in 37.50s",
+  "pytest_log_sha256": "0d3b170ce296ef04ae9c52f056259dbc96026af2bd889320771b7530764e20ed",
+  "real_7b_confirmation": "NOT_RUN",
+  "real_a100_objective_screen": "NOT_RUN",
+  "schema_version": "1.0",
+  "source_sha256": {
+    "docs/G1_OBJECTIVE_TRIAL.md": "e0037b86bc37adf3d88c06dbaa0536f201f00826ef7c97e2a640d067d0691c78",
+    "notebooks/01c_Colab_Objective_Trial.ipynb": "42641d0432c93cbd0f3ff5c89fcb8542353ab05e5c59bc370a827aeafdac2775",
+    "scripts/prepare_experiment.py": "79e1e12703b16514a5b0da0a88ac852f9e4acf5ad0418d2f175124852cffff17",
+    "src/cellquant/baselines.py": "676b22e2762ab26ed15e8e6afcb6cef427843926ece228707406f75b0a2d8f33",
+    "src/cellquant/data.py": "8fbfe47ee10b8ec4b95eb568528a63cc7ea1facfd053f6f116baf2a7b7f6e228",
+    "src/cellquant/experiment.py": "fed85c8b7a3d583b82e293eb3481cef0760404630c3d51e911c9a12193120b4f",
+    "src/cellquant/objective_screen.py": "0b161efc742a083c3680e0f87745e2551fcbae6ad3bbca78f96bf117f84c702b",
+    "src/cellquant/pilot.py": "bb57bc1e14e36cd96e78741d993f8be7ac1e89920c1cd9e9466a5270fb3cfd38",
+    "src/cellquant/pilot_bootstrap.py": "cf3490278b9402e51aa565e73cbe3661d08806cddcd3f276428f2f685ca46ee1",
+    "src/cellquant/solver.py": "c1a877cf5db3ba839c8f34101e423079f47b8e4b00cf59e6fc62a17d7a846f10",
+    "src/cellquant/tensor_solver.py": "d241b3f5878b3065a3fa02e894fbae3bc2184ccd9e2107648a922e8b709b1740",
+    "tests/test_gpu_pipeline.py": "5122e66659ca03db5c9d0ee6fae75b545fdcc032de75bc64583693138affe9c6",
+    "tests/test_objective_screen.py": "aa2bfd510bde7c092e52a69ad7a9429f3361548cdaf4d29665c2e895b5dc6a5c",
+    "tests/test_pilot_bootstrap.py": "c3285e5a5c63f6e5ca17c093bc3c85c2d7e39e63bcc7659c713e75986e5f3804"
+  },
+  "source_type": "unit_test_fixture",
+  "torch": "2.6.0+cu118"
+}

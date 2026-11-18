@@ -209,9 +209,11 @@ def _verify_weight_files(config,output):
     atomic_json(Path(output)/'weights_manifest.json',{'revision':config['model_revision'],'files':files})
 
 
-def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False,profile_pairs=None):
+def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False,profile_pairs=None,diagnose_pairs=False):
     config=read_json(config) if isinstance(config,(str,Path)) else copy.deepcopy(config)
     profile_pair=profile_pair or profile_pairs is not None
+    if diagnose_pairs and profile_pair:
+        raise ValueError('Choose either pair profiling or the fit-only coordinate diagnostic')
     profile_count=1 if profile_pairs is None else profile_pairs
     if profile_pair:
         from .pilot import validate_profile_pair_count
@@ -220,15 +222,25 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     run_id=utc_now().replace(':','').replace('+','_')+'_'+uuid.uuid4().hex[:10]
     output=root/'runs'/'experiments'/run_id;output.mkdir(parents=True)
     atomic_json(output/'config.json',config)
-    ready=preflight(config,root)
+    # The diagnostic writes only its own run directory and optional invocation index.
+    checks = {k: v for k, v in config.items() if k != 'result_path'} if diagnose_pairs else config
+    ready=preflight(checks,root)
     if profile_pair and (config.get('stage')!='G1' or not config.get('runtime',{}).get('model_device','').startswith('cuda') or config.get('resume_run_dir')):
         ready['missing'].append('Pair profile requires a GPU-resident G1 config without resume_run_dir')
+        ready['status']='BLOCKED'
+    if diagnose_pairs and (config.get('stage') != 'G1' or config.get('resume_run_dir')
+            or not config.get('runtime', {}).get('model_device', '').startswith('cuda')
+            or config.get('solver', {}).get('backend') != 'torch'
+            or not config['solver'].get('device', '').startswith('cuda')
+            or config['solver'].get('compute_dtype') != 'float64'):
+        ready['missing'].append('Fit-only diagnostic requires a fresh GPU-resident G1 run with the Torch FP64 solver')
         ready['status']='BLOCKED'
     atomic_json(output/'preflight.json',ready)
     base={'schema_version':'1.0','run_id':run_id,'created_at_utc':utc_now(),'run_dir':str(output),
           'config_sha256':config_hash(config),'source_type':'not_run','status':'BLOCKED',
           'execution_mode':'pair_profile_only' if profile_pair else 'experiment'}
     if profile_pair:base['profile_pair_count']=profile_count
+    if diagnose_pairs:base['execution_mode']='fit_pair_diagnostic'
     if preflight_only or ready['status']!='READY':
         result={**base,'readiness':ready,'status':'PREFLIGHT_ONLY' if preflight_only else 'BLOCKED'}
         atomic_json(output/'result.json',result);return result
@@ -300,12 +312,16 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                 from .pilot import prepare_pilot_inputs
                 with measured('capture'):
                     prepared=prepare_pilot_inputs(config,model,graph_identity=graph_identity,
-                                                  progress=progress.step,profile_only=profile_pair)
+                                                  progress=progress.step,profile_only=profile_pair,fit_only=diagnose_pairs)
                 del model;model=None;gc.collect();torch.cuda.empty_cache()
                 progress.step('g1.model_released',captured_seeds=list(prepared['seeds']),
-                              captured_splits=['fit'] if profile_pair else ['fit','heldout'],
+                              captured_splits=['fit'] if profile_pair or diagnose_pairs else ['fit','heldout'],
                               reason='requested panels captured and resident on CUDA')
-            if profile_pair:
+            if diagnose_pairs:
+                from .pair_diagnostic import run_pair_diagnostic
+                summary=run_pair_diagnostic(config,prepared,output,progress=progress.step)
+                result={**base,**summary,'timings':timings}
+            elif profile_pair:
                 from .pilot import profile_prepared_pair
                 summary=profile_prepared_pair(config,prepared,output,execution_fingerprint=fingerprint['sha256'],progress=progress.step,pair_count=profile_count)
                 result={**base,**summary,'timings':timings}
@@ -477,7 +493,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
         result['resources']=monitor.stop()
         atomic_json(output/'resources.json',result['resources'])
         atomic_json(output/'result.json',result)
-        if config.get('result_path'):
+        if config.get('result_path') and not diagnose_pairs:
             target=root/config['result_path']
             if target.exists() and read_json(target).get('status')=='COMPLETE':raise ExperimentBlocked('Completed result index already exists; choose a new job id')
             atomic_json(target,result)
@@ -502,17 +518,19 @@ def main():
     parser.add_argument('--result-index',help='New pointer file for this invocation, without changing its frozen config')
     parser.add_argument('--profile-pair',action='store_true',help='Engineering diagnosis: first G1 pair on full fit panels for both event methods; no G1 evidence')
     parser.add_argument('--profile-pairs',type=int,help='Engineering diagnosis of the first N scheduled pairs with continuous Q updates; original method budget; no G1 evidence')
+    parser.add_argument('--diagnose-pairs',action='store_true',help='Compare output error coverage and matched single-pair gains on fit panels at Q0')
     args=parser.parse_args()
     if args.result_index and Path(args.result_index).exists():raise FileExistsError('Result index already exists; choose a unique path')
-    result=run_experiment(args.config,preflight_only=args.preflight,profile_pair=args.profile_pair,profile_pairs=args.profile_pairs)
+    result=run_experiment(args.config,preflight_only=args.preflight,profile_pair=args.profile_pair,profile_pairs=args.profile_pairs,diagnose_pairs=args.diagnose_pairs)
     if args.result_index:atomic_json(args.result_index,{k:result[k] for k in ['run_id','run_dir','status']})
     display={'status':result['status'],'run_dir':result['run_dir'],'reason':result.get('reason'),
                       'incomplete_methods':result.get('incomplete_methods',[]),
                       'missing':result.get('readiness',{}).get('missing',[])}
     if 'profile_pair_count' in result:display['profile_pair_count']=result['profile_pair_count']
     if 'budget_analysis' in result:display['budget_analysis']=result['budget_analysis']
+    if 'paired_fit_summary' in result:display['paired_fit_summary']=result['paired_fit_summary']
     print(json.dumps(display,ensure_ascii=False,indent=2))
-    return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY','PROFILE_COMPLETE'} else 2
+    return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY','PROFILE_COMPLETE','DIAGNOSTIC_COMPLETE'} else 2
 
 
 if __name__=='__main__':raise SystemExit(main())

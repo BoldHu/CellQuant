@@ -1,34 +1,69 @@
 # 实现状态与证据边界
 
-更新于 2026-11-18。真实 G1–G4 仍缺完整证据。
+更新于 2026-11-18。LLaMA-2-7B 的正式 A100 试验已完成，G1 为 **FAIL**。G2–G4 尚未执行。
 
-**当前可进入 A100 真实层测试。** 代码使用 `torch_batched_bilateral_prefix_v3`。真实 L4 上一次完成的是 8 对工程诊断，20.33 秒/对来自旧版用户保存的日志。新版在本机 RTX 3050 Laptop 的完整轴混合合成案例上各重复三次，单对搜索中位数为 20.34 → 3.48 秒，方法耗时为 27.83 → 10.97 秒。事件数、候选数、最终角度、实测损失和两项风险一致。当前本地回归 310 项通过。实际 A100 时间与 7B held-out 误差待测。[实测明细](../evidence/a100_readiness_20261118/benchmark.json) · [验证记录](../evidence/a100_readiness_20261118/validation.json) · [A100 测试方案](COLAB_A100_TEST.md)
+引擎使用 `torch_batched_bilateral_prefix_v3`。本机 RTX 3050 Laptop 上，两版完整轴混合合成案例各重复三次，单对搜索中位数从 20.34 秒降至 3.48 秒，结果一致。本地回归 310 项通过。A100 上新版 CellQuant 完成了两个 seed 各 128 对的正式求解，独立文档上的收益和校准时间见下文。[同卡合成测量](../evidence/a100_readiness_20261118/benchmark.json) · [工程验证](../evidence/a100_readiness_20261118/validation.json) · [A100 协议](COLAB_A100_TEST.md)
 
 | 组件 | 代码状态 | 已执行的证据与限制 |
 |---|---|---|
 | 原 CPU 参考与基础设施 | 保留并修正零组物理 scale 风险 | 全套 310 项通过，含实际 CPU/CUDA 数值对照、连续共享 Q 和预算耗尽回归 |
 | 共享 global Q、多面板输入侧 WQ.T/QX、输出侧 QB | IMPLEMENTED | FP64 增量胞元系数、风险约束、实际边界 rounding；3 seeds/24 cases 合成 G0 PASS |
-| 完整维度 | REAL_PREFIX8_COMPLETE / FULL_G1_NOT_RUN | 用户 L4 九面板连续 8 对已完成；CellQuant 搜索均值 20.33 秒，128 对预算及 held-out 质量尚未验证。本地合成记录另列 |
+| 完整维度 | REAL_A100_G1_COMPLETE | 正式试验九个面板、两个 seed。CellQuant 每个 seed 完成 128 对，均在 1,440 秒方法预算以内 |
 | 筛选与事件增量 | IMPLEMENTED_CPU_REFERENCE / TORCH_CUDA | 输入稳定组筛选、输出完整行 GPU support envelope；事件排序、增量系数和 QR 数值根均在张量设备计算，小例已与 CPU 对照 |
-| CUDA dense GEMM/量化/求解 | BATCHED_PYTORCH / NEW_GPU_PREFIX_NOT_RUN | 稳定输入组阈值批量枚举、窄胞元二阶余项筛选、输出两行更新通过本地同卡测试。真实 7B 上新版速度待测 |
+| CUDA dense GEMM/量化/求解 | BATCHED_PYTORCH / REAL_A100_VALIDATED | 正式 A100 上 seed 11/23 的 CellQuant 含拟合采集校准时间为 724.24/737.88 秒 |
 | Hadamard / angle-grid / Givens STE / fixed-scale | IMPLEMENTED | 相同面板、坐标预算、约束、墙钟上限；小矩阵验证。grid/STE 中途 optimizer 恢复 NOT_IMPLEMENTED |
-| 真实层采集与 Colab G1 | GPU_RESIDENT_RUN / PROFILE_COMPLETE / G1_INSUFFICIENT | 最新前 8 对 CellQuant/fixed-scale 均完成，整轮 354.38 秒；CellQuant 搜索部分外推 43.36 分钟超过 24 分钟预算。未执行本版完整五方法或 held-out 评估 |
+| 真实层采集与 Colab G1 | RUN_COMPLETE / G1_FAIL | A100 完成 10 份结果及全部 held-out 评估。准确率与效率两条路线均未达到预注册门槛 |
 | SpinQuant 固定上游 / overlay / R.bin | IMPLEMENTED | commit 8f47aa3… 已核对、tracked tree clean；禁 embedding centering、保 gamma，导出全部 R2 |
 | FP 旋转 / GPTQ W4A4KV4 | IMPLEMENTED / TINY_CUDA_VALIDATED | MHA/GQA 小模型 FP 相对误差约 1e-7；GPTQ 有限输出、逐层恢复与连续运行参数差 0 |
 | 完整 R1+R2 CE/SGDG baseline | IMPLEMENTED / TINY_CUDA_VALIDATED | 实际两步训练与 Trainer 恢复一致；正式 100 步×8 的完整 CE 训练池尚未运行，distinct blocks 数另报 |
 | SpinQuant_full_FP32_port | IMPLEMENTED / NUMERICAL_ONLY | 输出和 R1/R2 梯度误差约 1e-7；小模型训练执行。真实质量资格与效率结论 BLOCKED |
-| 固定数据与实验后端 | IMPLEMENTED / REAL_PIPELINE_NOT_RUN | contract 1.0、revision/token/源码/环境指纹、唯一 run_id、完整分片 SHA、原子结果、资源采样 |
+| 固定数据与实验后端 | IMPLEMENTED / G1_EXECUTED | 正式 G1 使用冻结输入与唯一 run_id，证据记录 10 份方法结果的 SHA-256。模型级协议尚待验证 |
 | WikiText/C4 与六任务 | IMPLEMENTED / INTERFACE_VALIDATED | 固定 harness commit+六任务 revision/metric；六任务 local fixtures 实际跑通；真实分数 NOT_RUN |
 | 配对分析 / G2–G4 构造 | IMPLEMENTED | token 加权 NLL 与 paired seed/document/item bootstrap；空结果准确不足，不生成表/图 |
-| 六本 notebook | DEFAULT_PATH_EXECUTED / COLAB_PREFIX8_COMPLETE | 01 连续 8 对诊断已完成；保留当前运行摘要，新输入引擎需在同一前缀重测，正式 G1 与 AutoDL 尚待执行 |
+| 实验 notebook | DEFAULT_PATH_EXECUTED / COLAB_FORMAL_G1_COMPLETE | 00/01 完成 A100 预检、连续 8 对诊断及正式 G1。新增 01b 已验证本地入口，真实拟合面板诊断待执行 |
 | 目标 RTX PRO 6000 Blackwell / 优化 FHT | NOT_RUN / BLOCKED | 本机 RTX 3050 Laptop 4GiB；FHT、FlashAttention、Triton 缺失 |
 | 2026 强基线、正式消融、论文主表 | NOT_IMPLEMENTED / NOT_RUN | 不能由官方论文数字或本地 fixtures 补填 |
 
 前缀诊断现只采集第一个 seed 的 fit 面板，正式 G1 仍采集两种子的 fit/dev。耗时摘要增加含更新和 checkpoint 的完整方法外推。G1 的摘要、恢复与证据汇总会检查旧记录的实际完成对数。新准备的 G2 和正式矩阵显式冻结 CUDA 求解器，历史 NumPy 协议仍可复现。模型级 FP 审计增加单独的 Norm 融合测量和实际运行精度的输出偏差。G2 的三路 FP32 证据需要每个运行同时有融合及最终旋转测量。
 
+## A100 正式 G1
+
+运行 `2026-11-18T083041.405198_0000_381f882eaf` 使用 A100-SXM4-40GB、LLaMA-2-7B、层 0/15/31 的 q/up/down。每个 seed 有 8 份拟合与 8 份独立验证文档。两种子五方法全部完成，墙钟 1 小时 16 分 38 秒。数值按预注册方式先计算每个 seed、每个位置的相对改善，再按位置平均两个 seed，最后取九个位置的中位数。每个 seed、每个位置的最强对照取 STE、网格、固定尺度中最低的 NMSE。[逐位置数据](../evidence/colab_a100_g1_20261118/G1_distributions.json)
+
+| 预注册指标 | 实测 | 门槛 |
+|---|---:|---|
+| 相对 Hadamard 中位改善 | 2.5689% | 准确率 ≥10%，效率 ≥5% |
+| 相对最强匹配搜索中位改善 | 0.0172% | 准确率 ≥5% |
+| 优于最强匹配搜索的位置 | 6/9 | 准确率 ≥6/9 |
+| 在最强匹配搜索 2% 以内的位置 | 9/9 | 效率 ≥6/9 |
+| 单位置最大退化 | 0.5386% | 共同门槛 ≤10% |
+| 最快匹配搜索校准耗时 / CellQuant 校准耗时 | 0.2641× | 效率 ≥2× |
+
+两个 seed 的九位置平均 held-out NMSE 相对 Hadamard 分别下降 4.710% 和 3.924%。第 0 层 up 相对 Hadamard 下降 21.163%，相对最强匹配对照下降 0.061%。三个 down 位置相对 Hadamard 分别下降 0.017%、0.023%、0.128%。每个位置在两 seed 平均后均有正收益，各 seed 单独与 Hadamard 比较均为 8/9 个位置胜出。[门槛证据](../evidence/colab_a100_g1_20261118/G1_evidence.json)
+
+| 同预算下的动态量化拟合与验证 | seed 11 | seed 23 |
+|---|---:|---:|
+| CellQuant 拟合目标相对初值下降 | 7.362% | 6.232% |
+| 角度网格拟合目标相对相同初值下降 | 6.940% | 5.792% |
+| CellQuant 拟合终值相对网格终值下降 | 0.453% | 0.467% |
+| CellQuant 九位置平均 held-out NMSE 相对网格下降 | 0.070% | 0.067% |
+| CellQuant / 网格含拟合采集的校准秒数 | 724.24 / 192.70 | 737.88 / 193.47 |
+
+CellQuant 在两个 seed 均接受 128/128 个更新，网格均接受 126/128 个。直接相对同一种网格方法，九位置中位改善为 0.0385%。此次角度搜索在拟合面板上取得的额外收益已经很小，迁移到独立文档后进一步缩小。共同门槛全部通过，两条收益路线均为 FAIL。当前以这份真实负结果决定暂停 G2 和全量投入。现有证据是冻结面板上的 RTN 结果，模型级 GPTQ、PPL 和六任务需单独实验。[按方法的观测](../evidence/colab_a100_g1_20261118/method_measurements.json) · [重算报告](../evidence/colab_a100_g1_20261118/G1.json)
+
+若继续研究，一项可检验的假设是随机配对限制了 128 次更新可触及的误差。两种子分别调度到 4096 个坐标中的 250 和 245 个，输出侧只有入选行可以改变。先在拟合面板上比较原调度与相同数量高误差行覆盖的初始 down 重构误差能量，再检查这些行的配对对九个面板共同目标有多大可行降幅。仅在该诊断支持假设时考虑一次 G1 修正，用拟合数据决定一张共享坐标表，四种搜索共用它，排序耗时计入各方法预算。修正前冻结规则及新独立文档，维持原 128 对、九位置、一个共享 Q 和原门槛。再次 FAIL 则停止这条主线。[阶段决策规则](GATES_AND_PAPER_CRITERIA.md)
+
+### 独立文档复核与下一轮拟合诊断
+
+2026-11-18 从正式 01 notebook 中的十份逐块输出归档了 720 条误差与目标能量记录。两个种子各有 8 份独立验证文档，共 16 份。固定这两次拟合，按整篇文档对所有方法和位置共同重采样 10,000 次。相对 Hadamard 的 NMSE 中位降幅为 +2.5689% [1.4791%，3.0102%]，相对角度网格为 +0.0385% [−0.0052%，0.2657%]，相对逐位置最强匹配对照为 +0.0172% [−0.2054%，0.0482%]。最后一项在每次抽样内重新选择对照。这是事后、固定两种子的 95% 百分位区间。[块级摘录](../evidence/colab_a100_g1_20261118/heldout_blocks.json) · [全部对照](../evidence/colab_a100_g1_20261118/document_intervals.json)
+
+新增 01b 和 `--diagnose-pairs`。在原随机坐标表和按初始输出残差选择的等规模坐标表上，分别用 129 点网格及事件搜索探测同一批坐标对。每对从同一初始 Q 出发，用显式更新后的 Q 对完整面板重新量化，逐对报告搜索损失、重算损失及风险。这一复核在 CPU 小矩阵上观察到近舍入边界的计算顺序差异。A100 真实九位置的覆盖率、重算差异和额外收益待测。两个种子各 8 个位置，诊断本身不进入 G1 证据。[协议、解释与运行命令](G1_PAIR_DIAGNOSTIC.md)
+
+最终本地回归 322 项通过，CPU 数学 PASS，RTX 3050 小面板双种子诊断完成。01b 默认入口在本地执行成功。[本地验证](../evidence/g1_pair_diagnostic_20261118/local_validation.json)
+
 ## 科学门槛
 
-G0 来自实测合成数学案例，为 PASS。G1–G4 没有完整真实证据，保持 INSUFFICIENT_EVIDENCE/BLOCKED 执行状态；资源中断的比较不被写为方法失效。`configs/gate_rules.json` SHA-256 仍为 `5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e`。
+G0 的实测合成数学案例为 PASS。G1 的完整真实层证据为 FAIL，G2–G4 为 NOT_RUN。`configs/gate_rules.json` 的 SHA-256 为 `5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e`。
 
 事件根为 FP64 数值根。实现枚举候选并对预测最优的 32 个可行候选做完整量化复核；接受更新必须满足实际损失/预算，不能宣称所有浮点近退化情形下的角度全局最优或区间认证。事件/时间 cap 超限明确 RESOURCE_BLOCKED，不截断通道、不缩小正式角域使任务显示成功。
 

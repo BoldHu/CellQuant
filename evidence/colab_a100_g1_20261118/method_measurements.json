@@ -1,0 +1,308 @@
+{
+  "artifact_scope": "These are selected fields. Per-document errors and complete coordinate logs are held in the ten pilot_result.json files at the Colab paths in G1_evidence.json.",
+  "distinct_scheduled_rotation_axes": {
+    "11": 250,
+    "23": 245
+  },
+  "finished_at_utc": "2026-11-18T09:47:21.214542+00:00",
+  "fit_loss_definition": "Sum of the nine fit panel normalized squared errors. Fixed-scale fit uses its frozen decoding surrogate. All held-out NMSEs use dynamic quantization.",
+  "hidden_size": 4096,
+  "notebook": "notebooks/01_Colab_Real_Layer_Pilot.ipynb",
+  "records": [
+    {
+      "accepted_factors": 0,
+      "final_fit": {
+        "budget_a": 0.6520912405354116,
+        "budget_w": 0.6837650963329415,
+        "loss": 0.2036055770826673
+      },
+      "heldout_nmse_by_site": {
+        "layer_0.down_proj": 0.016673436327768406,
+        "layer_0.q_proj": 0.0015563147709169091,
+        "layer_0.up_proj": 0.03314658273246344,
+        "layer_15.down_proj": 0.05482320852422216,
+        "layer_15.q_proj": 0.01615798731238384,
+        "layer_15.up_proj": 0.034445527667118274,
+        "layer_31.down_proj": 0.02377238079067343,
+        "layer_31.q_proj": 0.014113008175193556,
+        "layer_31.up_proj": 0.011778281774378632
+      },
+      "initial_fit": {
+        "budget_a": 0.6520912405354116,
+        "budget_w": 0.6837650963329415,
+        "loss": 0.2036055770826673
+      },
+      "method": "hadamard_shared",
+      "pair_starts_observed": 0,
+      "seed": 11,
+      "solver_status": "COMPLETE",
+      "total_calibration_seconds": 6.232082920999801
+    },
+    {
+      "accepted_factors": 113,
+      "final_fit": {
+        "budget_a": 0.6506628534889123,
+        "budget_w": 0.683200161368918,
+        "loss": 0.1955817993873748
+      },
+      "heldout_nmse_by_site": {
+        "layer_0.down_proj": 0.01668237034452875,
+        "layer_0.q_proj": 0.0015605501573806222,
+        "layer_0.up_proj": 0.02819982813939429,
+        "layer_15.down_proj": 0.05481251514193045,
+        "layer_15.q_proj": 0.0161116194502178,
+        "layer_15.up_proj": 0.03401354380788326,
+        "layer_31.down_proj": 0.02377421925568398,
+        "layer_31.q_proj": 0.013585387926972281,
+        "layer_31.up_proj": 0.01167434385650283
+      },
+      "initial_fit": {
+        "budget_a": 0.6520912405354116,
+        "budget_w": 0.6837650963329415,
+        "loss": 0.2036055770826673
+      },
+      "method": "givens_ste_matched",
+      "pair_starts_observed": 128,
+      "seed": 11,
+      "solver_status": "COMPLETE",
+      "total_calibration_seconds": 476.44307055800004
+    },
+    {
+      "accepted_factors": 126,
+      "final_fit": {
+        "budget_a": 0.6520441359040935,
+        "budget_w": 0.6824339297216242,
+        "loss": 0.18947620122266567
+      },
+      "heldout_nmse_by_site": {
+        "layer_0.down_proj": 0.016680868444155676,
+        "layer_0.q_proj": 0.001442474631780925,
+        "layer_0.up_proj": 0.02582590883956034,
+        "layer_15.down_proj": 0.054757363935174136,
+        "layer_15.q_proj": 0.016069457380663035,
+        "layer_15.up_proj": 0.033423670089363956,
+        "layer_31.down_proj": 0.02375848798591888,
+        "layer_31.q_proj": 0.013462039011714739,
+        "layer_31.up_proj": 0.011459516816478315
+      },
+      "initial_fit": {
+        "budget_a": 0.6520912405354116,
+        "budget_w": 0.6837650963329415,
+        "loss": 0.2036055770826673
+      },
+      "method": "angle_grid_matched",
+      "pair_starts_observed": 128,
+      "seed": 11,
+      "solver_status": "COMPLETE",
+      "total_calibration_seconds": 192.70202182899993
+    },
+    {
+      "accepted_factors": 128,
+      "final_fit": {
+        "budget_a": 0.6520506932012492,
+        "budget_w": 0.6831305643165946,
+        "loss": 0.18989415705718424
+      },
+      "heldout_nmse_by_site": {
+        "layer_0.down_proj": 0.016688407724194453,
+        "layer_0.q_proj": 0.001455318129954878,
+        "layer_0.up_proj": 0.025980955601789486,
+        "layer_15.down_proj": 0.05481085570221669,
+        "layer_15.q_proj": 0.016137131713684912,
+        "layer_15.up_proj": 0.03355635583924907,
+        "layer_31.down_proj": 0.023754811472816176,
+        "layer_31.q_proj": 0.013386892715134872,
+        "layer_31.up_proj": 0.011558790827392302
+      },
+      "initial_fit": {
+        "budget_a": 0.6520912405354116,
+        "budget_w": 0.6837650963329415,
+        "loss": 0.2036055770826673
+      },
+      "method": "fixed_scale_search_matched",
+      "pair_starts_observed": 128,
+      "seed": 11,
+      "solver_status": "COMPLETE",
+      "total_calibration_seconds": 838.4114741979997
+    },
+    {
+      "accepted_factors": 128,
+      "final_fit": {
+        "budget_a": 0.6520683081862196,
+        "budget_w": 0.682388088911,
+        "loss": 0.18861718462094332
+      },
+      "heldout_nmse_by_site": {
+        "layer_0.down_proj": 0.016678276774845367,
+        "layer_0.q_proj": 0.0014443325719436996,
+        "layer_0.up_proj": 0.025826715079678687,
+        "layer_15.down_proj": 0.054763094636361635,
+        "layer_15.q_proj": 0.016045194370488146,
+        "layer_15.up_proj": 0.033364860749569514,
+        "layer_31.down_proj": 0.02376366931009951,
+        "layer_31.q_proj": 0.013482063467445115,
+        "layer_31.up_proj": 0.01137335610320617
+      },
+      "initial_fit": {
+        "budget_a": 0.6520912405354116,
+        "budget_w": 0.6837650963329415,
+        "loss": 0.2036055770826673
+      },
+      "method": "cellquant",
+      "pair_starts_observed": 128,
+      "seed": 11,
+      "solver_status": "COMPLETE",
+      "total_calibration_seconds": 724.2361582669996
+    },
+    {
+      "accepted_factors": 0,
+      "final_fit": {
+        "budget_a": 0.6385588258511905,
+        "budget_w": 0.6790509098299955,
+        "loss": 0.20315904098093482
+      },
+      "heldout_nmse_by_site": {
+        "layer_0.down_proj": 0.016330297716484386,
+        "layer_0.q_proj": 0.0016093159877092502,
+        "layer_0.up_proj": 0.031774185376159045,
+        "layer_15.down_proj": 0.0539792099935219,
+        "layer_15.q_proj": 0.015514215057411039,
+        "layer_15.up_proj": 0.03580854235493827,
+        "layer_31.down_proj": 0.02377795061677191,
+        "layer_31.q_proj": 0.01261216026805278,
+        "layer_31.up_proj": 0.012216415683763226
+      },
+      "initial_fit": {
+        "budget_a": 0.6385588258511905,
+        "budget_w": 0.6790509098299955,
+        "loss": 0.20315904098093482
+      },
+      "method": "hadamard_shared",
+      "pair_starts_observed": 0,
+      "seed": 23,
+      "solver_status": "COMPLETE",
+      "total_calibration_seconds": 5.79647826900009
+    },
+    {
+      "accepted_factors": 110,
+      "final_fit": {
+        "budget_a": 0.6374659137122315,
+        "budget_w": 0.6771268796511142,
+        "loss": 0.19609068027484025
+      },
+      "heldout_nmse_by_site": {
+        "layer_0.down_proj": 0.01632475605096005,
+        "layer_0.q_proj": 0.0015650805152278566,
+        "layer_0.up_proj": 0.027913589137995954,
+        "layer_15.down_proj": 0.053971738020015994,
+        "layer_15.q_proj": 0.015485943286025804,
+        "layer_15.up_proj": 0.035301251551267586,
+        "layer_31.down_proj": 0.02375769348641884,
+        "layer_31.q_proj": 0.012478478889115366,
+        "layer_31.up_proj": 0.011991035131151306
+      },
+      "initial_fit": {
+        "budget_a": 0.6385588258511905,
+        "budget_w": 0.6790509098299955,
+        "loss": 0.20315904098093482
+      },
+      "method": "givens_ste_matched",
+      "pair_starts_observed": 128,
+      "seed": 23,
+      "solver_status": "COMPLETE",
+      "total_calibration_seconds": 494.85102748800045
+    },
+    {
+      "accepted_factors": 126,
+      "final_fit": {
+        "budget_a": 0.6375946611707618,
+        "budget_w": 0.6789423123633591,
+        "loss": 0.19139213559951454
+      },
+      "heldout_nmse_by_site": {
+        "layer_0.down_proj": 0.016319570190834097,
+        "layer_0.q_proj": 0.0015165679121254738,
+        "layer_0.up_proj": 0.025534636189740317,
+        "layer_15.down_proj": 0.054031314218130934,
+        "layer_15.q_proj": 0.015376006488870175,
+        "layer_15.up_proj": 0.035042605147727036,
+        "layer_31.down_proj": 0.023749348924372485,
+        "layer_31.q_proj": 0.012574417614261302,
+        "layer_31.up_proj": 0.011617671227915701
+      },
+      "initial_fit": {
+        "budget_a": 0.6385588258511905,
+        "budget_w": 0.6790509098299955,
+        "loss": 0.20315904098093482
+      },
+      "method": "angle_grid_matched",
+      "pair_starts_observed": 128,
+      "seed": 23,
+      "solver_status": "COMPLETE",
+      "total_calibration_seconds": 193.46824232500012
+    },
+    {
+      "accepted_factors": 128,
+      "final_fit": {
+        "budget_a": 0.6374243890441543,
+        "budget_w": 0.6765769025372477,
+        "loss": 0.19050251470791196
+      },
+      "heldout_nmse_by_site": {
+        "layer_0.down_proj": 0.016320678446079942,
+        "layer_0.q_proj": 0.0015140434694006486,
+        "layer_0.up_proj": 0.02537375513025612,
+        "layer_15.down_proj": 0.054018986031951884,
+        "layer_15.q_proj": 0.015304789018875655,
+        "layer_15.up_proj": 0.03523039801968436,
+        "layer_31.down_proj": 0.023754629366615498,
+        "layer_31.q_proj": 0.012583754583709793,
+        "layer_31.up_proj": 0.011622209817082538
+      },
+      "initial_fit": {
+        "budget_a": 0.6385588258511905,
+        "budget_w": 0.6790509098299955,
+        "loss": 0.20315904098093482
+      },
+      "method": "fixed_scale_search_matched",
+      "pair_starts_observed": 128,
+      "seed": 23,
+      "solver_status": "COMPLETE",
+      "total_calibration_seconds": 872.754382785
+    },
+    {
+      "accepted_factors": 128,
+      "final_fit": {
+        "budget_a": 0.6373879092661597,
+        "budget_w": 0.6789684259097156,
+        "loss": 0.1904984641866967
+      },
+      "heldout_nmse_by_site": {
+        "layer_0.down_proj": 0.016320097659792955,
+        "layer_0.q_proj": 0.0014742680360349191,
+        "layer_0.up_proj": 0.025342190175660778,
+        "layer_15.down_proj": 0.054013750632931255,
+        "layer_15.q_proj": 0.015492747578063699,
+        "layer_15.up_proj": 0.03509219735012426,
+        "layer_31.down_proj": 0.023725904457367955,
+        "layer_31.q_proj": 0.01250813935957777,
+        "layer_31.up_proj": 0.011662344367811937
+      },
+      "initial_fit": {
+        "budget_a": 0.6385588258511905,
+        "budget_w": 0.6790509098299955,
+        "loss": 0.20315904098093482
+      },
+      "method": "cellquant",
+      "pair_starts_observed": 128,
+      "seed": 23,
+      "solver_status": "COMPLETE",
+      "total_calibration_seconds": 737.8825407720001
+    }
+  ],
+  "run_elapsed_seconds": 4597.72,
+  "run_id": "2026-11-18T083041.405198_0000_381f882eaf",
+  "source": "Ten printed pilot_result.json field extracts, and the formal run progress stream from the saved A100 notebook.",
+  "source_type": "real_layer",
+  "timing_definition": "total_calibration_seconds includes per-seed fit capture and method solver time. The complete run elapsed time also includes initialization, all methods, held-out scoring and aggregation."
+}

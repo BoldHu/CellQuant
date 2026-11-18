@@ -1,0 +1,1001 @@
+{
+  "base_git_commit": "7aab9e3125d1f561d9566717a6b6f0a43d92a28d",
+  "cell_engine": "torch_batched_bilateral_prefix_v3",
+  "cpu_pair_replay_fixture": {
+    "coverage": {
+      "distinct_axes": 3,
+      "hidden_size": 4,
+      "original_axes": [
+        0,
+        1,
+        2
+      ],
+      "output_objective_bound_fraction": {
+        "original": 0.8898062974167882,
+        "ranked": 0.9975101319938215
+      },
+      "per_output_bound_fraction": {
+        "down": {
+          "original": 0.8898062974167882,
+          "ranked": 0.9975101319938215
+        }
+      },
+      "ranked_axes": [
+        0,
+        3,
+        2
+      ]
+    },
+    "device": "cpu",
+    "fit_panel_sha256": "63a8e99cbf9213857a63fd574ef491ea2e2612823d4f6f8969168c1979909a60",
+    "initial": {
+      "budget_a": 0.0184396878308529,
+      "budget_w": 0.02038388595869818,
+      "loss": 0.02623343353079777
+    },
+    "mean_feasible_replay_gain_pct": {
+      "original": {
+        "cell_minus_grid_pp": 0.05981899715027694,
+        "cellquant": 22.86861741200125,
+        "grid": 22.808798414850973
+      },
+      "ranked": {
+        "cell_minus_grid_pp": -1.459992336548595,
+        "cellquant": 14.19516413630991,
+        "grid": 15.655156472858504
+      }
+    },
+    "mean_single_pair_gain_pct": {
+      "original": {
+        "cell_minus_grid_pp": 0.059818997150212994,
+        "cellquant": 22.868617412001193,
+        "grid": 22.80879841485098
+      },
+      "ranked": {
+        "cell_minus_grid_pp": 0.12593781667956527,
+        "cellquant": 15.78109428953809,
+        "grid": 15.655156472858526
+      }
+    },
+    "probe_positions_zero_based": [
+      0,
+      1
+    ],
+    "probes": [
+      {
+        "arm": "original",
+        "best": {
+          "budget_a": 0.018206595839428973,
+          "budget_w": 0.020140077664872653,
+          "loss": 0.01497730773737576,
+          "theta": -0.091875
+        },
+        "event_candidates": null,
+        "event_incidences": null,
+        "feasible_replay_gain_pct": 42.90755832707692,
+        "gain_pct_of_initial_joint_loss": 42.907558327076934,
+        "grid_evaluations": 129,
+        "method": "grid",
+        "pair": [
+          0,
+          1
+        ],
+        "position": 0,
+        "replay_seconds": 0.0010256999812554568,
+        "replayed": {
+          "budget_a": 0.018206595839428973,
+          "budget_w": 0.020140077664872653,
+          "loss": 0.014977307737375763
+        },
+        "replayed_feasible": true,
+        "replayed_joint_loss_drop_by_side": {
+          "input": -0.0007198746184471019,
+          "output": 0.01197600041186911
+        },
+        "seconds": 0.16019729999243282
+      },
+      {
+        "arm": "original",
+        "best": {
+          "budget_a": 0.01820616584551847,
+          "budget_w": 0.02013955104100637,
+          "loss": 0.014970442711006126,
+          "theta": -0.092036372721435
+        },
+        "event_candidates": 172,
+        "event_incidences": 26,
+        "feasible_replay_gain_pct": 42.933727323832926,
+        "gain_pct_of_initial_joint_loss": 42.93372732383283,
+        "grid_evaluations": null,
+        "method": "cellquant",
+        "pair": [
+          0,
+          1
+        ],
+        "position": 0,
+        "replay_seconds": 0.0010989000147674233,
+        "replayed": {
+          "budget_a": 0.018206165845518475,
+          "budget_w": 0.020139551041006367,
+          "loss": 0.0149704427110061
+        },
+        "replayed_feasible": true,
+        "replayed_joint_loss_drop_by_side": {
+          "input": -0.0007184076443024738,
+          "output": 0.011981398464094146
+        },
+        "seconds": 0.22785819999990053
+      },
+      {
+        "arm": "ranked",
+        "best": {
+          "budget_a": 0.018432044611215063,
+          "budget_w": 0.020375217862966116,
+          "loss": 0.022038870861055587,
+          "theta": -0.019143127406968
+        },
+        "event_candidates": 226,
+        "event_incidences": 30,
+        "feasible_replay_gain_pct": 12.81751700786972,
+        "gain_pct_of_initial_joint_loss": 15.98937731432606,
+        "grid_evaluations": null,
+        "method": "cellquant",
+        "pair": [
+          0,
+          2
+        ],
+        "position": 0,
+        "replay_seconds": 0.0011042999976780266,
+        "replayed": {
+          "budget_a": 0.018432044611215063,
+          "budget_w": 0.020375217862966116,
+          "loss": 0.02287095872623957
+        },
+        "replayed_feasible": true,
+        "replayed_joint_loss_drop_by_side": {
+          "input": -0.001211108439335872,
+          "output": 0.004573583243894074
+        },
+        "seconds": 0.28126160000101663
+      },
+      {
+        "arm": "ranked",
+        "best": {
+          "budget_a": 0.01843141196819948,
+          "budget_w": 0.02037433292662479,
+          "loss": 0.02205585873672847,
+          "theta": -0.020625000000000004
+        },
+        "event_candidates": null,
+        "event_incidences": null,
+        "feasible_replay_gain_pct": 15.92462072936379,
+        "gain_pct_of_initial_joint_loss": 15.924620729363816,
+        "grid_evaluations": 129,
+        "method": "grid",
+        "pair": [
+          0,
+          2
+        ],
+        "position": 0,
+        "replay_seconds": 0.0011455999920144677,
+        "replayed": {
+          "budget_a": 0.01843141196819948,
+          "budget_w": 0.02037433292662479,
+          "loss": 0.022055858736728478
+        },
+        "replayed_feasible": true,
+        "replayed_joint_loss_drop_by_side": {
+          "input": -0.0003918748981272242,
+          "output": 0.004569449692196515
+        },
+        "seconds": 0.16604430001461878
+      },
+      {
+        "arm": "ranked",
+        "best": {
+          "budget_a": 0.018404548823532176,
+          "budget_w": 0.020268176703285543,
+          "loss": 0.02214815043878296,
+          "theta": 0.09932302039633202
+        },
+        "event_candidates": 189,
+        "event_incidences": 28,
+        "feasible_replay_gain_pct": 15.572811264750097,
+        "gain_pct_of_initial_joint_loss": 15.572811264750122,
+        "grid_evaluations": null,
+        "method": "cellquant",
+        "pair": [
+          2,
+          3
+        ],
+        "position": 1,
+        "replay_seconds": 0.0010908999829553068,
+        "replayed": {
+          "budget_a": 0.018404548823532176,
+          "budget_w": 0.020268176703285543,
+          "loss": 0.022148150438782967
+        },
+        "replayed_feasible": true,
+        "replayed_joint_loss_drop_by_side": {
+          "input": 0.0012915219294728614,
+          "output": 0.0027937611625419422
+        },
+        "seconds": 0.21109530000831
+      },
+      {
+        "arm": "ranked",
+        "best": {
+          "budget_a": 0.018405455820196245,
+          "budget_w": 0.020269974222362666,
+          "loss": 0.02219723818996762,
+          "theta": 0.0975
+        },
+        "event_candidates": null,
+        "event_incidences": null,
+        "feasible_replay_gain_pct": 15.38569221635322,
+        "gain_pct_of_initial_joint_loss": 15.385692216353233,
+        "grid_evaluations": 129,
+        "method": "grid",
+        "pair": [
+          2,
+          3
+        ],
+        "position": 1,
+        "replay_seconds": 0.0017877000209409744,
+        "replayed": {
+          "budget_a": 0.018405455820196245,
+          "budget_w": 0.020269974222362666,
+          "loss": 0.022197238189967623
+        },
+        "replayed_feasible": true,
+        "replayed_joint_loss_drop_by_side": {
+          "input": 0.0012878206447317234,
+          "output": 0.0027483746960984233
+        },
+        "seconds": 0.1580410999886226
+      },
+      {
+        "arm": "original",
+        "best": {
+          "budget_a": 0.0184396878308529,
+          "budget_w": 0.020334670161963636,
+          "loss": 0.025522497381552607,
+          "theta": -0.015
+        },
+        "event_candidates": null,
+        "event_incidences": null,
+        "feasible_replay_gain_pct": 2.710038502625027,
+        "gain_pct_of_initial_joint_loss": 2.710038502625027,
+        "grid_evaluations": 129,
+        "method": "grid",
+        "pair": [
+          1,
+          2
+        ],
+        "position": 1,
+        "replay_seconds": 0.0010156999924220145,
+        "replayed": {
+          "budget_a": 0.0184396878308529,
+          "budget_w": 0.020334670161963636,
+          "loss": 0.025522497381552607
+        },
+        "replayed_feasible": true,
+        "replayed_joint_loss_drop_by_side": {
+          "input": 0.0009287013135748562,
+          "output": -0.0002177651643296939
+        },
+        "seconds": 0.06176029998459853
+      },
+      {
+        "arm": "original",
+        "best": {
+          "budget_a": 0.0184396878308529,
+          "budget_w": 0.02033922551398831,
+          "loss": 0.02549797725420986,
+          "theta": -0.013643874261755952
+        },
+        "event_candidates": 196,
+        "event_incidences": 28,
+        "feasible_replay_gain_pct": 2.8035075001695713,
+        "gain_pct_of_initial_joint_loss": 2.803507500169558,
+        "grid_evaluations": null,
+        "method": "cellquant",
+        "pair": [
+          1,
+          2
+        ],
+        "position": 1,
+        "replay_seconds": 0.0015675000031478703,
+        "replayed": {
+          "budget_a": 0.0184396878308529,
+          "budget_w": 0.020339225513988306,
+          "loss": 0.025497977254209856
+        },
+        "replayed_feasible": true,
+        "replayed_joint_loss_drop_by_side": {
+          "input": 0.000921076820622242,
+          "output": -0.00018562054403432684
+        },
+        "seconds": 0.1699650000082329
+      }
+    ],
+    "seed": 11,
+    "source_type": "unit_test_fixture",
+    "status": "COMPLETE"
+  },
+  "cuda_device": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "cuda_two_seed_runner": [
+    {
+      "coverage": {
+        "distinct_axes": 4,
+        "hidden_size": 4,
+        "original_axes": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "output_objective_bound_fraction": {
+          "original": 1.0,
+          "ranked": 1.0
+        },
+        "per_output_bound_fraction": {
+          "down": {
+            "original": 1.0,
+            "ranked": 1.0
+          }
+        },
+        "ranked_axes": [
+          0,
+          3,
+          2,
+          1
+        ]
+      },
+      "device": "cuda:0",
+      "fit_panel_sha256": "63a8e99cbf9213857a63fd574ef491ea2e2612823d4f6f8969168c1979909a60",
+      "initial": {
+        "budget_a": 0.018439687830852897,
+        "budget_w": 0.020383885958698174,
+        "loss": 0.02623343353079777
+      },
+      "mean_feasible_replay_gain_pct": {
+        "original": {
+          "cell_minus_grid_pp": 0.049592359694443644,
+          "cellquant": 28.431322029652755,
+          "grid": 28.38172966995831
+        },
+        "ranked": {
+          "cell_minus_grid_pp": 0.049592359694443644,
+          "cellquant": 28.431322029652755,
+          "grid": 28.38172966995831
+        }
+      },
+      "mean_single_pair_gain_pct": {
+        "original": {
+          "cell_minus_grid_pp": 0.049592359694472066,
+          "cellquant": 28.431322029652776,
+          "grid": 28.381729669958304
+        },
+        "ranked": {
+          "cell_minus_grid_pp": 0.049592359694472066,
+          "cellquant": 28.431322029652776,
+          "grid": 28.381729669958304
+        }
+      },
+      "probe_positions_zero_based": [
+        0,
+        1
+      ],
+      "probes": [
+        {
+          "arm": "original",
+          "best": {
+            "budget_a": 0.018325511473186465,
+            "budget_w": 0.020051587072021877,
+            "loss": 0.012053365304324487,
+            "theta": 0.106875
+          },
+          "event_candidates": null,
+          "event_incidences": null,
+          "feasible_replay_gain_pct": 54.05342083729163,
+          "gain_pct_of_initial_joint_loss": 54.0534208372916,
+          "grid_evaluations": 129,
+          "method": "grid",
+          "pair": [
+            0,
+            3
+          ],
+          "position": 0,
+          "replay_seconds": 0.004993299982743338,
+          "replayed": {
+            "budget_a": 0.018325511473186465,
+            "budget_w": 0.020051587072021877,
+            "loss": 0.012053365304324479
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": -0.00023738907209328914,
+            "output": 0.014417457298566581
+          },
+          "seconds": 0.6300277000118513
+        },
+        {
+          "arm": "original",
+          "best": {
+            "budget_a": 0.018325187847724255,
+            "budget_w": 0.02005068202620801,
+            "loss": 0.012051865874233632,
+            "theta": 0.10709907391659165
+          },
+          "event_candidates": 177,
+          "event_incidences": 27,
+          "feasible_replay_gain_pct": 54.059136559135965,
+          "gain_pct_of_initial_joint_loss": 54.05913655913599,
+          "grid_evaluations": null,
+          "method": "cellquant",
+          "pair": [
+            0,
+            3
+          ],
+          "position": 0,
+          "replay_seconds": 0.004744499980006367,
+          "replayed": {
+            "budget_a": 0.018325187847724255,
+            "budget_w": 0.02005068202620801,
+            "loss": 0.01205186587423364
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": -0.00023816498333351053,
+            "output": 0.01441973263989764
+          },
+          "seconds": 2.0006652000010945
+        },
+        {
+          "arm": "ranked",
+          "best": {
+            "budget_a": 0.018325187847724255,
+            "budget_w": 0.02005068202620801,
+            "loss": 0.012051865874233632,
+            "theta": 0.10709907391659165
+          },
+          "event_candidates": 177,
+          "event_incidences": 27,
+          "feasible_replay_gain_pct": 54.059136559135965,
+          "gain_pct_of_initial_joint_loss": 54.05913655913599,
+          "grid_evaluations": null,
+          "method": "cellquant",
+          "pair": [
+            0,
+            3
+          ],
+          "position": 0,
+          "replay_seconds": 0.004943000007187948,
+          "replayed": {
+            "budget_a": 0.018325187847724255,
+            "budget_w": 0.02005068202620801,
+            "loss": 0.01205186587423364
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": -0.00023816498333351053,
+            "output": 0.01441973263989764
+          },
+          "seconds": 0.6363798000093084
+        },
+        {
+          "arm": "ranked",
+          "best": {
+            "budget_a": 0.018325511473186465,
+            "budget_w": 0.020051587072021877,
+            "loss": 0.012053365304324487,
+            "theta": 0.106875
+          },
+          "event_candidates": null,
+          "event_incidences": null,
+          "feasible_replay_gain_pct": 54.05342083729163,
+          "gain_pct_of_initial_joint_loss": 54.0534208372916,
+          "grid_evaluations": 129,
+          "method": "grid",
+          "pair": [
+            0,
+            3
+          ],
+          "position": 0,
+          "replay_seconds": 0.005070799990789965,
+          "replayed": {
+            "budget_a": 0.018325511473186465,
+            "budget_w": 0.020051587072021877,
+            "loss": 0.012053365304324479
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": -0.00023738907209328914,
+            "output": 0.014417457298566581
+          },
+          "seconds": 0.5906812999746762
+        },
+        {
+          "arm": "ranked",
+          "best": {
+            "budget_a": 0.018439687830852897,
+            "budget_w": 0.0203392255139883,
+            "loss": 0.02549797725420986,
+            "theta": -0.013643874261755952
+          },
+          "event_candidates": 196,
+          "event_incidences": 28,
+          "feasible_replay_gain_pct": 2.8035075001695446,
+          "gain_pct_of_initial_joint_loss": 2.803507500169558,
+          "grid_evaluations": null,
+          "method": "cellquant",
+          "pair": [
+            1,
+            2
+          ],
+          "position": 1,
+          "replay_seconds": 0.0052198999910615385,
+          "replayed": {
+            "budget_a": 0.018439687830852897,
+            "budget_w": 0.020339225513988302,
+            "loss": 0.025497977254209863
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": 0.0009210768206222438,
+            "output": -0.00018562054403433654
+          },
+          "seconds": 0.5841429999854881
+        },
+        {
+          "arm": "ranked",
+          "best": {
+            "budget_a": 0.018439687830852897,
+            "budget_w": 0.020334670161963633,
+            "loss": 0.02552249738155261,
+            "theta": -0.015
+          },
+          "event_candidates": null,
+          "event_incidences": null,
+          "feasible_replay_gain_pct": 2.7100385026249874,
+          "gain_pct_of_initial_joint_loss": 2.7100385026250136,
+          "grid_evaluations": 129,
+          "method": "grid",
+          "pair": [
+            1,
+            2
+          ],
+          "position": 1,
+          "replay_seconds": 0.004403999977512285,
+          "replayed": {
+            "budget_a": 0.018439687830852897,
+            "budget_w": 0.020334670161963633,
+            "loss": 0.025522497381552618
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": 0.0009287013135748571,
+            "output": -0.00021776516432970363
+          },
+          "seconds": 0.6057394999952521
+        },
+        {
+          "arm": "original",
+          "best": {
+            "budget_a": 0.018439687830852897,
+            "budget_w": 0.020334670161963633,
+            "loss": 0.02552249738155261,
+            "theta": -0.015
+          },
+          "event_candidates": null,
+          "event_incidences": null,
+          "feasible_replay_gain_pct": 2.7100385026249874,
+          "gain_pct_of_initial_joint_loss": 2.7100385026250136,
+          "grid_evaluations": 129,
+          "method": "grid",
+          "pair": [
+            1,
+            2
+          ],
+          "position": 1,
+          "replay_seconds": 0.0049999000038951635,
+          "replayed": {
+            "budget_a": 0.018439687830852897,
+            "budget_w": 0.020334670161963633,
+            "loss": 0.025522497381552618
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": 0.0009287013135748571,
+            "output": -0.00021776516432970363
+          },
+          "seconds": 0.5998889000038616
+        },
+        {
+          "arm": "original",
+          "best": {
+            "budget_a": 0.018439687830852897,
+            "budget_w": 0.0203392255139883,
+            "loss": 0.02549797725420986,
+            "theta": -0.013643874261755952
+          },
+          "event_candidates": 196,
+          "event_incidences": 28,
+          "feasible_replay_gain_pct": 2.8035075001695446,
+          "gain_pct_of_initial_joint_loss": 2.803507500169558,
+          "grid_evaluations": null,
+          "method": "cellquant",
+          "pair": [
+            1,
+            2
+          ],
+          "position": 1,
+          "replay_seconds": 0.004417499992996454,
+          "replayed": {
+            "budget_a": 0.018439687830852897,
+            "budget_w": 0.020339225513988302,
+            "loss": 0.025497977254209863
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": 0.0009210768206222438,
+            "output": -0.00018562054403433654
+          },
+          "seconds": 0.5772449999931268
+        }
+      ],
+      "seed": 11,
+      "source_type": "unit_test_fixture",
+      "status": "COMPLETE"
+    },
+    {
+      "coverage": {
+        "distinct_axes": 4,
+        "hidden_size": 4,
+        "original_axes": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "output_objective_bound_fraction": {
+          "original": 1.0,
+          "ranked": 1.0
+        },
+        "per_output_bound_fraction": {
+          "down": {
+            "original": 1.0,
+            "ranked": 1.0
+          }
+        },
+        "ranked_axes": [
+          1,
+          2,
+          3,
+          0
+        ]
+      },
+      "device": "cuda:0",
+      "fit_panel_sha256": "63a8e99cbf9213857a63fd574ef491ea2e2612823d4f6f8969168c1979909a60",
+      "initial": {
+        "budget_a": 0.018439687830852897,
+        "budget_w": 0.020383885958698174,
+        "loss": 0.026233433530797767
+      },
+      "mean_feasible_replay_gain_pct": {
+        "original": {
+          "cell_minus_grid_pp": -1.553469958361779,
+          "cellquant": 6.8174854677717285,
+          "grid": 8.370955426133508
+        },
+        "ranked": {
+          "cell_minus_grid_pp": -1.553469958361779,
+          "cellquant": 6.8174854677717285,
+          "grid": 8.370955426133508
+        }
+      },
+      "mean_single_pair_gain_pct": {
+        "original": {
+          "cell_minus_grid_pp": 0.03246019486634921,
+          "cellquant": 8.403415620999844,
+          "grid": 8.370955426133495
+        },
+        "ranked": {
+          "cell_minus_grid_pp": 0.03246019486634921,
+          "cellquant": 8.403415620999844,
+          "grid": 8.370955426133495
+        }
+      },
+      "probe_positions_zero_based": [
+        0,
+        1
+      ],
+      "probes": [
+        {
+          "arm": "original",
+          "best": {
+            "budget_a": 0.01842870507354706,
+            "budget_w": 0.020341109448035296,
+            "loss": 0.02601903026965225,
+            "theta": 0.01875
+          },
+          "event_candidates": null,
+          "event_incidences": null,
+          "feasible_replay_gain_pct": 0.8172901229029614,
+          "gain_pct_of_initial_joint_loss": 0.817290122902935,
+          "grid_evaluations": 129,
+          "method": "grid",
+          "pair": [
+            2,
+            0
+          ],
+          "position": 0,
+          "replay_seconds": 0.0044744999904651195,
+          "replayed": {
+            "budget_a": 0.01842870507354706,
+            "budget_w": 0.0203411094480353,
+            "loss": 0.026019030269652244
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": 0.00015196882448133622,
+            "output": 6.243443666418686e-05
+          },
+          "seconds": 0.5921799000061583
+        },
+        {
+          "arm": "original",
+          "best": {
+            "budget_a": 0.01842884644464313,
+            "budget_w": 0.020341673270140317,
+            "loss": 0.02601898729803662,
+            "theta": 0.018519276889729864
+          },
+          "event_candidates": 172,
+          "event_incidences": 26,
+          "feasible_replay_gain_pct": 0.8174539276735516,
+          "gain_pct_of_initial_joint_loss": 0.8174539276735914,
+          "grid_evaluations": null,
+          "method": "cellquant",
+          "pair": [
+            2,
+            0
+          ],
+          "position": 0,
+          "replay_seconds": 0.00483449999592267,
+          "replayed": {
+            "budget_a": 0.01842884644464313,
+            "budget_w": 0.02034167327014032,
+            "loss": 0.02601898729803663
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": 0.00014957853038436095,
+            "output": 6.486770237677935e-05
+          },
+          "seconds": 0.6809128999884706
+        },
+        {
+          "arm": "ranked",
+          "best": {
+            "budget_a": 0.01842884644464313,
+            "budget_w": 0.020341673270140317,
+            "loss": 0.02601898729803662,
+            "theta": 0.018519276889729864
+          },
+          "event_candidates": 172,
+          "event_incidences": 26,
+          "feasible_replay_gain_pct": 0.8174539276735516,
+          "gain_pct_of_initial_joint_loss": 0.8174539276735914,
+          "grid_evaluations": null,
+          "method": "cellquant",
+          "pair": [
+            2,
+            0
+          ],
+          "position": 0,
+          "replay_seconds": 0.00456780000240542,
+          "replayed": {
+            "budget_a": 0.01842884644464313,
+            "budget_w": 0.02034167327014032,
+            "loss": 0.02601898729803663
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": 0.00014957853038436095,
+            "output": 6.486770237677935e-05
+          },
+          "seconds": 0.6863725000002887
+        },
+        {
+          "arm": "ranked",
+          "best": {
+            "budget_a": 0.01842870507354706,
+            "budget_w": 0.020341109448035296,
+            "loss": 0.02601903026965225,
+            "theta": 0.01875
+          },
+          "event_candidates": null,
+          "event_incidences": null,
+          "feasible_replay_gain_pct": 0.8172901229029614,
+          "gain_pct_of_initial_joint_loss": 0.817290122902935,
+          "grid_evaluations": 129,
+          "method": "grid",
+          "pair": [
+            2,
+            0
+          ],
+          "position": 0,
+          "replay_seconds": 0.004450300009921193,
+          "replayed": {
+            "budget_a": 0.01842870507354706,
+            "budget_w": 0.0203411094480353,
+            "loss": 0.026019030269652244
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": 0.00015196882448133622,
+            "output": 6.243443666418686e-05
+          },
+          "seconds": 0.6134178999927826
+        },
+        {
+          "arm": "ranked",
+          "best": {
+            "budget_a": 0.01843204461121506,
+            "budget_w": 0.020375217862966113,
+            "loss": 0.022038870861055573,
+            "theta": 0.01914312740696778
+          },
+          "event_candidates": 226,
+          "event_incidences": 30,
+          "feasible_replay_gain_pct": 12.817517007869906,
+          "gain_pct_of_initial_joint_loss": 15.989377314326099,
+          "grid_evaluations": null,
+          "method": "cellquant",
+          "pair": [
+            3,
+            1
+          ],
+          "position": 1,
+          "replay_seconds": 0.0052127999952062964,
+          "replayed": {
+            "budget_a": 0.01843204461121506,
+            "budget_w": 0.02037521786296611,
+            "loss": 0.022870958726239517
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": -0.0012111084393358694,
+            "output": 0.004573583243894118
+          },
+          "seconds": 0.821717599988915
+        },
+        {
+          "arm": "ranked",
+          "best": {
+            "budget_a": 0.018431411968199477,
+            "budget_w": 0.020374332926624782,
+            "loss": 0.022055858736728405,
+            "theta": 0.020624999999999998
+          },
+          "event_candidates": null,
+          "event_incidences": null,
+          "feasible_replay_gain_pct": 15.924620729364054,
+          "gain_pct_of_initial_joint_loss": 15.924620729364054,
+          "grid_evaluations": 129,
+          "method": "grid",
+          "pair": [
+            3,
+            1
+          ],
+          "position": 1,
+          "replay_seconds": 0.004506800003582612,
+          "replayed": {
+            "budget_a": 0.018431411968199477,
+            "budget_w": 0.020374332926624786,
+            "loss": 0.022055858736728405
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": -0.0003918748981272195,
+            "output": 0.004569449692196583
+          },
+          "seconds": 0.624115000013262
+        },
+        {
+          "arm": "original",
+          "best": {
+            "budget_a": 0.018431411968199477,
+            "budget_w": 0.020374332926624782,
+            "loss": 0.022055858736728405,
+            "theta": 0.020624999999999998
+          },
+          "event_candidates": null,
+          "event_incidences": null,
+          "feasible_replay_gain_pct": 15.924620729364054,
+          "gain_pct_of_initial_joint_loss": 15.924620729364054,
+          "grid_evaluations": 129,
+          "method": "grid",
+          "pair": [
+            3,
+            1
+          ],
+          "position": 1,
+          "replay_seconds": 0.004452900000615045,
+          "replayed": {
+            "budget_a": 0.018431411968199477,
+            "budget_w": 0.020374332926624786,
+            "loss": 0.022055858736728405
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": -0.0003918748981272195,
+            "output": 0.004569449692196583
+          },
+          "seconds": 0.5814561999868602
+        },
+        {
+          "arm": "original",
+          "best": {
+            "budget_a": 0.01843204461121506,
+            "budget_w": 0.020375217862966113,
+            "loss": 0.022038870861055573,
+            "theta": 0.01914312740696778
+          },
+          "event_candidates": 226,
+          "event_incidences": 30,
+          "feasible_replay_gain_pct": 12.817517007869906,
+          "gain_pct_of_initial_joint_loss": 15.989377314326099,
+          "grid_evaluations": null,
+          "method": "cellquant",
+          "pair": [
+            3,
+            1
+          ],
+          "position": 1,
+          "replay_seconds": 0.004494900000281632,
+          "replayed": {
+            "budget_a": 0.01843204461121506,
+            "budget_w": 0.02037521786296611,
+            "loss": 0.022870958726239517
+          },
+          "replayed_feasible": true,
+          "replayed_joint_loss_drop_by_side": {
+            "input": -0.0012111084393358694,
+            "output": 0.004573583243894118
+          },
+          "seconds": 0.8037493999872822
+        }
+      ],
+      "seed": 23,
+      "source_type": "unit_test_fixture",
+      "status": "COMPLETE"
+    }
+  ],
+  "historical_G1": {
+    "rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+    "status": "FAIL"
+  },
+  "math_reference": "PASS",
+  "pytest": {
+    "passed": 322,
+    "seconds": 82.96
+  },
+  "python": "3.11.18",
+  "real_7b_pair_diagnostic": "NOT_RUN",
+  "scope": "Local implementation checks only. Synthetic panel weights and activations; no real 7B coordinate diagnostic.",
+  "source_sha256": {
+    "notebooks/01b_Colab_Pair_Diagnostic.ipynb": "b92fb6a3a74e9ed58137795e0afe2f27639297d334671a7a38087ec898a384b5",
+    "src/cellquant/experiment.py": "c694b1510e4d36a03169d1cab689d38404b2a12da8571f990c1a1c5a0bde710c",
+    "src/cellquant/pair_diagnostic.py": "cb4bdff57d658542a0b05abd9db4b50c91d3d058f871c615bccae712a43d41e6",
+    "src/cellquant/pilot.py": "8fc4a40a7c874f410c14bdae8d9c63140465dde75087c3afc84a5595a51a4a49",
+    "src/cellquant/pilot_bootstrap.py": "8f29483d649237af1a4f9ca5a5d794c90eaab0a414fa9d95613469c47fe347c2",
+    "src/cellquant/tensor_solver.py": "b59dfa953e49ecd02ccbd051227fa0d729cf8c079b4b3575e796babf12e31522",
+    "tests/test_pair_diagnostic.py": "69efa29fa0dedc6abffa45824893484fc6c01a122e049ca78c2bc4064d02789a",
+    "tests/test_pilot_bootstrap.py": "6e0a5997cabe902536e1f119c50317e97ed1e3a21c631b8004f5c570e8e28813"
+  },
+  "source_type": "unit_test_fixture",
+  "torch": "2.6.0+cu118"
+}

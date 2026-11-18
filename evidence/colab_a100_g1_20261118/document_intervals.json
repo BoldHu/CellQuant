@@ -1,0 +1,79 @@
+{
+  "block_source": {
+    "kind": "notebook_block_field_extracts",
+    "sha256": "d6ab35b0953b244de106cf36dfedd668485de706e1f6cd740c4374c71466c89a"
+  },
+  "bootstrap_seed": 20261115,
+  "comparisons": {
+    "angle_grid_matched": {
+      "median_site_gain_pct": 0.03845397184725208,
+      "percentile_95_pct": [
+        -0.005209456220947456,
+        0.2657204737564342
+      ]
+    },
+    "best_matched_per_site": {
+      "median_site_gain_pct": 0.017215718668667224,
+      "percentile_95_pct": [
+        -0.20540216494582514,
+        0.04822800490107911
+      ]
+    },
+    "fixed_scale_search_matched": {
+      "median_site_gain_pct": 0.04841487186148519,
+      "percentile_95_pct": [
+        0.01404646122585604,
+        0.3625150151121411
+      ]
+    },
+    "givens_ste_matched": {
+      "median_site_gain_pct": 0.2614314150596875,
+      "percentile_95_pct": [
+        0.05462249858023613,
+        1.011582324730191
+      ]
+    },
+    "hadamard_shared": {
+      "median_site_gain_pct": 2.5689038887399986,
+      "percentile_95_pct": [
+        1.4790992474134155,
+        3.0102310483003025
+      ]
+    }
+  },
+  "distinct_documents": 16,
+  "document_strata": [
+    {
+      "documents": 8,
+      "seeds": [
+        23
+      ]
+    },
+    {
+      "documents": 8,
+      "seeds": [
+        11
+      ]
+    }
+  ],
+  "evidence_kind": "POSTHOC_PAIRED_DOCUMENT_DIAGNOSTIC",
+  "evidence_sha256": "46a90f4ec7a4c83e179ec3d949c1f981374a00e437351fe83df883483f448dad",
+  "repetitions": 10000,
+  "scope": "Percentile intervals conditional on fitted rotations and sampled sites. Refit no models. Resample whole documents within seed-membership strata, paired across methods/sites. Re-select the minimum of the three matched controls per seed/site in each draw.",
+  "seeds_held_fixed": [
+    11,
+    23
+  ],
+  "sites": [
+    "layer_0.down_proj",
+    "layer_0.q_proj",
+    "layer_0.up_proj",
+    "layer_15.down_proj",
+    "layer_15.q_proj",
+    "layer_15.up_proj",
+    "layer_31.down_proj",
+    "layer_31.q_proj",
+    "layer_31.up_proj"
+  ],
+  "source_type": "real_layer"
+}

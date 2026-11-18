@@ -2,11 +2,13 @@
 
 研究一个全模型共享的严格正交 R1，在固定分组 INT4 下直接优化冻结面板上的动态双侧量化乘积误差。基础后端是固定版本 Meta SpinQuant；项目名称不代表已证明的新颖性。
 
-**下一次 Colab A100 测试**请使用[准备、8 对诊断、正式 G1 与租卡条件](docs/COLAB_A100_TEST.md)。2026-11-18 的 GPU 修订在同一 RTX 3050 Laptop 上，将完整维度混合合成案例的一对搜索中位数从 20.34 秒降至 3.48 秒。两版各跑三次，角度、真实损失、两项风险和事件数一致。A100 预训练 7B 的速度和 held-out 质量待测。[同卡测量](evidence/a100_readiness_20261118/benchmark.json)
+**2026-11-18 的正式 A100 G1 已完成，判定为 FAIL。** LLaMA-2-7B 两个 seed、五种方法共 10 份结果齐全。CellQuant 在独立文档上相对 Hadamard 的跨位置中位 NMSE 降幅为 2.569%，相对逐位置最强匹配搜索为 0.017%。同卡校准速度比为 0.264×。当前停在 G1，G2 和全量实验尚未启动。[正式判定](evidence/colab_a100_g1_20261118/G1.json) · [实测分析](docs/IMPLEMENTATION_STATUS.md#a100-正式-g1) · [实验协议](docs/COLAB_A100_TEST.md)
 
-2026-11-15 已从 CPU 参考扩展到生产事件求解器、匹配对照、真实模型实验入口、SpinQuant/GPTQ 适配、数据与评估流程。**当前通过的是数学与小模型结构验证；真实 LLaMA-2 7B / LLaMA-3 8B 的 G1–G4 尚无合格证据。**
+16 份验证文档的配对抽样给出相对最强匹配对照的 95% 区间 [−0.2054%，+0.0482%]。下一次 A100 作业仅在拟合面板比较两张共享坐标表，以及事件搜索和网格在物化 Q 后各自保留的真实降幅。[文档区间](evidence/colab_a100_g1_20261118/document_intervals.json) · [A100 诊断步骤](docs/G1_PAIR_DIAGNOSTIC.md) · [01b notebook](notebooks/01b_Colab_Pair_Diagnostic.ipynb)
 
-2026-11-16：Colab G1 默认改为**完整模型驻留 GPU + PyTorch CUDA 数值求解**，包含事件、增量系数、GPU QR 求根与五种匹配方法。采集完所有 seed 后释放基础模型，面板继续留在 GPU；不会静默回退 CPU。新服务器从 [GPU 完整操作指南](docs/COLAB_GPU_FROM_SCRATCH.md) 开始，使用新的 `runs/prepared/g1_gpu/config.json`。本地已运行实际 CUDA 小模型、完整维度合成面板与回归检查；真实 7B 的质量和加速比仍须云端实测。
+2026-11-15 已从 CPU 参考扩展到生产事件求解器、匹配对照、真实模型实验入口、SpinQuant/GPTQ 适配、数据与评估流程。当时完成了数学与小模型结构验证。
+
+2026-11-16：Colab G1 默认改为**完整模型驻留 GPU + PyTorch CUDA 数值求解**，包含事件、增量系数、GPU QR 求根与五种匹配方法。采集完所有 seed 后释放基础模型，面板继续留在 GPU。新实例可复用 `runs/prepared/g1_gpu/config.json` 的冻结配置。[GPU 操作指南](docs/COLAB_GPU_FROM_SCRATCH.md)
 
 2026-11-17：用户真实 L4 连续 8 对诊断已完成，总耗时 354.38 秒。CellQuant 平均 20.33 秒/对，128 对仅搜索的条件性外推为 43.36 分钟，超过原 24 分钟方法预算；这不是完整 G1。已继续将动态输入组更新批量化，同卡完整维度合成案例搜索由 49.77 降至 20.10 秒，结果一致；真实 L4 新版尚待重测。在 01 保持 `RUN_PAIR_PROFILE=True`、`PROFILE_PAIR_COUNT=8`，同步新源码后重测原前缀，不修改正式对数、预算或门槛。记录见 [最新实测与工程验证](evidence/input_batch_20261117/)，操作见 [Colab 指南](docs/COLAB_GPU_FROM_SCRATCH.md)。
 

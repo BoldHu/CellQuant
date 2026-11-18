@@ -72,3 +72,9 @@
 - 未查全文/未找到公开代码就写“肯定没有实现”。
 
 写稿前执行prompts/08_NOVELTY_RECHECK.md并记录date/query/source/version/read-scope。新颖性复查与性能gate均通过才进入完整方法主张。
+
+## 2026-11-18 竞争基线复核
+
+ParoQuant v2（2026-02-14，ICLR 2026）已经覆盖可优化的成对 Givens 旋转、通道缩放和配套推理内核。作者代码在本日查询的 HEAD 为 `9ee635a9c2e7d02c46b1c0ac4071d69afbbfc1f1`。若 G1 获准继续，将 ParoQuant 列为近期实测候选，先审计模型支持、激活和 KV 位宽、分组及后端是否能匹配；记录原版配置和任何适配。完整 SpinQuant 仍需单独在相同模型、token、GPTQ 和评价协议下复现。本项目尚无这两者的模型级排名。[ParoQuant 论文](https://arxiv.org/abs/2511.10645) · [作者实现](https://github.com/z-lab/paroquant/tree/9ee635a9c2e7d02c46b1c0ac4071d69afbbfc1f1) · [SpinQuant 实现](https://github.com/facebookresearch/SpinQuant)
+
+对 11 月 1–18 日的共享旋转、动态双侧量化、角度及胞元搜索作了定向排查。理论比较需逐项对齐目标、编码、共享尺度和可行性约束。例如 TORQ 面向 MXFP4，其公开指标使用不同量化格式。本轮核查限于检索到的论文页面与作者仓库，投稿前仍应审阅相关全文和更新版本。[TORQ](https://arxiv.org/abs/2605.19561)

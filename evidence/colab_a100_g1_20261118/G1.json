@@ -1,0 +1,309 @@
+{
+  "schema_version": "1.0",
+  "gate_id": "G1",
+  "status": "FAIL",
+  "routes": {
+    "accuracy": {
+      "status": "FAIL",
+      "checks": [
+        {
+          "metric": "median_nmse_gain_vs_hadamard_pct",
+          "op": "ge",
+          "expected": 10,
+          "observed": 2.5689038887399764,
+          "unit": "percent",
+          "rationale": "真实held-out误差，而非crest",
+          "status": "FAIL",
+          "reason": "Measured value does not satisfy the frozen threshold."
+        },
+        {
+          "metric": "median_nmse_gain_vs_best_matched_solver_pct",
+          "op": "ge",
+          "expected": 5,
+          "observed": 0.017215718668667224,
+          "unit": "percent",
+          "rationale": "避免仅赢固定Hadamard",
+          "status": "FAIL",
+          "reason": "Measured value does not satisfy the frozen threshold."
+        },
+        {
+          "metric": "site_win_fraction_vs_best_matched_solver",
+          "op": "ge",
+          "expected": 0.6666666666666666,
+          "observed": 0.6666666666666666,
+          "unit": "fraction",
+          "rationale": "至少6/9位置",
+          "status": "PASS",
+          "reason": "Threshold satisfied."
+        }
+      ],
+      "missing_fields": []
+    },
+    "efficiency": {
+      "status": "FAIL",
+      "checks": [
+        {
+          "metric": "median_nmse_gain_vs_hadamard_pct",
+          "op": "ge",
+          "expected": 5,
+          "observed": 2.5689038887399764,
+          "unit": "percent",
+          "rationale": "确有量化收益",
+          "status": "FAIL",
+          "reason": "Measured value does not satisfy the frozen threshold."
+        },
+        {
+          "metric": "median_nmse_regression_vs_best_matched_solver_pct",
+          "op": "le",
+          "expected": 2,
+          "observed": -0.017215718668667224,
+          "unit": "percent",
+          "rationale": "探索性非劣幅度",
+          "status": "PASS",
+          "reason": "Threshold satisfied."
+        },
+        {
+          "metric": "site_noninferior_fraction_at_2pct",
+          "op": "ge",
+          "expected": 0.6666666666666666,
+          "observed": 1.0,
+          "unit": "fraction",
+          "rationale": "至少6/9位置在2%范围内",
+          "status": "PASS",
+          "reason": "Threshold satisfied."
+        },
+        {
+          "metric": "pilot_calibration_speedup",
+          "op": "ge",
+          "expected": 2,
+          "observed": 0.2641350218599454,
+          "unit": "ratio",
+          "rationale": "完整pilot校准含事件构造/排序/求根/复核",
+          "status": "FAIL",
+          "reason": "Measured value does not satisfy the frozen threshold."
+        }
+      ],
+      "missing_fields": []
+    }
+  },
+  "checks": [
+    {
+      "metric": "schema_version",
+      "op": "metadata",
+      "expected": null,
+      "observed": "1.0",
+      "unit": "metadata",
+      "rationale": "Evidence schema_version must be the string '1.0'.",
+      "status": "PASS",
+      "reason": "Evidence schema_version must be the string '1.0'."
+    },
+    {
+      "metric": "gate_id",
+      "op": "metadata",
+      "expected": null,
+      "observed": "['G1']",
+      "unit": "metadata",
+      "rationale": "All supplied stage identifiers must match the requested stage.",
+      "status": "PASS",
+      "reason": "All supplied stage identifiers must match the requested stage."
+    },
+    {
+      "metric": "source_type",
+      "op": "metadata",
+      "expected": null,
+      "observed": "real_layer",
+      "unit": "metadata",
+      "rationale": "Allowed measurement source; truthfulness is not automatically certified.",
+      "status": "PASS",
+      "reason": "Allowed measurement source; truthfulness is not automatically certified."
+    },
+    {
+      "metric": "provenance",
+      "op": "metadata",
+      "expected": null,
+      "observed": null,
+      "unit": "metadata",
+      "rationale": "Any provenance stage identifier must agree; model/code/protocol references require audit.",
+      "status": "PASS",
+      "reason": "Any provenance stage identifier must agree; model/code/protocol references require audit."
+    },
+    {
+      "metric": "artifact_refs",
+      "op": "metadata",
+      "expected": null,
+      "observed": null,
+      "unit": "metadata",
+      "rationale": "Artifact references supplied; existence, hashes, and provenance remain pipeline/audit responsibilities.",
+      "status": "PASS",
+      "reason": "Artifact references supplied; existence, hashes, and provenance remain pipeline/audit responsibilities."
+    },
+    {
+      "metric": "g0_pass",
+      "op": "eq",
+      "expected": true,
+      "observed": true,
+      "unit": "boolean",
+      "rationale": "读取真实G0报告",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "real_panel_provenance_verified",
+      "op": "eq",
+      "expected": true,
+      "observed": true,
+      "unit": "boolean",
+      "rationale": "真实模型、token及矩阵来源可追溯",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "real_model_parameter_billions",
+      "op": "ge",
+      "expected": 6.5,
+      "observed": 6.738415616,
+      "unit": "billion",
+      "rationale": "小模型smoke不能代替7B目标",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "calibration_seed_count",
+      "op": "ge",
+      "expected": 2,
+      "observed": 2,
+      "unit": "count",
+      "rationale": "不是将多个token当独立seed",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "layer_count",
+      "op": "ge",
+      "expected": 3,
+      "observed": 3,
+      "unit": "count",
+      "rationale": "早、中、晚层",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "site_count",
+      "op": "ge",
+      "expected": 9,
+      "observed": 9,
+      "unit": "count",
+      "rationale": "3层×q/up/down",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "fit_sequence_count",
+      "op": "ge",
+      "expected": 8,
+      "observed": 8,
+      "unit": "count",
+      "rationale": "可抽token但需完整上下文来源",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "heldout_sequence_count",
+      "op": "ge",
+      "expected": 8,
+      "observed": 8,
+      "unit": "count",
+      "rationale": "独立序列验证",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "calibration_heldout_disjoint",
+      "op": "eq",
+      "expected": true,
+      "observed": true,
+      "unit": "boolean",
+      "rationale": "不调最终测试集",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "shared_global_r1",
+      "op": "eq",
+      "expected": true,
+      "observed": true,
+      "unit": "boolean",
+      "rationale": "所有位置必须同一Q",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "full_quant_groups_preserved",
+      "op": "eq",
+      "expected": true,
+      "observed": true,
+      "unit": "boolean",
+      "rationale": "不能截断组后重新算scale",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "down_projection_output_side_correct",
+      "op": "eq",
+      "expected": true,
+      "observed": true,
+      "unit": "boolean",
+      "rationale": "down路径按QB处理",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "matched_solver_controls_complete",
+      "op": "eq",
+      "expected": true,
+      "observed": true,
+      "unit": "boolean",
+      "rationale": "STE、网格、固定尺度并保持同目标/参数/时间预算",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "same_hardware_timing",
+      "op": "eq",
+      "expected": true,
+      "observed": true,
+      "unit": "boolean",
+      "rationale": "禁止比较Colab与AutoDL秒数声称算法加速",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "each_seed_pooled_heldout_improved",
+      "op": "eq",
+      "expected": true,
+      "observed": true,
+      "unit": "boolean",
+      "rationale": "不靠单seed掩盖另一个失败",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    },
+    {
+      "metric": "max_site_nmse_regression_vs_best_pct",
+      "op": "le",
+      "expected": 10,
+      "observed": 0.538557274554563,
+      "unit": "percent",
+      "rationale": "任何位置不能严重退化",
+      "status": "PASS",
+      "reason": "Threshold satisfied."
+    }
+  ],
+  "missing_fields": [],
+  "evidence_sha256": "46a90f4ec7a4c83e179ec3d949c1f981374a00e437351fe83df883483f448dad",
+  "decision_scope": "No promotion authorized by this report.",
+  "passing_routes": [],
+  "evidence_source_type": "real_layer",
+  "disclaimer": "Threshold aggregation only: this engine does not certify evidence truthfulness, novelty, or conference acceptance.",
+  "rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "rules_path": "D:\\python_project\\quant-llm\\configs\\gate_rules.json"
+}

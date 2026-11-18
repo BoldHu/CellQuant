@@ -204,3 +204,17 @@ seed 11 的 Hadamard、STE、网格报告 COMPLETE；固定尺度搜索与 CellQ
 - 本机 RTX 3050 Laptop、Python 3.11.18、Torch 2.6.0+cu118。同一完整维度混合随机案例两版各跑三次，54,786 个事件角、54,785 个区间、328,758 个候选。单对搜索中位数 20.342 → 3.484 秒，方法中位数 27.834 → 10.972 秒，峰值分配 2.881 → 2.459 GiB。该脚本使用六个输入面板和一个输出面板，每个进程一对，无 checkpoint 写入。每次的角度、最终真实损失和风险相同。[原始计时与哈希](../evidence/a100_readiness_20261118/benchmark.json)
 - 首次全套回归暴露一个新增测试的断言位置错误和四个旧引擎标签断言，修正后最终 **310 passed in 70.44s**。CPU 数学和 G0 PASS，空 G1 正确返回 INSUFFICIENT_EVIDENCE。实际 CUDA tiny SpinQuant 的融合/旋转相对 RMS 为 1.03e-7 / 1.77e-7，GPTQ 完成且输出有限。GPU 驻留五方法及 4096×11008 形状检查通过，FHT 路径为 torch_reference。六本 notebook schema/语法通过，修改的 00/01 默认路径在本地执行完毕。[验证记录](../evidence/a100_readiness_20261118/validation.json)
 - 在 `runs/a100_review_20261118_150928/` 保留各次运行。使用 `python -m pytest -q`、`scripts/run_math_checks.py`、`scripts/run_production_checks.py`、`scripts/run_gpu_resident_checks.py --full-dimension --fht-backend torch_reference`、`scripts/run_spinquant_smoke.py --device cuda --gptq --fht-backend torch_reference` 和 `scripts/profile_tensor_cells.py --case mixed_full --pairs 1 --seconds-per-pair 300`。A100、新版真实 L4、完整 G1 和目标机 G2–G4 未运行，原因是本机 4 GiB GPU 且没有连接到目标运行时。云端命令及投入依据见 [A100 测试方案](COLAB_A100_TEST.md)。
+
+## 2026-11-18 · A100 正式 G1 完成
+
+- A100-SXM4-40GB 在北京时间 16:30–17:47 完成正式 run `2026-11-18T083041.405198_0000_381f882eaf`。模型为 LLaMA-2-7B，两个 seed、五种方法、九位置的结果均已保存。每种搜索每 seed 完成 128 对，程序状态 COMPLETE，科学判定 FAIL。G2–G4 尚未执行。
+- 从用户同步的 01 notebook 输出按原 JSON 文本归档了 `G1_evidence.json` 和 `G1_distributions.json`。另从用户执行的逐方法字段摘录保存拟合前后损失与风险、接受数、校准时间和逐位置验证误差，并用正式进度流核对完成状态和坐标表。十份完整 `pilot_result.json` 的云端路径及 SHA-256 见门槛证据，本地保存的是字段摘录。[证据目录](../evidence/colab_a100_g1_20261118/)
+- 从十份摘录独立重建两种子九位置的 Hadamard、CellQuant、逐位置最强对照矩阵，重算两种相对改善和校准速度比。与正式输出一致。用 `python -m cellquant.gates evaluate --stage G1 --evidence evidence/colab_a100_g1_20261118/G1_evidence.json --output evidence/colab_a100_g1_20261118/G1.json --require-pass` 再次得到 FAIL，退出码为 1，无缺失字段。共同条件全部通过，准确率和效率路线分别有两项未达标。
+- 相对 Hadamard 的中位改善为 2.569%，相对最强匹配搜索为 0.017%。CellQuant 在拟合和独立验证上均能小幅优于角度网格，九位置平均 held-out NMSE 的额外相对降幅仅 0.070% 和 0.067%。同卡速度比为 0.264×。项目继续保留原门槛，当前停止 G2 和全量投入。[分析与后续选择](IMPLEMENTATION_STATUS.md#a100-正式-g1)
+
+## 2026-11-18 · G1 文档区间与拟合面板诊断
+
+- 从已执行的 01 提取 2 种子 × 5 方法 × 9 位置 × 8 文档的原始块字段。逐块复算全部 90 个面板 NMSE，核对 G1 矩阵。10,000 次按独立文档配对的结果在第二套求和循环中逐项复核全部五个对照的区间。相对逐位置最强对照的 95% 区间覆盖零。用原证据重跑 G1 仍为 FAIL。[真实文档区间](../evidence/colab_a100_g1_20261118/document_intervals.json)
+- 新增 `pilot_bootstrap`、`--diagnose-pairs` 及 01b。后者只采集 fit，对两个种子分别测共享坐标表的输出侧覆盖率和同一初值上网格与事件角度的实际联合降幅。每个入选角度均重建 Q、完整重算九面板并复核双风险。记录每对实测、独立计时、面板/坐标表指纹和中断时的已完成记录。已在查看真实 7B 诊断前记录选择一次修正的条件。[诊断协议](G1_PAIR_DIAGNOSTIC.md)
+- CPU 四维双侧测试有一组角度的增量损失为 0.02203887，用物化 Q 重算为 0.02287096。直接检查发现浮点乘法顺序改变了近舍入边界的编码。新诊断同时保留两种测量。RTX 3050 Laptop 用两个种子各跑完八条小矩阵探针，来源为 `unit_test_fixture`。A100 上同一诊断仍为 NOT_RUN。[本地实测和源码哈希](../evidence/g1_pair_diagnostic_20261118/local_validation.json)
+- 最终回归 **322 passed in 82.96s**，CPU 数学参考 PASS。01b 通过格式校验与默认执行，另实测从原 notebook 的 `%run` 触发、子进程参数和归档路径，后一项使用测试子进程替身。首次整套回归检出了已执行 00 的明文 HF 凭据，已恢复环境变量/Colab Secrets 入口并脱敏本轮日志。上次的 00 输入准备开关恢复为默认关闭，已有单元输出逐项比对一致。原 01 的测量数据保留在工作树。

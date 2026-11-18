@@ -23,6 +23,7 @@ from .tensor_math import (scalar, basis, affine_roots, owner_intervals, square_c
                           product_coeff, scale_square)
 
 CELL_ENGINE_VERSION = 'torch_batched_bilateral_prefix_v3'
+MATCHED_GRID_POINTS = 129
 
 
 def synchronize(device):
@@ -390,7 +391,40 @@ def _ste_proposals(states,pair,config,steps,lr):
         yield theta.detach().clone()
 
 
-def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_steps=100,learning_rate=.02,progress=None,budgets=None):
+def grid_angles(like, theta_limit, count=MATCHED_GRID_POINTS):
+    grid = torch.linspace(-theta_limit, theta_limit, count, device=like.device, dtype=like.dtype)
+    grid = torch.unique(torch.cat((grid, like.new_zeros(1))))
+    return grid[grid.abs().argsort()]
+
+
+def evaluate_proposals(states, pair, limits, config, proposals, deadline):
+    baseline = aggregate(states)
+    best = {**baseline, 'theta': states[0].a.new_zeros(())}
+    count = 0
+    try:
+        for theta in proposals:
+            synchronize(states[0].a.device)
+            if time.perf_counter() >= deadline:
+                break
+            values = [state.direct(pair, theta) for state in states]
+            measured = {key: sum(s.panel.objective_weight * v[key] for s, v in zip(states, values))
+                        for key in baseline}
+            count += 1
+            feasible = not config.constrain_budgets or all(
+                bool(measured[k] <= cap + config.budget_tolerance * cap.clamp_min(1))
+                for k, cap in limits.items())
+            if feasible and bool(measured['loss'] < best['loss']):
+                best = {**measured, 'theta': theta}
+    finally:
+        if hasattr(proposals, 'close'):
+            proposals.close()
+    if not count:
+        raise ResourceLimit('Pair wall-clock budget exhausted before evaluating a proposal')
+    return {'pair': list(pair), 'best': plain(best), 'baseline': plain(baseline),
+            'accepted': bool(best['theta'] != 0), 'evaluations': count}
+
+
+def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=MATCHED_GRID_POINTS,ste_steps=100,learning_rate=.02,progress=None,budgets=None):
     from .baselines import METHODS
     from .spinquant_adapter import atomic_torch_save
     import hashlib
@@ -451,24 +485,12 @@ def fit_baseline(method,panels,q0,specs,schedule,config,*,grid_points=129,ste_st
                     result.update(pair=list(pair),pair_index=index)
                 else:
                     end=time.perf_counter()+min(config.seconds_per_pair,remaining)
-                    baseline=aggregate(states);best={**baseline,'theta':q.new_zeros(())};count=0
                     if method=='angle_grid_matched':
-                        grid=torch.unique(torch.cat((torch.linspace(-config.theta_limit,config.theta_limit,grid_points,device=q.device,dtype=q.dtype),q.new_zeros(1))))
-                        proposals=iter(grid[grid.abs().argsort()])
+                        proposals=grid_angles(q,config.theta_limit,grid_points)
                     else:proposals=_ste_proposals(states,pair,config,ste_steps,learning_rate)
-                    for theta in proposals:
-                        synchronize(q.device)
-                        if time.perf_counter()>=end:break
-                        values=[s.direct(pair,theta) for s in states];count+=1;evaluations+=1
-                        measured={k:sum(s.panel.objective_weight*v[k] for s,v in zip(states,values)) for k in baseline}
-                        feasible=not config.constrain_budgets or all(bool(measured[k]<=limits[k]+config.budget_tolerance*limits[k].clamp_min(1)) for k in limits)
-                        if feasible and bool(measured['loss']<best['loss']):best={**measured,'theta':theta}
-                    # Explicitly close a suspended STE generator to release its graph.
-                    if hasattr(proposals,'close'):proposals.close()
-                    if count == 0:
-                        raise ResourceLimit('Pair wall-clock budget exhausted before evaluating a proposal')
-                    result={'pair_index':index,'pair':list(pair),'best':plain(best),'baseline':plain(baseline),
-                            'accepted':bool(best['theta']!=0),'evaluations':count}
+                    result=evaluate_proposals(states,pair,limits,config,proposals,end)
+                    result['pair_index']=index
+                    evaluations+=result['evaluations']
                 if result['accepted']:
                     theta=result['best']['theta']
                     for state in states:state.accept(pair,theta)

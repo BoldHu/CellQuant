@@ -73,7 +73,7 @@ def panel_metrics(panels,q,specs,device='cpu',*,progress=None):
     return rows
 
 
-def prepare_pilot_inputs(config,model,*,graph_identity,progress=None,profile_only=False):
+def prepare_pilot_inputs(config,model,*,graph_identity,progress=None,profile_only=False,fit_only=False):
     """Capture the panels consumed by this run before releasing the model."""
     from .spinquant_adapter import panel_quant_specs
     from .tensor_solver import synchronize
@@ -90,7 +90,7 @@ def prepare_pilot_inputs(config,model,*,graph_identity,progress=None,profile_onl
         specs=panel_quant_specs(model,fit,config['quantization']);synchronize(device)
         seconds=time.perf_counter()-start
         seeds[seed]={'fit':fit,'specs':specs,'capture_seconds':seconds}
-        if not profile_only:
+        if not (profile_only or fit_only):
             seeds[seed]['heldout']=capture_panels(model,parts['dev'],tokens_per_panel=formal['heldout_tokens_per_panel'],
                 progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split='heldout',**d),**kwargs)
     return {'seeds':seeds,'hidden_size':model.config.hidden_size,

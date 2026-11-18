@@ -92,8 +92,8 @@ def test_control_hitting_method_budget_does_not_report_complete(backend,method):
     assert result['completed_pairs']==0 and result['requested_pairs']==1
 
 
-@pytest.mark.parametrize('profile_only', [True,False])
-def test_prepared_capture_visits_only_consumed_splits(profile_only,monkeypatch):
+@pytest.mark.parametrize('profile_only,fit_only', [(True,False),(False,False),(False,True)])
+def test_prepared_capture_visits_only_consumed_splits(profile_only,fit_only,monkeypatch):
     pytest.importorskip('torch')
     from types import SimpleNamespace
     from cellquant import pilot, spinquant_adapter
@@ -110,10 +110,12 @@ def test_prepared_capture_visits_only_consumed_splits(profile_only,monkeypatch):
             'data':{'token_manifests':{'11':'first','23':'second'}},
             'formal_pilot':{'layers':[0],'projections':['q_proj'],'input_weight_rows':64,
                             'fit_tokens_per_panel':128,'heldout_tokens_per_panel':256}}
-    prepared=pilot.prepare_pilot_inputs(config,model,graph_identity='fixture',profile_only=profile_only)
-    assert calls==([(11,'0',128)] if profile_only else [(11,'0',128),(11,'1',256),(23,'0',128),(23,'1',256)])
-    assert list(prepared['seeds'])==([11] if profile_only else [11,23])
-    assert ('heldout' in prepared['seeds'][11]) == (not profile_only)
+    prepared=pilot.prepare_pilot_inputs(config,model,graph_identity='fixture',profile_only=profile_only,fit_only=fit_only)
+    seeds=[11] if profile_only else [11,23]
+    splits=[('0',128)] if profile_only or fit_only else [('0',128),('1',256)]
+    assert calls==[(s,doc,n) for s in seeds for doc,n in splits]
+    assert list(prepared['seeds'])==seeds
+    assert ('heldout' in prepared['seeds'][11]) == (not (profile_only or fit_only))
 
 
 def test_frozen_model_solver_selects_matching_backend_and_checkpoint(tmp_path):

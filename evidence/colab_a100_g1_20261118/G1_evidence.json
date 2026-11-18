@@ -1,0 +1,77 @@
+{
+  "artifact_refs": [
+    {
+      "path": "/content/CellQuant/runs/experiments/2026-11-18T083041.405198_0000_381f882eaf/seed_11/hadamard_shared/pilot_result.json",
+      "sha256": "062491ddb6635b93c8967f17412e4c302c3e2eba2683a2991121ee2997c0ddde"
+    },
+    {
+      "path": "/content/CellQuant/runs/experiments/2026-11-18T083041.405198_0000_381f882eaf/seed_11/givens_ste_matched/pilot_result.json",
+      "sha256": "3c7f88d368e8ce9e9fe86fe9ff8fbe5fb30e0df5d8ceda26fb9d3ace1721a127"
+    },
+    {
+      "path": "/content/CellQuant/runs/experiments/2026-11-18T083041.405198_0000_381f882eaf/seed_11/angle_grid_matched/pilot_result.json",
+      "sha256": "4e56a8b844d982cbced518330b8aab539757f2720c60445c82a130f1f749bd6c"
+    },
+    {
+      "path": "/content/CellQuant/runs/experiments/2026-11-18T083041.405198_0000_381f882eaf/seed_11/fixed_scale_search_matched/pilot_result.json",
+      "sha256": "7ccc61f8dc4a45c586b9aeacdae6343d2056b16ee6b3ff83d32daaf5098603de"
+    },
+    {
+      "path": "/content/CellQuant/runs/experiments/2026-11-18T083041.405198_0000_381f882eaf/seed_11/cellquant/pilot_result.json",
+      "sha256": "08aa4e8d537e6ae03577bfd379c4fa392d31a6eec32d9e0cf70a6a216afcf09c"
+    },
+    {
+      "path": "/content/CellQuant/runs/experiments/2026-11-18T083041.405198_0000_381f882eaf/seed_23/hadamard_shared/pilot_result.json",
+      "sha256": "bc7b27ab11b8d75982d2a35877e8f77b431f317d8d080d84ec32b49f8c70e11a"
+    },
+    {
+      "path": "/content/CellQuant/runs/experiments/2026-11-18T083041.405198_0000_381f882eaf/seed_23/givens_ste_matched/pilot_result.json",
+      "sha256": "a870cf06d717307bfe82d1a638534e4cf1ca7bfbf6b36f9e12c9e6606bd0f059"
+    },
+    {
+      "path": "/content/CellQuant/runs/experiments/2026-11-18T083041.405198_0000_381f882eaf/seed_23/angle_grid_matched/pilot_result.json",
+      "sha256": "e39e3bf9641a5ea8c2c4966530897936d659cad0d1046d59c676a2b610a18ab5"
+    },
+    {
+      "path": "/content/CellQuant/runs/experiments/2026-11-18T083041.405198_0000_381f882eaf/seed_23/fixed_scale_search_matched/pilot_result.json",
+      "sha256": "81a9311e5f4eacb0a2c4235e7959f0cd26306eb2d4afc6e6938bc91297f397a6"
+    },
+    {
+      "path": "/content/CellQuant/runs/experiments/2026-11-18T083041.405198_0000_381f882eaf/seed_23/cellquant/pilot_result.json",
+      "sha256": "21025e45661283e5f31ac031d67df33f901d07c5e7414db31c6e847be95b165e"
+    }
+  ],
+  "gate_id": "G1",
+  "metrics": {
+    "calibration_heldout_disjoint": true,
+    "calibration_seed_count": 2,
+    "down_projection_output_side_correct": true,
+    "each_seed_pooled_heldout_improved": true,
+    "fit_sequence_count": 8,
+    "full_quant_groups_preserved": true,
+    "g0_pass": true,
+    "heldout_sequence_count": 8,
+    "layer_count": 3,
+    "matched_solver_controls_complete": true,
+    "max_site_nmse_regression_vs_best_pct": 0.538557274554563,
+    "median_nmse_gain_vs_best_matched_solver_pct": 0.017215718668667224,
+    "median_nmse_gain_vs_hadamard_pct": 2.5689038887399764,
+    "median_nmse_regression_vs_best_matched_solver_pct": -0.017215718668667224,
+    "pilot_calibration_speedup": 0.2641350218599454,
+    "real_model_parameter_billions": 6.738415616,
+    "real_panel_provenance_verified": true,
+    "same_hardware_timing": true,
+    "shared_global_r1": true,
+    "site_count": 9,
+    "site_noninferior_fraction_at_2pct": 1.0,
+    "site_win_fraction_vs_best_matched_solver": 0.6666666666666666
+  },
+  "provenance": {
+    "aggregation": "mean seed-relative improvement per site, median sites",
+    "complete_comparison": true,
+    "g0_evidence_sha256": "ea8963be3f4a38bf9645d8ee69958f5f40e19dfb731bb07ba1aeaa04b564729d",
+    "raw_results": 10
+  },
+  "schema_version": "1.0",
+  "source_type": "real_layer"
+}

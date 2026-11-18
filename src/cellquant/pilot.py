@@ -49,7 +49,7 @@ def summarize_pilot_results(paths):
             'reason':reason,'incomplete_methods':incomplete}
 
 
-def panel_metrics(panels,q,specs,device='cpu',*,progress=None):
+def panel_metrics(panels,q,specs,device='cpu',*,progress=None,error_terms=False):
     tensor=hasattr(q,'detach')
     if tensor:
         from .tensor_solver import PanelState as TensorState
@@ -57,12 +57,21 @@ def panel_metrics(panels,q,specs,device='cpu',*,progress=None):
     for panel in panels:
         report(progress,'heldout.panel',panel_id=panel.panel_id,device=device)
         state=TensorState(panel,q,*panel_specs(specs,panel)) if tensor else PanelState(panel,q,*panel_specs(specs,panel),device=device)
+        if error_terms:
+            weight_error=(state.ah-state.a)@state.xh
+            activation_error=state.a@(state.xh-state.x)
         pieces=panel.metadata['tokens_per_block'];offset=0;blocks=[]
         for index,count in enumerate(pieces):
             error=state.error[:,offset:offset+count];target=state.target[:,offset:offset+count]
             blocks.append({'block_id':panel.metadata['block_ids'][index],'document_id':panel.metadata['document_ids'][index],
                 'squared_error':float(error.square().sum() if tensor else np.square(error).sum()),
                 'target_energy':float(target.square().sum() if tensor else np.square(target).sum()),'sampled_tokens':count})
+            if error_terms:
+                ew=weight_error[:,offset:offset+count]
+                ea=activation_error[:,offset:offset+count]
+                blocks[-1].update(weight_error_energy=float((ew*ew).sum()),
+                                  activation_error_energy=float((ea*ea).sum()),
+                                  cross_energy=float(2*(ew*ea).sum()))
             offset+=count
         rows.append({'panel_id':panel.panel_id,'placement':panel.placement,'layer':panel.metadata['layer'],
             'nmse':float(state.loss),'budget_w':float(state.bw),'budget_a':float(state.ba),'blocks':blocks,
@@ -309,7 +318,7 @@ def build_g1_evidence(paths,output,*,g0_evidence_path,include_original_grid=Fals
         for path in paths:
             row=read_json(path)
             if row.get('evidence_kind')=='PAIR_PROFILE_ONLY':raise ValueError('Pair profiles cannot form G1 evidence')
-            if row.get('evidence_kind') in {'FIT_OBJECTIVE_SCREEN','FIT_PAIR_DIAGNOSTIC'}:
+            if row.get('evidence_kind') in {'FIT_OBJECTIVE_SCREEN','FIT_PAIR_DIAGNOSTIC','OUTPUT_MATCHING_STUDY'}:
                 raise ValueError('Diagnostic results cannot form G1 evidence')
             if row.get('source_type')!='real_layer':raise ValueError('Only real-layer artifacts can form G1')
             for k,h in [('q_path','q_sha256'),('data_manifest_path','data_manifest_sha256')]:

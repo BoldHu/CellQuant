@@ -1,0 +1,136 @@
+{
+  "arms_started": 10,
+  "capture": {
+    "captured_seeds": [
+      11,
+      23
+    ],
+    "captured_splits": [
+      "fit",
+      "screen_validation"
+    ],
+    "reason": "requested panels captured and resident on CUDA"
+  },
+  "cli_result": {
+    "incomplete_methods": [],
+    "missing": [],
+    "objective_screen": {
+      "comparisons": {
+        "original_cell_vs_original_grid": {
+          "median_site_gain_pct": 0.014097965810555557,
+          "seed_median_gain_pct": {
+            "11": 0.08320249718101191,
+            "23": -0.00433460638822325
+          },
+          "site_gain_pct": {
+            "layer_0.down_proj": 0.010871108383547767,
+            "layer_0.q_proj": 0.2697408965419812,
+            "layer_0.up_proj": 0.07596165166628421,
+            "layer_15.down_proj": -0.0008565113980174566,
+            "layer_15.q_proj": 0.014097965810555557,
+            "layer_15.up_proj": -0.16807772071583127,
+            "layer_31.down_proj": 0.03665344186030706,
+            "layer_31.q_proj": 0.10078915913571684,
+            "layer_31.up_proj": -0.03666093951285032
+          }
+        },
+        "relative_cell_vs_hadamard": {
+          "median_site_gain_pct": 0.5175795321589294,
+          "seed_median_gain_pct": {
+            "11": 0.4403679825924156,
+            "23": 0.5947910817254431
+          },
+          "site_gain_pct": {
+            "layer_0.down_proj": 0.009259620132051616,
+            "layer_0.q_proj": 5.607920302297642,
+            "layer_0.up_proj": 5.60951539696839,
+            "layer_15.down_proj": 0.0342553579279925,
+            "layer_15.q_proj": -0.1674311141809548,
+            "layer_15.up_proj": 0.5175795321589294,
+            "layer_31.down_proj": -0.004048384406268868,
+            "layer_31.q_proj": 1.0347261213193626,
+            "layer_31.up_proj": 1.372711842045904
+          }
+        },
+        "relative_cell_vs_original_cell": {
+          "median_site_gain_pct": -0.004350448494094827,
+          "seed_median_gain_pct": {
+            "11": -0.01031032899543316,
+            "23": -0.02765509916207165
+          },
+          "site_gain_pct": {
+            "layer_0.down_proj": -0.004350448494094827,
+            "layer_0.q_proj": 3.363813923201003,
+            "layer_0.up_proj": -3.0399921927511953,
+            "layer_15.down_proj": 0.004263242784924293,
+            "layer_15.q_proj": -0.1631563081711196,
+            "layer_15.up_proj": 0.14082510465406317,
+            "layer_31.down_proj": -0.05005222501792694,
+            "layer_31.q_proj": 0.5675965292305352,
+            "layer_31.up_proj": -0.1625827372530586
+          }
+        },
+        "relative_cell_vs_relative_grid": {
+          "median_site_gain_pct": 0.007803853679200223,
+          "seed_median_gain_pct": {
+            "11": 0.015799138861916084,
+            "23": -0.018365845338830233
+          },
+          "site_gain_pct": {
+            "layer_0.down_proj": -0.004150796876856155,
+            "layer_0.q_proj": -0.5572959747798811,
+            "layer_0.up_proj": 1.1836163617105766,
+            "layer_15.down_proj": 0.007803853679200223,
+            "layer_15.q_proj": 0.15535871509384513,
+            "layer_15.up_proj": 0.00991910521713768,
+            "layer_31.down_proj": -0.033731112104595784,
+            "layer_31.q_proj": 0.01123472125621472,
+            "layer_31.up_proj": -0.04444940346766679
+          }
+        },
+        "relative_cell_vs_stronger_grid": {
+          "median_site_gain_pct": -0.033731112104595784,
+          "seed_median_gain_pct": {
+            "11": -0.06265267033807032,
+            "23": -0.03727220704041745
+          },
+          "site_gain_pct": {
+            "layer_0.down_proj": -0.005397652151473142,
+            "layer_0.q_proj": -0.5572959747798811,
+            "layer_0.up_proj": -2.9615468958879343,
+            "layer_15.down_proj": 0.0016741240286610726,
+            "layer_15.q_proj": -0.14903900630207634,
+            "layer_15.up_proj": -0.026770901077788345,
+            "layer_31.down_proj": -0.033731112104595784,
+            "layer_31.q_proj": 0.01123472125621472,
+            "layer_31.up_proj": -0.2460888374240744
+          }
+        }
+      },
+      "decision": "STOP",
+      "minimum_screen_gain_pct": 1.0
+    },
+    "reason": null,
+    "run_dir": "/content/CellQuant/runs/experiments/2026-11-18T113527.480531_0000_3a6d0f932d",
+    "status": "SCREEN_COMPLETE"
+  },
+  "cloud_screen_archive": "/content/CellQuant/runs/01_pilot/objective_1b84bac6db7f/screen_2026-11-18T113527.480531_0000_3a6d0f932d.zip",
+  "confirmation_cell_executed": true,
+  "confirmation_enabled": true,
+  "consecutive_pairs_per_search_arm": 32,
+  "evidence_kind": "FIT_OBJECTIVE_SCREEN",
+  "finished_at_utc": "2026-11-18T11:51:31.089003+00:00",
+  "formal_confirmation_started": false,
+  "investment_checks": {
+    "positive_median_against_original_cellquant": false,
+    "positive_seed_medians_against_stronger_grid": false,
+    "stronger_grid_median_ge_1pct": false
+  },
+  "notebook": "notebooks/01c_Colab_Objective_Trial.ipynb",
+  "notebook_sha256_at_extraction": "1f0145d34d4ff8c9894cd8c338dba2a40265bd4ceccf61ce235a8f8b7d4284b6",
+  "pair_steps_observed": 256,
+  "program_elapsed_seconds": 961.41,
+  "scope": "Extracted from the saved 01c notebook output. Recomputed site medians and investment checks from the printed summary. Original per-arm document results are in the Colab archive.",
+  "source_type": "real_layer",
+  "stronger_grid_sites_improved": 2
+}

@@ -13,16 +13,33 @@ from cellquant.data import (resolve_revision,wikitext_documents,tokenize_documen
 from cellquant.gates import evaluate_file
 
 
-def prepare(config_path,output,*,include_tests=False,relative_screen=None):
+def cached_matching_model(config, model_id, weight_files, cache):
+    from huggingface_hub import try_to_load_from_cache
+    def cached(name, revision):
+        path = try_to_load_from_cache(model_id, name, revision=revision, cache_dir=str(cache))
+        return isinstance(path, str) and Path(path).is_file()
+    required = ['config.json', *(row['path'] for row in weight_files)]
+    if len(weight_files) > 1:
+        required.append('model.safetensors.index.json')
+    return (all(cached(name,config['model_revision']) for name in required)
+            and all(cached(name,config['tokenizer_revision']) for name in ('tokenizer_config.json','tokenizer.json')))
+
+
+def prepare(config_path,output,*,include_tests=False,relative_screen=None,matching_study=False):
     config=read_json(config_path);output=Path(output).resolve()
     previous=None
     parent_dataset_fingerprints=set()
-    if relative_screen is not None:
-        from cellquant.objective_screen import verified_screen, validate_screen_config
-        if config.get('stage')!='G1' or include_tests or config.get('resume_run_dir'):
-            raise ValueError('A confirmation uses a fresh G1 run on training documents')
+    if relative_screen is not None or matching_study:
+        from cellquant.objective_screen import verified_screen, validate_screen_config, verify_parent_manifests
+        if (config.get('stage')!='G1' or include_tests or config.get('resume_run_dir')
+                or config.get('g1_confirmation') or config.get('output_matching_study')
+                or (relative_screen is not None and matching_study)):
+            raise ValueError('Select one study on the original frozen G1 training documents')
         validate_screen_config(config)
-        screen_sha=verified_screen(relative_screen,config)
+        if matching_study:
+            verify_parent_manifests(config)
+        else:
+            screen_sha=verified_screen(relative_screen,config)
         previous={}
         for seed in config['seeds']:
             manifest,parts=load_token_manifest(config['data']['token_manifests'][str(seed)])
@@ -33,10 +50,15 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None):
                 raise ValueError('Parent token identity does not match the G1 protocol')
             previous[seed]=parts
             parent_dataset_fingerprints.add(identity['dataset_fingerprint'])
-        config['g1_confirmation']={'parent_config_sha256':config_hash(config),'screen_result_sha256':screen_sha,
-            'partition_seed_namespace':20261118,'extra_control':'original_objective_grid',
-            'parent_token_manifests':{s:sha256_file(p) for s,p in config['data']['token_manifests'].items()}}
-        config['solver']['fit_objective']='relative_site_nmse'
+        parent={'parent_config_sha256':config_hash(config),
+                'parent_token_manifests':{s:sha256_file(p) for s,p in config['data']['token_manifests'].items()}}
+        if matching_study:
+            from cellquant.matching_study import DESIGN
+            config['output_matching_study']={**parent, 'design':DESIGN}
+        else:
+            config['g1_confirmation']={**parent,'screen_result_sha256':screen_sha,
+                'partition_seed_namespace':20261118,'extra_control':'original_objective_grid'}
+            config['solver']['fit_objective']='relative_site_nmse'
         config.pop('result_path',None)
     if output.exists() and any(output.iterdir()):raise ValueError('Use a new preparation directory; frozen artifacts are immutable')
     output.mkdir(parents=True,exist_ok=True)
@@ -45,9 +67,13 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None):
     cache,dataset_cache=huggingface_cache_paths(config.get('runtime'))
     from transformers import AutoTokenizer
     from datasets import load_dataset
-    config['model_revision']=resolve_revision(model_id,config.get('model_revision'),token=token)
-    config['tokenizer_revision']=resolve_revision(model_id,config.get('tokenizer_revision') or config['model_revision'],token=token)
-    config['dataset_revision']=resolve_revision(data['calibration_dataset'],config.get('dataset_revision'),repo_type='dataset',token=token)
+    if matching_study:
+        if not all(immutable_revision(config.get(k)) for k in ('model_revision','tokenizer_revision','dataset_revision')):
+            raise ValueError('Output matching requires the three pinned revisions from the original G1')
+    else:
+        config['model_revision']=resolve_revision(model_id,config.get('model_revision'),token=token)
+        config['tokenizer_revision']=resolve_revision(model_id,config.get('tokenizer_revision') or config['model_revision'],token=token)
+        config['dataset_revision']=resolve_revision(data['calibration_dataset'],config.get('dataset_revision'),repo_type='dataset',token=token)
     # Resolve metadata before opening formal test splits. Do not resolve mutable
     # task/C4 branches at scoring time.
     if config.get('stage')=='full':
@@ -58,19 +84,31 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None):
         config['harness_commit']=HARNESS_COMMIT
         ev.setdefault('harness_path','third_party/lm-evaluation-harness')
         c4=ev['c4'];c4['revision']=resolve_revision(c4['dataset_id'],c4.get('revision'),repo_type='dataset',token=token)
-    from huggingface_hub import HfApi
-    info=HfApi().model_info(model_id,revision=config['model_revision'],files_metadata=True,token=token)
     weight_files=[]
-    for sibling in info.siblings:
-        if sibling.rfilename.endswith('.safetensors'):
-            lfs=sibling.lfs
-            if lfs is None:raise ValueError('Expected LFS SHA-256 metadata for model weights')
-            weight_files.append({'path':sibling.rfilename,'size_bytes':sibling.size,'sha256':lfs.sha256})
+    if matching_study:
+        parent_source=Path(config['model_source_manifest_path'])
+        if sha256_file(parent_source)!=config['model_source_manifest_sha256']:
+            raise ValueError('Original model shard metadata changed')
+        source=read_json(parent_source)
+        if source['model_id']!=model_id or source['revision']!=config['model_revision']:
+            raise ValueError('Original model shard identity does not match this study')
+        weight_files=source['files']
+    else:
+        from huggingface_hub import HfApi
+        info=HfApi().model_info(model_id,revision=config['model_revision'],files_metadata=True,token=token)
+        for sibling in info.siblings:
+            if sibling.rfilename.endswith('.safetensors'):
+                lfs=sibling.lfs
+                if lfs is None:raise ValueError('Expected LFS SHA-256 metadata for model weights')
+                weight_files.append({'path':sibling.rfilename,'size_bytes':sibling.size,'sha256':lfs.sha256})
     if not weight_files:raise ValueError('No safetensors weight metadata in pinned HF model')
     model_manifest=atomic_json(output/'model_source_manifest.json',{'model_id':model_id,'revision':config['model_revision'],'files':weight_files})
     config['model_source_manifest_path']=str(model_manifest)
     config['model_source_manifest_sha256']=sha256_file(model_manifest)
+    if matching_study and cached_matching_model(config,model_id,weight_files,cache):
+        config['runtime']['local_cache_only']=True
     tokenizer=AutoTokenizer.from_pretrained(model_id,revision=config['tokenizer_revision'],cache_dir=str(cache),token=token,
+                                           local_files_only=matching_study and config['runtime'].get('local_cache_only',False),
                                            add_bos_token=False,add_eos_token=False)
     ds=load_dataset(data['calibration_dataset'],data['dataset_config'],split='train',revision=config['dataset_revision'],cache_dir=str(dataset_cache),token=token)
     if previous is not None and parent_dataset_fingerprints!={ds._fingerprint}:
@@ -84,6 +122,10 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None):
     config['runtime'].update(dtype=dtype,cache_dir=str(cache),dataset_cache_dir=str(dataset_cache))
     manifests={};formal=config.get('formal_pilot',{})
     fresh=confirmation_partitions(blocks,previous,formal['heldout_sequences']) if previous is not None else None
+    if matching_study:
+        reserved = [b for _, dev in fresh.values() for b in dev]
+        fresh=confirmation_partitions(blocks,previous,formal['heldout_sequences'],
+                                      namespace=DESIGN['partition_namespace'],exclude=reserved)
     tests={}
     if include_tests:
         g2=config.get('g2_evidence_path','runs/gates/G2_evidence.json')
@@ -129,7 +171,10 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None):
               'harness_commit':config.get('harness_commit'),
               'tokenization':'per-document nonoverlapping blocks; no BOS; drop short tails',
               'note':'Own matched protocol; do not compare these PPL values to stock concatenated WikiText numbers'}
-    if previous is not None:protocol['g1_confirmation']=config['g1_confirmation']
+    if matching_study:
+        protocol['output_matching_study']=config['output_matching_study']
+    elif previous is not None:
+        protocol['g1_confirmation']=config['g1_confirmation']
     protocol_path=atomic_json(output/'protocol.json',protocol)
     config.update(protocol_manifest_path=str(protocol_path),protocol_sha256=sha256_file(protocol_path),protocol_status='FROZEN')
     provenance={'models':{model_id:{'model_revision':config['model_revision'],'tokenizer_revision':config['tokenizer_revision']}},
@@ -145,4 +190,5 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None):
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--config',required=True);p.add_argument('--output',required=True);p.add_argument('--include-tests',action='store_true')
     p.add_argument('--relative-g1-screen',help='Completed objective-screen run for the single fresh G1 confirmation')
-    a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests,relative_screen=a.relative_g1_screen)
+    p.add_argument('--matching-study',action='store_true',help='Freeze a new disjoint train-document cohort for output matching')
+    a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests,relative_screen=a.relative_g1_screen,matching_study=a.matching_study)

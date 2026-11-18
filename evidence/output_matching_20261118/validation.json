@@ -1,0 +1,129 @@
+{
+  "dataset": "Salesforce/wikitext",
+  "dataset_parquet_sha256": "204929b7ff9d6184953f867dedb860e40aa69c078fc1e54b3baaa8fb28511c4c",
+  "dataset_revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+  "dataset_split": "validation",
+  "document_overlap": {
+    "set_sizes": [
+      16,
+      16,
+      16,
+      8
+    ],
+    "sets_in_order": [
+      "fit_all",
+      "exploratory_dev",
+      "first_dev",
+      "second_dev"
+    ],
+    "upper_triangle_intersection_counts": {
+      "document_id": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "document_sha256": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "token_ids_sha256": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "engineering": {
+    "01d_default_execution": "PASS",
+    "full_shape_cuda": {
+      "content_sha256": "336e5f8dbd3327ae3956461b1b750b71f0c5b511d41a2c75c20f0d072536b1dd",
+      "path": "cuda_4096.json",
+      "source_type": "synthetic_math"
+    },
+    "math_reference": {
+      "checks": 10,
+      "source_type": "synthetic_math",
+      "status": "PASS"
+    },
+    "pytest_passed": 341,
+    "pytest_seconds": 78.71
+  },
+  "formal_model_evaluation": "NOT_RUN",
+  "historical_g1_recomputed_from_documents": true,
+  "measured_on": {
+    "device": "NVIDIA GeForce RTX 3050 Laptop GPU",
+    "model_dtype": "float32",
+    "solver_dtype": "float64",
+    "torch": "2.6.0+cu118"
+  },
+  "measured_runs": {
+    "hybrid_42m": {
+      "absolute_document_error_decomposition_gap_max_nmse": 2.5470397434166498e-17,
+      "archive": "hybrid_42m/measurements.zip",
+      "archive_sha256": "23312ff86ebb1be260f0c69caa43dff2289141a9236bbb3605a87703ef08d17f",
+      "bootstrap_draws": 10000,
+      "calibration_seeds": [
+        11,
+        23
+      ],
+      "distinct_heldout_documents": 8,
+      "max_abs_output_activation_contribution_pp": 1.164899485306384e-14,
+      "max_abs_output_loss_replay_minus_additive_prediction": 3.1712913545201005e-17,
+      "min_limit_minus_accepted_risk": 0.00010413554961896665,
+      "min_limit_minus_risk_upper": 9.74014547237001e-05,
+      "min_risk_upper_minus_full_step_risk": 0.00011767873767282166,
+      "normalized_orthogonality_residual_max": 4.725711443754908e-16,
+      "protocol_sha256": "68dbe2738c6c373e54aa5e3c965a3d74a2a756adce5ed6c98c6e1162d59cfc0a",
+      "raw_methods_with_verified_sha256": 16,
+      "raw_statistics_equal_archived_summary": true,
+      "run_id": "matching_42m_03020460df09",
+      "source_type": "real_layer",
+      "status": "STUDY_COMPLETE"
+    },
+    "pretrained_42m": {
+      "absolute_document_error_decomposition_gap_max_nmse": 2.59346706789437e-17,
+      "archive": "pretrained_42m/measurements.zip",
+      "archive_sha256": "3a6801c666b8cdcbbeb69dd19b7188941527fda806227988f18b2c982b0a9b54",
+      "bootstrap_draws": 10000,
+      "calibration_seeds": [
+        11,
+        23
+      ],
+      "distinct_heldout_documents": 16,
+      "max_abs_output_activation_contribution_pp": 0.0,
+      "max_abs_output_loss_replay_minus_additive_prediction": 3.1712913545201005e-17,
+      "min_limit_minus_accepted_risk": 0.00010413554961896665,
+      "min_limit_minus_risk_upper": 9.74014547237001e-05,
+      "min_risk_upper_minus_full_step_risk": 0.00011767873767282166,
+      "normalized_orthogonality_residual_max": 4.725711443754908e-16,
+      "protocol_sha256": "99efb7887d2d34d1423e1620da5824ca4c09579feadb2eb478a5680dd5ab7e10",
+      "raw_methods_with_verified_sha256": 14,
+      "raw_statistics_equal_archived_summary": true,
+      "run_id": "matching_42m_d009ab7a0985",
+      "source_type": "real_layer",
+      "status": "STUDY_COMPLETE"
+    }
+  },
+  "model": "Xenova/llama2.c-stories42M",
+  "model_revision": "be9e05cce52ef2a4615026726bddb12639d541f5",
+  "model_weights_sha256": "ca5d73fb5862fe2732b76c4e308ed343b4db2abbaf1fc1d58bd5b4f29d96d096",
+  "new_7b_A100_matching": "NOT_RUN",
+  "parameters_after_norm_fusion": 58073600,
+  "pretrained_unique_parameters": 41689600,
+  "repeat_same_heldout_documents": {
+    "content_sha256": "5082d18fdadcf9a2573d341e7ecf7bd414e7495bd04d2b015b8b10b625e3e14b",
+    "identical_rotations_and_heldout_records": 16,
+    "path": "hybrid_42m/timing_repeat.json"
+  },
+  "scope": "Pretrained 42M development and held-out replication, original A100 G1 site reanalysis"
+}

@@ -2,7 +2,9 @@
 
 更新于 2026-11-18。LLaMA-2-7B 的正式 A100 试验已完成，G1 为 **FAIL**。G2–G4 尚未执行。
 
-下一轮的拟合目标 `relative_site_nmse` 和 01c 已接入，等待真实 A100 数据。新目标按各拟合位置的起点误差冻结权重，基线使用相同权重，另重跑原目标网格。RTX 3050 Laptop 上两种子、两位置、四维的 32 对短测流程已执行，结果标记为 `FIXTURE_ONLY`。正式投入依次取决于拟合文档内的短测、新文档 G1、全模型 G2 和运行就绪 G3。[本轮协议](G1_OBJECTIVE_TRIAL.md) · [本地验证记录](../evidence/g1_objective_20261118/local_validation.json)
+**01d 输出投影研究已完成两批 42M 真实模型验证，7B A100 入口就绪。** 在相同的 16 对网格起点上，一层不相交 Givens 行对修正在两批文档上分别降低输出中位 NMSE 1.84% 和 1.70%。在第二批全新八篇上，从更强的 32 对网格出发增加同一修正，输出相对改善 1.16% [0.87%, 1.43%]，九位置 0.71% [−0.46%, 1.07%]。两种子分别应用 68 对和 0 对。下一次 7B 实验从 128 和 256 对网格出发，记录每组的覆盖、风险、三项误差归因和校准时间。[实测、原理和协议](OUTPUT_MATCHING_STUDY.md) · [工程与数据复核](../evidence/output_matching_20261118/validation.json)
+
+拟合目标 `relative_site_nmse` 的 01c 已在真实 A100 上运行完成，状态为 `SCREEN_COMPLETE`，判定为 **STOP**。两种子、九位置、每组 32 对。新 CellQuant 相对两个网格中较强者的中位改善为 −0.0337%，种子 11 为 −0.0627%，种子 23 为 −0.0373%。相对旧 CellQuant 为 −0.0044%。三项预设条件均未满足，程序跳过正式 G1 复验。此次评估使用原校准文档内的划分。[01c 实测摘要](../evidence/g1_objective_20261118/a100_summary.json) · [本轮协议](G1_OBJECTIVE_TRIAL.md) · [本地工程验证](../evidence/g1_objective_20261118/local_validation.json)
 
 引擎使用 `torch_batched_bilateral_prefix_v3`。本机 RTX 3050 Laptop 上，两版完整轴混合合成案例各重复三次，单对搜索中位数从 20.34 秒降至 3.48 秒，结果一致。本地回归 310 项通过。A100 上新版 CellQuant 完成了两个 seed 各 128 对的正式求解，独立文档上的收益和校准时间见下文。[同卡合成测量](../evidence/a100_readiness_20261118/benchmark.json) · [工程验证](../evidence/a100_readiness_20261118/validation.json) · [A100 协议](COLAB_A100_TEST.md)
 

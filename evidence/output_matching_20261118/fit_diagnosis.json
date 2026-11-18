@@ -1,0 +1,57 @@
+{
+  "fit_documents": [
+    "18",
+    "20",
+    "21",
+    "38",
+    "48",
+    "55",
+    "56",
+    "8"
+  ],
+  "joint_fit_trials": [
+    {
+      "budget_a": 0.5032212603810113,
+      "budget_w": 0.49904669687798453,
+      "feasible": true,
+      "loss": 0.21664381724076107,
+      "output_loss": 0.09328104065024997,
+      "scale": 0.0
+    },
+    {
+      "budget_a": 0.502928066195134,
+      "budget_w": 0.49984683140641906,
+      "feasible": false,
+      "loss": 0.22196104728480126,
+      "output_loss": 0.0922528973049968,
+      "scale": 0.25
+    },
+    {
+      "budget_a": 0.5039728667405065,
+      "budget_w": 0.5016139019619812,
+      "feasible": false,
+      "loss": 0.22427769178861268,
+      "output_loss": 0.09201090899567807,
+      "scale": 0.5
+    },
+    {
+      "budget_a": 0.5087052014114601,
+      "budget_w": 0.5023710464570537,
+      "feasible": false,
+      "loss": 0.2080369357880757,
+      "output_loss": 0.07924648171909976,
+      "scale": 1.0
+    }
+  ],
+  "limits": {
+    "budget_a": 0.5033253959306303,
+    "budget_w": 0.49951720339666505
+  },
+  "method": "product_full",
+  "run_id": "matching_42m_d885a83aff56",
+  "scope": "Fit-only exploratory observation used to design the risk allocation",
+  "seed": 11,
+  "selected_scale": 0.0,
+  "source_sha256": "f10ea2f927d755bf3146c66a7614f91ccb7cd7388a409a3603151a3de8dffcac",
+  "source_type": "real_layer"
+}

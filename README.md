@@ -4,9 +4,15 @@
 
 **2026-11-18 的正式 A100 G1 已完成，判定为 FAIL。** LLaMA-2-7B 两个 seed、五种方法共 10 份结果齐全。CellQuant 在独立文档上相对 Hadamard 的跨位置中位 NMSE 降幅为 2.569%，相对逐位置最强匹配搜索为 0.017%。同卡校准速度比为 0.264×。当前停在 G1，G2 和全量实验尚未启动。[正式判定](evidence/colab_a100_g1_20261118/G1.json) · [实测分析](docs/IMPLEMENTATION_STATUS.md#a100-正式-g1) · [实验协议](docs/COLAB_A100_TEST.md)
 
+**下一轮 A100 运行 01d。** 新方法从已拟合的共享旋转出发，利用输出行对的可分离性和原尺度预算修正 `down_proj`。42M 预训练 LLaMA 的两批独立验证文档上，相对起始网格，输出中位 NMSE 分别下降 1.84% 和 1.70%。在第二批上，延长网格后再加修正，相对延长网格的输出改善为 1.16%，九位置为 0.71% [−0.46%, 1.07%]。已有上轮冻结输入的 Colab 在终端执行一行即可准备新文档并启动 7B 研究。[原理、消融及 A100 判读](docs/OUTPUT_MATCHING_STUDY.md) · [实测图](evidence/output_matching_20261118/hybrid_42m/site_effects.png)
+
+```bash
+cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py
+```
+
 16 份验证文档的配对抽样给出相对最强匹配对照的 95% 区间 [−0.2054%，+0.0482%]。后续 A100 拟合诊断已完成。改变配对后，CellQuant 相对网格的额外收益在一个种子上扩大，在另一个种子上缩小。依据事先记录的条件，停止这条配对修正。[文档区间](evidence/colab_a100_g1_20261118/document_intervals.json) · [A100 诊断结果](evidence/g1_pair_diagnostic_20261118/a100_summary.json) · [诊断协议](docs/G1_PAIR_DIAGNOSTIC.md)
 
-下一轮保留原坐标表，按各位置在拟合文档上的起始 NMSE 归一化目标。01c 先用 32 个连续坐标对做新旧目标与网格的四组比较。短测通过后可在全新的验证文档上做一次正式 G1，并额外保留原目标网格。新版真实 7B 结果待测。[本轮 A100 操作与判据](docs/G1_OBJECTIVE_TRIAL.md) · [01c notebook](notebooks/01c_Colab_Objective_Trial.ipynb)
+01c 的真实 A100 短测已完成，判定为 **STOP**。按各位置起始 NMSE 归一化后，新 CellQuant 相对逐种子、逐位置较强网格的中位改善为 −0.0337%，两个种子的中位改善均为负，低于预设的 1% 投入条件。正式 G1 复验已按条件跳过，本轮到此结束。[01c 实测摘要](evidence/g1_objective_20261118/a100_summary.json) · [短测协议](docs/G1_OBJECTIVE_TRIAL.md)
 
 2026-11-15 已从 CPU 参考扩展到生产事件求解器、匹配对照、真实模型实验入口、SpinQuant/GPTQ 适配、数据与评估流程。当时完成了数学与小模型结构验证。
 
@@ -18,7 +24,7 @@
 - 合成 G0：3 seeds、24 cases，真实计算为 PASS；完整 d=4096、FFN=11008 工程 smoke 已运行，使用少 tokens/窄角域。
 - 随机小 LLaMA 的 FP 融合/旋转、GPTQ、RTN 恢复、MHA/GQA、R1/R2 训练和恢复已实际执行。
 - 五本阶段 notebook 和新增 GitHub/Colab 初始化 notebook 的默认路径均在本地运行成功；不会自动下载模型或启动 sweep。
-- 本机只有 RTX 3050 Laptop 4GiB、约 2GiB 可用 CPU RAM；FHT/FlashAttention/Triton 未安装。7B/8B 和 96GB Blackwell 项目保持 NOT_RUN。
+- 本机 GPU 为 RTX 3050 Laptop 4GiB，42M 预训练模型与完整输出轴形状均已实测。原 7B 真实层 G1 在 A100 上完成。新输出匹配的 7B 验证、整模型 G2–G4 与 96GB Blackwell 测试待运行。
 
 ## 开始运行
 

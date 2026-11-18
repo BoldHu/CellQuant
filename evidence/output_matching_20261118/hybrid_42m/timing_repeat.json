@@ -1,0 +1,128 @@
+{
+  "archive": "timing_repeat.zip",
+  "archive_sha256": "ef13ed5b7145c1cf03825f3cf43f51f7ee6267fb4bd775626769328f4e1c8852",
+  "calibration_seconds": {
+    "11": {
+      "added_matching_seconds": 0.6089999999967404,
+      "applied_pairs": 68,
+      "continued_grid_seconds": 73.33087080006953,
+      "hybrid_seconds": 73.93987080006627,
+      "selected_scale": 1.0
+    },
+    "23": {
+      "added_matching_seconds": 0.5779999999795109,
+      "applied_pairs": 0,
+      "continued_grid_seconds": 72.29265659995144,
+      "hybrid_seconds": 72.87065659993095,
+      "selected_scale": 0.0
+    }
+  },
+  "identical_paired_comparisons": true,
+  "identical_rotation_and_heldout_records": 16,
+  "measurements": [
+    {
+      "matching_result_sha256": "6ddc7919c038cd8befff07d0ee1e0ee3a0c50683c2f166e6a5d2aec65b8d131a",
+      "method": "continued_grid",
+      "q_sha256": "44c70ed8fc18574dd5b023fc04f545996ec4e511d7d844063dcb9c3ea7ea841e",
+      "seed": 11
+    },
+    {
+      "matching_result_sha256": "d3516b4ad1dea1185b88c6b674a099a55921a8832d7e9361ec81e37e4a08b598",
+      "method": "continued_grid_plus_matching",
+      "q_sha256": "86fd84f057c94d35552ae070cb99619c318da39c01450005b1e585079d5a54be",
+      "seed": 11
+    },
+    {
+      "matching_result_sha256": "6c9959cd8c25a02142912b7ccb6058cac995694e71c0fd80f839129caf1dd73a",
+      "method": "hadamard_shared",
+      "q_sha256": "1b281939ee25d7ee60bdf8b4dd58f4726cb2115378bdb33ca9814106ce2affbf",
+      "seed": 11
+    },
+    {
+      "matching_result_sha256": "db0b29971085a3d155068236f4a4e183d977cf31b74d4e67178de9e8caad3093",
+      "method": "product_full",
+      "q_sha256": "4e86c1d285a450ba8cc28f2c8b4fd5b065891d07f9d0dd683cd5ac7f4545934f",
+      "seed": 11
+    },
+    {
+      "matching_result_sha256": "824d2833b160a12433270cd07f1e724c73f335de1fd4cedc7cf5ff6375b229bd",
+      "method": "product_joint_check_only",
+      "q_sha256": "0ba07d7a90ab13a0b73036b0228603739a7e3e4a68f8dff1117ba88ef5bf2781",
+      "seed": 11
+    },
+    {
+      "matching_result_sha256": "9bad7c39a03edc84e7297f8002648f2561b6886d7a6b3d81c706785feb7a321f",
+      "method": "product_prefix",
+      "q_sha256": "c27a560804f1013cfeb601cbf89c3656b6f256b64c2c6b3aef59762022801f05",
+      "seed": 11
+    },
+    {
+      "matching_result_sha256": "63d20f5955c6d5898cc01e3e0babb32270dcaecb6c8ec52ee663d39a9f4f4142",
+      "method": "warm_grid",
+      "q_sha256": "0ba07d7a90ab13a0b73036b0228603739a7e3e4a68f8dff1117ba88ef5bf2781",
+      "seed": 11
+    },
+    {
+      "matching_result_sha256": "030f9df8eca1ec19e6e5a49534f36e0402816c5fcba1f0be5c07e4735f4ec746",
+      "method": "weight_full",
+      "q_sha256": "0ba07d7a90ab13a0b73036b0228603739a7e3e4a68f8dff1117ba88ef5bf2781",
+      "seed": 11
+    },
+    {
+      "matching_result_sha256": "4be2c4d38ba3614874acfb251eb94420ae5696d6cf18d02c3c99c9f9aefeb771",
+      "method": "continued_grid",
+      "q_sha256": "89b9ab07108df1268bd8f717f30b62be6e164c13809628e1996832102a09b25a",
+      "seed": 23
+    },
+    {
+      "matching_result_sha256": "1247254a8eeea7e5b2996e7304ca58a94dd2ee9ddcce2227b42161f49dbad13b",
+      "method": "continued_grid_plus_matching",
+      "q_sha256": "89b9ab07108df1268bd8f717f30b62be6e164c13809628e1996832102a09b25a",
+      "seed": 23
+    },
+    {
+      "matching_result_sha256": "bea18633e7abeded11ba4358be6a61013de18ec349e5cb64f89aa36caf471753",
+      "method": "hadamard_shared",
+      "q_sha256": "e93d26f9b83f22bcaedc05e9c5c2345d7d0e3ca4b89174a829837a745b8b8cdb",
+      "seed": 23
+    },
+    {
+      "matching_result_sha256": "da81909e1dd9c864184b3f36f945f07ee2358bca5b40107e3368b2030fffb985",
+      "method": "product_full",
+      "q_sha256": "e5865532cfe8c0e7138b96a06ee48b055e3f08ffbd7fb833d92d6fac6ee6c5b6",
+      "seed": 23
+    },
+    {
+      "matching_result_sha256": "6ae6a4ede9bc0bda095a65dc965a033063d80b850afcb9f0b43ef464379edb89",
+      "method": "product_joint_check_only",
+      "q_sha256": "2f3b23620d178c0b6082328c79b113976fe8a1219ccefabbd2f83a51978a609b",
+      "seed": 23
+    },
+    {
+      "matching_result_sha256": "058aae5fc0853ed47436d8b19be5e72a5c12fb53ffc37abb9c2fad9ced7cb88d",
+      "method": "product_prefix",
+      "q_sha256": "018b9784c438e7eb9ff80d2ac79881cf40d57c9c74e0947f70fb8d2fc051e4fc",
+      "seed": 23
+    },
+    {
+      "matching_result_sha256": "a0d817aafcef42480d156df0bcd52d6ce2dbcaf9666d5b38fa300d9045e9cf24",
+      "method": "warm_grid",
+      "q_sha256": "2f3b23620d178c0b6082328c79b113976fe8a1219ccefabbd2f83a51978a609b",
+      "seed": 23
+    },
+    {
+      "matching_result_sha256": "c1d42334a8486819d25fa2ddb41fa8365bae8bbf5d9faf18a3c87b3ed5cde719",
+      "method": "weight_full",
+      "q_sha256": "0440d3dc144c0b51b8ffd42a2332bb2cbe5acf1a3a78634850aed12cdfbbfb37",
+      "seed": 23
+    }
+  ],
+  "model": "Xenova/llama2.c-stories42M",
+  "model_revision": "be9e05cce52ef2a4615026726bddb12639d541f5",
+  "pretrained_unique_parameters": 41689600,
+  "previous_run_id": "matching_42m_03020460df09",
+  "run_id": "matching_42m_f853d80f2830",
+  "same_eight_heldout_documents": 8,
+  "scope": "Repeated calibration on the same frozen data; no concurrent repository GPU test during the repeat",
+  "source_type": "real_layer"
+}

@@ -78,3 +78,7 @@
 ParoQuant v2（2026-02-14，ICLR 2026）已经覆盖可优化的成对 Givens 旋转、通道缩放和配套推理内核。作者代码在本日查询的 HEAD 为 `9ee635a9c2e7d02c46b1c0ac4071d69afbbfc1f1`。若 G1 获准继续，将 ParoQuant 列为近期实测候选，先审计模型支持、激活和 KV 位宽、分组及后端是否能匹配；记录原版配置和任何适配。完整 SpinQuant 仍需单独在相同模型、token、GPTQ 和评价协议下复现。本项目尚无这两者的模型级排名。[ParoQuant 论文](https://arxiv.org/abs/2511.10645) · [作者实现](https://github.com/z-lab/paroquant/tree/9ee635a9c2e7d02c46b1c0ac4071d69afbbfc1f1) · [SpinQuant 实现](https://github.com/facebookresearch/SpinQuant)
 
 对 11 月 1–18 日的共享旋转、动态双侧量化、角度及胞元搜索作了定向排查。理论比较需逐项对齐目标、编码、共享尺度和可行性约束。例如 TORQ 面向 MXFP4，其公开指标使用不同量化格式。本轮核查限于检索到的论文页面与作者仓库，投稿前仍应审阅相关全文和更新版本。[TORQ](https://arxiv.org/abs/2605.19561)
+
+### 输出行对实验的比较对象
+
+ParoQuant 已研究独立成对 Givens、通道缩放和高效推理内核。ButterflyQuant 已研究由连续 Givens 角参数化的可学习蝶形变换。Narita 与 Sato 已对局部 W4A4 误差作精确的补偿项与正交残差分解。01d 在全模型共享 R1 下推导输出行对的动态双侧乘积目标如何分离，再用输入侧组峰值增量约束同时更新。对照实验检验哪些收益来自行覆盖和激活信息，误差分解用于定位最终收益。强基线与模型级比较仍需使用相同量化协议实测。[ParoQuant](https://arxiv.org/abs/2511.10645) · [ButterflyQuant](https://arxiv.org/abs/2509.09679) · [Narita 与 Sato](https://arxiv.org/abs/2609.21450) · [本项目实验](OUTPUT_MATCHING_STUDY.md)

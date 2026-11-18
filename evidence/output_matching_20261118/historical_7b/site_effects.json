@@ -1,0 +1,163 @@
+{
+  "bootstrap_draws": 10000,
+  "bootstrap_seed": 20261115,
+  "comparisons": {
+    "cell_vs_grid": {
+      "all": {
+        "median_gain_pct": 0.03845397184727983,
+        "paired_95_pct": [
+          -0.005209456220947456,
+          0.2657204737564342
+        ],
+        "seed_medians_pct": {
+          "11": -0.003121826702612296,
+          "23": 0.03250630759925599
+        }
+      },
+      "input": {
+        "median_gain_pct": 0.18642084764596834,
+        "paired_95_pct": [
+          -0.0716566800356122,
+          0.47791869708476575
+        ],
+        "seed_medians_pct": {
+          "11": 0.07393326669513645,
+          "23": 0.19278416512808483
+        }
+      },
+      "output": {
+        "median_gain_pct": 0.011020340552547747,
+        "paired_95_pct": [
+          -0.011497181503570125,
+          0.03708414585479227
+        ],
+        "seed_medians_pct": {
+          "11": -0.010465626494160496,
+          "23": 0.03250630759925599
+        }
+      },
+      "site_gain_pct": {
+        "layer_0.down_proj": 0.006152325779756884,
+        "layer_0.q_proj": 1.3301910772813064,
+        "layer_0.up_proj": 0.3752723664525115,
+        "layer_15.down_proj": 0.011020340552547747,
+        "layer_15.q_proj": -0.3041267874590692,
+        "layer_15.up_proj": 0.017215718668667224,
+        "layer_31.down_proj": 0.03845397184727983,
+        "layer_31.q_proj": 0.1891702489162428,
+        "layer_31.up_proj": 0.18367144637569388
+      }
+    },
+    "cell_vs_hadamard": {
+      "all": {
+        "median_gain_pct": 2.5689038887399764,
+        "paired_95_pct": [
+          1.4790992474134155,
+          3.0102310483003025
+        ],
+        "seed_medians_pct": {
+          "11": 3.137321419466499,
+          "23": 0.8247667827255611
+        }
+      },
+      "input": {
+        "median_gain_pct": 3.317198495046525,
+        "paired_95_pct": [
+          2.856357051443889,
+          4.006219256524672
+        ],
+        "seed_medians_pct": {
+          "11": 3.9542808598725774,
+          "23": 3.267975917864419
+        }
+      },
+      "output": {
+        "median_gain_pct": 0.022830827252606767,
+        "paired_95_pct": [
+          0.000940592612469621,
+          0.07511674846569533
+        ],
+        "seed_medians_pct": {
+          "11": 0.03664538546070961,
+          "23": 0.06246093530269947
+        }
+      },
+      "site_gain_pct": {
+        "layer_0.down_proj": 0.016715022299201854,
+        "layer_0.q_proj": 7.793490288730476,
+        "layer_0.up_proj": 21.16307896337161,
+        "layer_15.down_proj": 0.022830827252606767,
+        "layer_15.q_proj": 0.4182180162238036,
+        "layer_15.up_proj": 2.5689038887399764,
+        "layer_31.down_proj": 0.12776475576343205,
+        "layer_31.q_proj": 2.647713733116064,
+        "layer_31.up_proj": 3.9866832569769866
+      }
+    },
+    "grid_vs_hadamard": {
+      "all": {
+        "median_gain_pct": 2.4559016297795275,
+        "paired_95_pct": [
+          1.5572408106966085,
+          2.8582177088052982
+        ],
+        "seed_medians_pct": {
+          "11": 2.7063791137492688,
+          "23": 0.8908511840877154
+        }
+      },
+      "input": {
+        "median_gain_pct": 3.1782737100736593,
+        "paired_95_pct": [
+          2.8109310503443545,
+          3.6884571085964706
+        ],
+        "seed_medians_pct": {
+          "11": 3.789568598078552,
+          "23": 3.52006286540017
+        }
+      },
+      "output": {
+        "median_gain_pct": 0.011788513313282234,
+        "paired_95_pct": [
+          -0.013838998179253464,
+          0.07247276957248261
+        ],
+        "seed_medians_pct": {
+          "11": 0.058440948245308544,
+          "23": 0.06569093740073084
+        }
+      },
+      "site_gain_pct": {
+        "layer_0.down_proj": 0.010558172185198833,
+        "layer_0.q_proj": 6.5389615638288205,
+        "layer_0.up_proj": 20.861461230034642,
+        "layer_15.down_proj": 0.011788513313282234,
+        "layer_15.q_proj": 0.7193765799028251,
+        "layer_15.up_proj": 2.5527845062964847,
+        "layer_31.down_proj": 0.0893637826449023,
+        "layer_31.q_proj": 2.4559016297795275,
+        "layer_31.up_proj": 3.8037629138508335
+      }
+    }
+  },
+  "distinct_documents": 16,
+  "heldout_blocks_content_sha256": "15485b243cf3f617a179f85f94ee0bbd2dad8c72cf267519194444dde613521f",
+  "scope": "Retrospective, original 7B G1; fixed fits and sites.",
+  "seeds_held_fixed": [
+    11,
+    23
+  ],
+  "sites": [
+    "layer_0.down_proj",
+    "layer_0.q_proj",
+    "layer_0.up_proj",
+    "layer_15.down_proj",
+    "layer_15.q_proj",
+    "layer_15.up_proj",
+    "layer_31.down_proj",
+    "layer_31.q_proj",
+    "layer_31.up_proj"
+  ],
+  "source_type": "real_layer"
+}

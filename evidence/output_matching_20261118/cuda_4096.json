@@ -1,0 +1,52 @@
+{
+  "angles": 17,
+  "device": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "fit": {
+    "final": {
+      "budget_a": 0.1648198113546873,
+      "budget_w": 0.1479688077332898,
+      "loss": 0.08285023599909208,
+      "output_loss": 0.037180496063151505
+    },
+    "initial": {
+      "budget_a": 0.17414763347115886,
+      "budget_w": 0.15707336901568103,
+      "loss": 0.11198395538359311,
+      "output_loss": 0.05915362758625235
+    },
+    "limits": {
+      "budget_a": 0.17414763347115886,
+      "budget_w": 0.15707336901568103
+    },
+    "nonzero_applied_angles": 1654,
+    "product_replay_minus_predicted_change": 2.0816681711721685e-17,
+    "risk_allocation": {
+      "feasible_angle_fraction": 0.5249310661764706,
+      "full_step_risk_upper": {
+        "budget_a": 0.17414763347115886,
+        "budget_w": 0.15248455257046598
+      }
+    },
+    "seconds": 19.21899999998277,
+    "selected_scale": 1.0
+  },
+  "fit_tokens": 8,
+  "group_size": -1,
+  "implementation_sha256": "5d75ffd1c4c21e19d9755f52f12b5578fb27a8b2885984feb40887252e8b012b",
+  "matching_pairs": 2048,
+  "orthogonality_residual": 1.5034326055289768e-15,
+  "peak_cuda_allocated_gib": 2.5706443786621094,
+  "scope": "Full-size axes, one input and one output panel, eight synthetic tokens",
+  "source_type": "synthetic_math",
+  "torch": "2.6.0+cu118",
+  "weights": [
+    [
+      64,
+      4096
+    ],
+    [
+      4096,
+      11008
+    ]
+  ]
+}

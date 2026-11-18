@@ -13,7 +13,7 @@ CONTROLS = ('angle_grid_matched', 'fixed_scale_search_matched', 'givens_ste_matc
 ORIGINAL_GRID = 'original_objective_grid'
 
 
-def _document_data(records, seeds, sites, methods):
+def document_statistics(records, seeds, sites, methods):
     by_method = {(r['seed'], r['method']): r['panels'] for r in records}
     if len(by_method) != len(records) or set(by_method) != {(s, m) for s in seeds for m in methods}:
         raise ValueError('Expected one record per seed and method')
@@ -52,13 +52,22 @@ def _document_data(records, seeds, sites, methods):
             for pi, site in enumerate(sites):
                 for doc, values in totals[seed, method, site].items():
                     stats[mi, si, pi, doc_index[doc]] = values
-    if not np.allclose(stats[..., 1], stats[METHODS.index('hadamard_shared'), ..., 1],
+    if not np.allclose(stats[..., 1], stats[0, ..., 1],
                        rtol=1e-10, atol=1e-15):
         raise ValueError('Paired methods disagree on document target energy')
     strata = defaultdict(list)
     for doc in documents:
         strata[tuple(sorted(membership[doc]))].append(doc_index[doc])
     return stats, strata, documents
+
+
+def document_resamples(strata, n_documents, repetitions, seed):
+    rng = np.random.default_rng(seed)
+    weights = np.zeros((repetitions, n_documents), dtype=int)
+    for ids in strata.values():
+        n = len(ids)
+        weights[:, ids] = rng.multinomial(n, np.full(n, 1/n), size=repetitions)
+    return weights
 
 
 def _gains(weights, stats, methods, controls):
@@ -83,7 +92,7 @@ def paired_document_intervals(records, distributions, *, repetitions=10000, seed
         raise ValueError('Invalid repetitions, seeds or sites')
     extra = (ORIGINAL_GRID,) if include_original_grid else ()
     methods, controls = METHODS + extra, CONTROLS + extra
-    stats, strata, docs = _document_data(records, seeds, sites, methods)
+    stats, strata, docs = document_statistics(records, seeds, sites, methods)
     point, nmse = _gains(np.ones((1, len(docs))), stats, methods, controls)
     expected = (('cellquant', 'new_nmse'), ('hadamard_shared', 'hadamard_nmse'))
     matrices = [(nmse[0, METHODS.index(m)], k) for m, k in expected]
@@ -93,11 +102,7 @@ def paired_document_intervals(records, distributions, *, repetitions=10000, seed
         if values.shape != ref.shape or not np.allclose(values, ref, rtol=1e-10, atol=1e-15):
             raise ValueError(f'Block energy sums disagree with the frozen G1 matrix {key}')
 
-    rng = np.random.default_rng(seed)
-    weights = np.zeros((repetitions, len(docs)), dtype=int)
-    for ids in strata.values():
-        n = len(ids)
-        weights[:, ids] = rng.multinomial(n, np.full(n, 1/n), size=repetitions)
+    weights = document_resamples(strata, len(docs), repetitions, seed)
     draws = defaultdict(list)
     for start in range(0, repetitions, 256):
         gains, _ = _gains(weights[start:start + 256], stats, methods, controls)

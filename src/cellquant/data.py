@@ -66,14 +66,14 @@ def split_train_blocks(blocks,fit_count,heldout_count,seed):
     return chosen[:fit_count],chosen[fit_count:]
 
 
-def confirmation_partitions(blocks, previous, count):
-    """Keep the original fits and draw globally unused train documents for a one-shot G1."""
+def confirmation_partitions(blocks, previous, count, *, namespace=20261118, exclude=()):
+    """Keep the original fits and draw globally unused documents for the given study."""
     used_ids, used_docs, used_tokens = set(), set(), set()
-    for parts in previous.values():
-        for b in [*parts['fit'], *parts['dev']]:
-            used_ids.add(b['document_id'])
-            used_docs.add(b['document_sha256'])
-            used_tokens.add(b['token_ids_sha256'])
+    prior = [b for parts in previous.values() for split in ('fit','dev') for b in parts[split]]
+    for b in [*prior, *exclude]:
+        used_ids.add(b['document_id'])
+        used_docs.add(b['document_sha256'])
+        used_tokens.add(b['token_ids_sha256'])
     grouped = {}
     for b in blocks:
         if (b['document_id'] not in used_ids and b['document_sha256'] not in used_docs
@@ -81,7 +81,7 @@ def confirmation_partitions(blocks, previous, count):
             grouped.setdefault(b['document_id'], []).append(b)
     result = {}
     for seed in sorted(previous):
-        rng = np.random.default_rng(np.random.SeedSequence([20261118, int(seed)]))
+        rng = np.random.default_rng(np.random.SeedSequence([namespace, int(seed)]))
         chosen = []
         for doc in rng.permutation(sorted(grouped)).tolist():
             if doc in used_ids:

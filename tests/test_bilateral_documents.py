@@ -40,18 +40,23 @@ def test_real_screen_traces_and_frozen_cohort_are_bound_to_both_seeds(tmp_path):
         docs.draw_documents(blocks,fit,[])
 
 
-@pytest.mark.parametrize('crossfit',[False,True])
-def test_preflight_binds_fresh_documents_and_dispatches_only_the_document_mode(tmp_path, monkeypatch, crossfit):
+@pytest.mark.parametrize('study',['documents','crossfit','refresh'])
+def test_preflight_binds_fresh_documents_and_dispatches_only_the_document_mode(tmp_path, monkeypatch, study):
     refs = tmp_path/'fit_reference'
     refs.mkdir()
     names = (docs.FIT_FILE,docs.GRID_FILE,docs.COHORT_FILE)
     for name in names:
         shutil.copyfile(REFS/name,refs/name)
     cohort = read_json(refs/docs.COHORT_FILE)
-    if crossfit:
+    if study != 'documents':
         from cellquant.row_crossfit import COHORT_FILE, DESIGN
         shutil.copyfile(REFS/COHORT_FILE,refs/COHORT_FILE)
         cohort = read_json(refs/COHORT_FILE)
+    if study == 'refresh':
+        from cellquant.row_refresh import COHORT_FILE as refresh_file, DESIGN as refresh_design, REFERENCE_FILE
+        for name in (refresh_file,REFERENCE_FILE):
+            shutil.copyfile(REFS/name,refs/name)
+        cohort = read_json(refs/refresh_file)
     with ZipFile(refs/docs.FIT_FILE) as z:
         cfg = json.loads(z.read('run/config.json'))
         parent = cfg.pop('batch_g1_retest')
@@ -65,15 +70,19 @@ def test_preflight_binds_fresh_documents_and_dispatches_only_the_document_mode(t
         protocol = json.loads(z.read('inputs/protocol.json'))
         protocol.pop('batch_g1_retest')
         protocol.update(bilateral_document_pilot=cfg['bilateral_document_pilot'],token_manifest_sha256={k:sha256_file(v) for k,v in files.items()})
-        if crossfit:
+        if study != 'documents':
             cfg['row_crossfit'] = protocol['row_crossfit'] = {'design':DESIGN,'cohort_sha256':sha256_file(refs/COHORT_FILE)}
+        if study == 'refresh':
+            cfg['row_refresh'] = protocol['row_refresh'] = {'design':refresh_design,'cohort_sha256':sha256_file(refs/refresh_file),
+                                                            'crossfit_sha256':sha256_file(refs/REFERENCE_FILE)}
     path = atomic_json(tmp_path/'protocol.json',protocol)
     cfg.update(protocol_manifest_path=str(path),protocol_sha256=sha256_file(path))
     cfg['data']['token_manifests'] = files
     monkeypatch.setattr(experiment,'preflight',lambda *a: {'status':'READY','missing':[]})
     assert experiment.run_experiment(cfg,project_root=tmp_path,preflight_only=True)['readiness']['status'] == 'BLOCKED'
-    mode = 'matched_row_crossfit' if crossfit else 'frozen_bilateral_document_pilot'
-    out = experiment.run_experiment(cfg,project_root=tmp_path,preflight_only=True,bilateral_documents=not crossfit,row_crossfit=crossfit)
+    mode = {'documents':'frozen_bilateral_document_pilot','crossfit':'matched_row_crossfit','refresh':'matched_row_refresh'}[study]
+    flags = dict(bilateral_documents=study=='documents',row_crossfit=study=='crossfit',row_refresh=study=='refresh')
+    out = experiment.run_experiment(cfg,project_root=tmp_path,preflight_only=True,**flags)
     assert out['execution_mode'] == mode and out['readiness']['status'] == 'READY'
     bad = read_json(files['23'])
     bad['partitions']['dev'][0] = bad['partitions']['fit'][0]
@@ -81,7 +90,7 @@ def test_preflight_binds_fresh_documents_and_dispatches_only_the_document_mode(t
     protocol['token_manifest_sha256']['23'] = sha256_file(files['23'])
     cfg['protocol_sha256'] = sha256_file(atomic_json(path,protocol))
     with pytest.raises(ValueError,match='identity'):
-        docs.verify_document_inputs(cfg,row_crossfit=crossfit)
+        docs.verify_document_inputs(cfg,row_crossfit=flags['row_crossfit'],row_refresh=flags['row_refresh'])
 
 
 def test_document_decision_separates_mechanism_from_grid_tail_and_efficiency():
@@ -139,8 +148,8 @@ def test_terminal_accepts_the_portable_fit_zip_without_an_old_g1_config(tmp_path
         cli.main(['--validate-bilateral','--fit-archive',str(REFS/docs.FIT_FILE)])
 
 
-@pytest.mark.parametrize('crossfit',[False,True])
-def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tmp_path, monkeypatch,crossfit):
+@pytest.mark.parametrize('study',['diagnosis','crossfit','refresh'])
+def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tmp_path, monkeypatch,study):
     spec = importlib.util.spec_from_file_location('row_colab_cli', ROOT/'scripts/run_output_matching.py')
     cli = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cli)
@@ -154,13 +163,18 @@ def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tm
     def execute(argv, log, cwd, timeout_s):
         if '--output' in argv:
             expected = [str(refs/n) for n in (docs.FIT_FILE,docs.GRID_FILE,docs.COHORT_FILE)]
-            if crossfit:
+            if study != 'diagnosis':
                 from cellquant.row_crossfit import COHORT_FILE
                 expected.extend(['--row-crossfit-cohort',str(refs/COHORT_FILE)])
+            if study == 'refresh':
+                from cellquant.row_refresh import COHORT_FILE, REFERENCE_FILE
+                expected.extend(['--row-refresh-sources',str(refs/REFERENCE_FILE),str(refs/COHORT_FILE)])
             assert argv[argv.index('--bilateral-sources')+1:] == expected
             atomic_json(Path(argv[argv.index('--output')+1])/'config.json', {})
             return {'returncode':0, 'log_path':str(log)}
-        if crossfit:
+        if study == 'refresh':
+            assert '--refresh-rows' in argv and '--crossfit-rows' not in argv
+        elif study == 'crossfit':
             assert '--crossfit-rows' in argv and '--bilateral-rows' not in argv
         else:
             assert argv[argv.index('--bilateral-rows')+1] == str(document_zip)
@@ -170,7 +184,9 @@ def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tm
         return {'returncode':2, 'log_path':str(log)}
 
     monkeypatch.setattr(cli,'stream_command',execute)
-    assert cli.main(['--crossfit-rows' if crossfit else '--diagnose-bilateral-rows']) == 2
-    path, = (tmp_path/'runs/01_pilot').rglob('row_crossfit.zip' if crossfit else 'bilateral_row_diagnostic.zip')
+    flag,filename = {'refresh':('--refresh-rows','row_refresh.zip'),'crossfit':('--crossfit-rows','row_crossfit.zip'),
+                     'diagnosis':('--diagnose-bilateral-rows','bilateral_row_diagnostic.zip')}[study]
+    assert cli.main([flag]) == 2
+    path, = (tmp_path/'runs/01_pilot').rglob(filename)
     with ZipFile(path) as z:
         assert json.loads(z.read('run/result.json'))['status'] == 'RESOURCE_BLOCKED'

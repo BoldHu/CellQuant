@@ -252,6 +252,35 @@ cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matchin
 
 主指标为 B 网格相对 A 网格在 B 行的误差降幅减去在 A 行的降幅，单位为百分点。同一文章的抽样次数在两种方法和两组行之间共用。两个种子都须各自在自己的拟合行上获胜，且主指标的文档配对 95% 区间下限大于零，才认为拟合行效应在 7B 复现。复现后可在同校准成本下检验分批更换拟合行的策略，主看未见行、整投影和其他层的迁移。若无反转，保留本轮特定 64 行与完整投影的实测差异，停止推广拟合行效应。新算法仍按原 G1 决定是否进入整模型 canary。
 
+## 7B 换行复验结果
+
+LLaMA-2-7B 在 A100 上用 782.17 秒完成两种子验证。输入为事先冻结的 32 篇新文章，每种子 16 篇，每篇 32 个位置。每个网格只有一个全模型共享旋转，两次拟合只在第 0 层 up 替换了 64 个输出行，尺度上限均按各自面板的 Hadamard 起点计算。下表正数表示 B 网格相对 A 网格的 W4A4 NMSE 下降。在每个种子内重采样整篇文章，同一个抽样同时用于所有方法与行组。区间以本次的种子和行集为条件。[A100 原始记录](../evidence/output_matching_20261119/row_crossfit_7b.zip) · [逐篇复算与权重端、激活端对照](../evidence/output_matching_20261119/row_crossfit_7b_summary.json)
+
+| 第 0 层 up 的评估范围 | 种子 11 | 种子 23 | 两种子平均与配对 95% 区间 |
+|---|---:|---:|---:|
+| A 的 64 行 | −34.807% | −30.740% | −32.774% [−34.476%, −31.159%] |
+| B 的 64 行 | +32.021% | +24.542% | +28.281% [+27.365%, +29.169%] |
+| 其余 10,880 行 | +0.313% | −0.657% | −0.172% [−0.383%, +0.042%] |
+| 全部 11,008 行 | +0.360% | −0.639% | −0.140% [−0.350%, +0.072%] |
+
+**预先指定的反转效应为 +61.055 个百分点 [58.828, 63.358]。** 两种子分别为 +66.827、+55.282 个百分点，每篇文章上均是 A 网格赢 A 行、B 网格赢 B 行。只量化权重时反转为 +138.252 个百分点 [132.218, 144.342]，只量化激活时为 −0.212 个百分点 [−1.362, +0.934]。相对降幅使用 A 网格在对应行组上的误差作分母，因此反转可以超过 100 个百分点。三种精度下的相对变化不能相加。[拟合行和未见行的对照图](../evidence/output_matching_20261119/row_crossfit_transfer.png)
+
+把每个网格从 64 对延长到 256 对，A 网格在 A 行进一步改善 12.66%，B 网格在 B 行进一步改善 14.15%。在未参与两次拟合的行上，两次延长分别为 +0.089% [−0.111%, +0.261%] 和 −0.070% [−0.241%, +0.114%]。在其余八个位置，B 完整网格相对 A 的中位改善为 −0.0418% [−0.3398%, −0.0004%]。这给出了校准加深时误差下降发生在哪里的直接测量。此次端点是单个投影的重构，正式 G1 仍为 FAIL，GPTQ 后的 PPL 和下游任务效果尚无实测。
+
+## 固定预算下中途更换拟合行
+
+下一轮从归档的 A、B 网格各自的 128 对中点继续。每个种子在余下的 128 对中，分别用 B 行继续 A 网格、用 A 行继续 B 网格。固定对照 A→A 和 B→B 回放原完整旋转。四个方法各有相同的 256 对和每对 129 个候选角，均拟合一个共享 Q。同时记录历史前半段成本、实测后半段成本和总预算。第二段使用目标行面板在原 Hadamard 起点的尺度上限，记录切换时与结束时的可行性。实验不据此次回放估计推理或校准加速比。[实现](../src/cellquant/row_refresh.py)
+
+7B 验证另外固定了 32 篇 WikiText 文章，排除先前两种模型用过的 331 篇。每个种子每篇文章保留两种换行顺序和各自的固定对照。先求 A→B 对 A→A、B→A 对 B→B 的相对 NMSE 降幅，再对顺序与种子等权平均。主指标是未见的 10,880 行。其配对 95% 区间下限大于零、两个种子各自的平均降幅为正、整投影平均改善为正，并且各换行结果满足目标面板预算时，下一步才扩大到其他投影验证。否则保留已复现的固定行效应，结束这版单次换行策略。程序另外报告每个顺序在其余八个位置的变化。正式 G1 与整模型实验有各自的投入门槛。[新文档清单与冻结规则](../evidence/output_matching_20261119/row_refresh_cohort_7b.json)
+
+在本机预训练 42M 上先运行了同样的两种顺序，使用 16+16 对和另一批 32 篇文章。相对各自固定对照，A→B 在未见行改善 +0.287% [0.206%, 0.375%]，B→A 为 −0.235% [−0.367%, −0.101%]。按预定方式平均仅为 +0.026% [−0.049%, +0.106%]，整投影为 +0.087% [0.009%, 0.170%]。两个种子及两种顺序最终都满足各自的预算。42M 的结果支持把顺序作为对照报告，未达到该模型的未见行收益条件。[42M 逐篇测量及拟合记录](../evidence/output_matching_20261119/row_refresh_42m.zip)
+
+7B 的固定行反转明显大于 42M。可以用一次 A100 实验直接检验在这个模型上更换拟合行是否有实际收益。同卡近期完整网格每种子用时约 349–395 秒。此轮只重算每个顺序的后半段，缓存就绪时预计约 13–17 分钟。终端最后给出 `row_refresh.zip`。
+
+```bash
+cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --refresh-rows
+```
+
 ## 本地复算
 
 以下两条训练命令分别复现第一批与第二批小模型实验。脚本检查固定公开权重、tokenizer 和数据的 SHA-256。复算已有原始结果只需解压对应 `measurements.zip`，将解压目录传给分析脚本。它会验证逐方法 SHA-256，并从逐块误差重新计算区间与归因图。
@@ -265,6 +294,8 @@ python scripts/run_small_output_matching.py --screen-bilateral
 python scripts/run_small_output_matching.py --validate-bilateral
 python scripts/run_small_output_matching.py --diagnose-bilateral-rows
 python scripts/run_small_output_matching.py --crossfit-rows
+python scripts/run_small_output_matching.py --refresh-rows
+python scripts/analyze_row_crossfit.py --output runs/row_crossfit_audit.json --figure runs/row_crossfit.png
 python scripts/analyze_bilateral_rows.py --output runs/bilateral_rows_audit.json --figure runs/bilateral_rows.png
 python scripts/analyze_bilateral_documents.py --output runs/bilateral_documents_audit.json
 python scripts/analyze_batch_retest.py evidence/output_matching_20261119/batch_g1_retest_7b.zip

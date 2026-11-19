@@ -41,6 +41,7 @@ def main(argv=None):
     modes.add_argument('--validate-bilateral', action='store_true', help='Score the two frozen A100 fits on 32 previously unused articles')
     modes.add_argument('--diagnose-bilateral-rows', action='store_true', help='Measure all first-layer up projection rows on the completed document cohort')
     modes.add_argument('--crossfit-rows', action='store_true', help='Swap the 64 up projection fit rows and compare both matched grids on new articles')
+    modes.add_argument('--refresh-rows', action='store_true', help='Test a midpoint row switch against both fixed-row grids on new articles')
     parser.add_argument('--fit-archive', type=Path, help='Use the original bilateral_angle_screen.zip for frozen bilateral evaluation')
     parser.add_argument('--all-controls', action='store_true', help='Also measure every matched solver if the parent alone rules out both G1 routes')
     parser.add_argument('--pilot-archive', type=Path, default=Path('evidence/output_matching_20261119/batch_documents_7b.zip'))
@@ -50,7 +51,7 @@ def main(argv=None):
     parser.add_argument('--matching-archive', type=Path, default=Path('evidence/output_matching_20261119/measurements.zip'),
                         help='01d measurement archive used in the batch screen')
     args = parser.parse_args(argv)
-    document_mode = args.validate_bilateral or args.diagnose_bilateral_rows or args.crossfit_rows
+    document_mode = args.validate_bilateral or args.diagnose_bilateral_rows or args.crossfit_rows or args.refresh_rows
     parent = ROOT/args.config
     if not document_mode and not parent.is_file():
         parser.error(f'Original frozen G1 inputs missing at {parent}. Restore the prepared run or use --config.')
@@ -72,11 +73,16 @@ def main(argv=None):
         mode = ['--bilateral-documents']
         prepare_mode = ['--bilateral-sources', str(screen), str(ROOT/args.retest_archive), str(refs/COHORT_FILE)]
         prefix, archive_name = 'bilateral_documents_', 'bilateral_document_pilot.zip'
-        if args.crossfit_rows:
+        if args.crossfit_rows or args.refresh_rows:
             from cellquant.row_crossfit import COHORT_FILE as crossfit_file
             mode = ['--crossfit-rows']
             prepare_mode += ['--row-crossfit-cohort', str(refs/crossfit_file)]
             prefix, archive_name = 'row_crossfit_', 'row_crossfit.zip'
+            if args.refresh_rows:
+                from cellquant.row_refresh import COHORT_FILE as refresh_file, REFERENCE_FILE
+                mode = ['--refresh-rows']
+                prepare_mode += ['--row-refresh-sources',str(refs/REFERENCE_FILE),str(refs/refresh_file)]
+                prefix, archive_name = 'row_refresh_', 'row_refresh.zip'
         if args.diagnose_bilateral_rows:
             document_archive = refs/'bilateral_documents_7b.zip'
             if not document_archive.is_file():
@@ -118,6 +124,10 @@ def main(argv=None):
             result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer'
             or result.get('execution_mode') != 'matched_row_crossfit' or result.get('evidence_kind') != 'MATCHED_ROW_CROSSFIT'):
         raise RuntimeError(f'Expected a completed real row-crossfit study in {run}')
+    if args.refresh_rows and status['returncode']==0 and (
+            result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer'
+            or result.get('execution_mode') != 'matched_row_refresh' or result.get('evidence_kind') != 'MATCHED_ROW_REFRESH'):
+        raise RuntimeError(f'Expected a completed real row-refresh study in {run}')
     if args.validate_bilateral and result['status'] == 'STUDY_COMPLETE' and (
             result.get('source_type') != 'real_layer' or result.get('execution_mode') != 'frozen_bilateral_document_pilot'
             or result.get('evidence_kind') != 'FROZEN_BILATERAL_DOCUMENT_STUDY'):
@@ -136,7 +146,16 @@ def main(argv=None):
         for path in sorted(run.rglob('*.json')):
             z.write(path, Path('run')/path.relative_to(run))
     dest.with_suffix('.partial').replace(dest)
-    if args.crossfit_rows:
+    if args.refresh_rows:
+        print('Matched row refresh',result['status'])
+        if 'refresh_summary' in result:
+            summary = result['refresh_summary']
+            print('Unseen rows',summary['mean_paired_orders']['complement'])
+            print('Full projection',summary['mean_paired_orders']['all_rows'])
+            print('Next step',summary['next_step'])
+        else:
+            print(result.get('reason',result.get('readiness',{}).get('missing',[])))
+    elif args.crossfit_rows:
         print('Matched row crossfit',result['status'])
         if 'crossfit_summary' in result:
             s = result['crossfit_summary']

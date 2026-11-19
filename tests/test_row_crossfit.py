@@ -48,3 +48,23 @@ def test_interaction_uses_same_documents_for_both_row_sets():
     by_seed[11]['methods']['grid_a']['blocks']['alternate'][0]['sampled_tokens'] = 1
     with pytest.raises(ValueError,match='Unpaired'):
         paired_row_effect(by_seed,'grid_b','grid_a',['sampled','alternate'],'W4A4',**options)
+
+
+def test_refresh_averages_matched_orders_in_each_draw_and_requires_feasible_endpoints():
+    from cellquant.row_refresh import DESIGN, summarize_refresh
+    rows = {}
+    for seed in DESIGN['seeds']:
+        methods = {}
+        # The two denominators differ. Pooled errors or picking the winning order gives a different effect.
+        for label,errors in {'aa':[10.,10.],'ab':[7.,9.],'bb':[20.,20.],'ba':[25.,21.]}.items():
+            methods[label] = {'blocks':{g:[{'document_id':f'{seed}/{j}','block_id':f'{seed}/{j}:0',
+                'sampled_tokens':32,'target_energy':100.,'W4A4':e} for j,e in enumerate(errors)] for g in GROUPS}}
+        rows[seed] = {'methods':methods,'tails':{m:{'destination_feasible_at_end':True} for m in ['ab','ba']}}
+    result = summarize_refresh(rows,{**DESIGN,'bootstrap_draws':1000})
+    effect = result['mean_paired_orders']['complement']
+    # Each draw gives either 2.5% or a weighted average of 2.5% with itself.
+    assert effect['estimate'] == pytest.approx(2.5)
+    assert effect['paired_95'] == pytest.approx([2.5,2.5])
+    assert result['next_step'] == 'replicate_refresh_on_more_projections'
+    rows[11]['tails']['ba']['destination_feasible_at_end'] = False
+    assert summarize_refresh(rows,{**DESIGN,'bootstrap_draws':100})['next_step'] == 'retain_row_effect_stop_single_switch'

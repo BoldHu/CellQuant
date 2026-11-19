@@ -95,7 +95,7 @@ def draw_documents(blocks, fit, small_model_blocks, *, design=DESIGN):
                                    exclude=[*fit['prior'], *small_model_blocks])
 
 
-def verify_document_inputs(config, *, row_crossfit=False):
+def verify_document_inputs(config, *, row_crossfit=False, row_refresh=False):
     verify_parent_manifests(config)
     directory = Path(config['protocol_manifest_path']).parent
     protocol = read_json(directory/'protocol.json')
@@ -122,9 +122,9 @@ def verify_document_inputs(config, *, row_crossfit=False):
     old = [*fit['prior'], *cohort['previous_42m_train_blocks'],
            *(b for p in fit['parts'].values() for rows in p.values() for b in rows)]
     heldout = cohort['heldout']
-    if bool(config.get('row_crossfit')) != row_crossfit:
+    if bool(config.get('row_crossfit')) != (row_crossfit or row_refresh) or bool(config.get('row_refresh')) != row_refresh:
         raise ValueError('Use the runner bound to this document protocol')
-    if row_crossfit:
+    if row_crossfit or row_refresh:
         from .row_crossfit import COHORT_FILE as crossfit_file, DESIGN as crossfit_design
         spec = config['row_crossfit']
         fresh = read_json(folder/crossfit_file)
@@ -133,6 +133,17 @@ def verify_document_inputs(config, *, row_crossfit=False):
             raise ValueError('Changed row-crossfit cohort or design')
         old.extend(b for rows in heldout.values() for b in rows)
         heldout = fresh['heldout']
+        if row_refresh:
+            from .row_refresh import COHORT_FILE as refresh_file, REFERENCE_FILE, DESIGN as refresh_design
+            refresh = read_json(folder/refresh_file)
+            binding = {'design':refresh_design,'cohort_sha256':sha256_file(folder/refresh_file),
+                       'crossfit_sha256':sha256_file(folder/REFERENCE_FILE)}
+            if (config['row_refresh'] != binding or protocol.get('row_refresh') != binding or refresh['design'] != refresh_design
+                    or refresh['crossfit_sha256'] != binding['crossfit_sha256'] or refresh['previous_cohort_hash'] != config_hash(fresh)):
+                raise ValueError('Changed row-refresh measurements or cohort')
+            old.extend(b for rows in heldout.values() for b in rows)
+            old.extend(refresh['previous_small_heldout'])
+            heldout = refresh['heldout']
     seen = {k:{b[k] for b in old} for k in IDENTITY}
     for seed in config['seeds']:
         actual = read_json(config['data']['token_manifests'][str(seed)])

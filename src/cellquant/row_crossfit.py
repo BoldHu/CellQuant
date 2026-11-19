@@ -44,16 +44,19 @@ def alternate_row_ids(total, original, row_seed):
     return rows
 
 
-def paired_row_effect(by_seed, new, baseline, groups, precision, *, draws, rng_seed, difference=None):
+def paired_row_effect(by_seed, new, baseline, groups, precision, *, draws, rng_seed, difference=None, paired_orders=()):
     """Use one document multiplicity across methods and row groups, with the fitted seeds fixed."""
     records = []
     seeds = sorted(by_seed)
+    pairs = [(new, baseline), *paired_orders]
+    methods = list(dict.fromkeys(method for pair in pairs for method in pair))
     for seed in seeds:
-        for method in (new, baseline):
+        for method in methods:
             data = by_seed[seed]['methods'][method]['blocks']
             panels = {g:[dict(block, squared_error=block[precision]) for block in data[g]] for g in groups}
             records.append({'seed':seed,'method':method,'panels':panels})
-    stats, strata, docs = document_statistics(records, seeds, groups, [new,baseline])
+    stats, strata, docs = document_statistics(records, seeds, groups, methods)
+    indices = [(methods.index(candidate), methods.index(control)) for candidate, control in pairs]
     weights = document_resamples(strata, len(docs), draws, rng_seed)
     weights = np.vstack((np.ones(len(docs), dtype=int), weights))
     gains = []
@@ -61,7 +64,8 @@ def paired_row_effect(by_seed, new, baseline, groups, precision, *, draws, rng_s
         totals = np.einsum('bd,msldk->bmslk', weights[start:start+256], stats, optimize=True)
         with np.errstate(divide='ignore', invalid='ignore'):
             nmse = totals[...,0] / totals[...,1]
-            gains.append(100*(1-nmse[:,0]/nmse[:,1]))
+            # Keep each continuation paired with its own starting grid in every document draw.
+            gains.append(np.mean([100*(1-nmse[:,i]/nmse[:,j]) for i, j in indices], axis=0))
     gains = np.concatenate(gains)
 
     def interval(values):

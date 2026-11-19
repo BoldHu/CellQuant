@@ -28,13 +28,15 @@ def cached_matching_model(config, model_id, weight_files, cache):
 
 
 def prepare(config_path,output,*,include_tests=False,relative_screen=None,matching_study=False,
-            batch_screen=None,matching_archive=None,retest_pilot=None,bilateral_sources=None,row_crossfit_cohort=None):
+            batch_screen=None,matching_archive=None,retest_pilot=None,bilateral_sources=None,row_crossfit_cohort=None,row_refresh_sources=None):
     output=Path(output).resolve()
     previous=None
     parent_dataset_fingerprints=set()
     reuse_matching_inputs = matching_study or batch_screen is not None or retest_pilot is not None or bilateral_sources is not None
     if row_crossfit_cohort is not None and bilateral_sources is None:
         raise ValueError('The row swap requires the archived fits and their previous document cohort')
+    if row_refresh_sources is not None and row_crossfit_cohort is None:
+        raise ValueError('Row refresh requires the original row-crossfit cohort')
     if bilateral_sources is not None:
         from cellquant.bilateral_documents import COHORT_FILE, FIT_FILE, GRID_FILE, DESIGN as bilateral_design
         from cellquant.bilateral_documents import block_identity, draw_documents, read_7b_fit
@@ -110,6 +112,17 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
             if new_cohort['previous_cohort_hash'] != config_hash(cohort) or new_cohort['design'] != crossfit_design:
                 raise ValueError('Row-crossfit documents do not follow the registered original cohort')
             config['row_crossfit'] = {'design':crossfit_design,'cohort_sha256':sha256_file(dest)}
+            if row_refresh_sources is not None:
+                from cellquant.row_refresh import COHORT_FILE as refresh_file, REFERENCE_FILE, DESIGN as refresh_design, read_crossfit_archive
+                for name,path in zip((REFERENCE_FILE,refresh_file),row_refresh_sources,strict=True):
+                    shutil.copyfile(path,refs/name)
+                refresh = read_json(refs/refresh_file)
+                parent_run,_ = read_crossfit_archive(refs/REFERENCE_FILE,refs/GRID_FILE,small=False)
+                if (refresh['design'] != refresh_design or refresh['previous_cohort_hash'] != config_hash(new_cohort)
+                        or refresh['crossfit_sha256'] != sha256_file(refs/REFERENCE_FILE) or not parent_run['crossfit_summary']['interaction_replicated']):
+                    raise ValueError('Row refresh requires the completed reciprocal row experiment and registered cohort')
+                config['row_refresh'] = {'design':refresh_design,'cohort_sha256':sha256_file(refs/refresh_file),
+                                         'crossfit_sha256':refresh['crossfit_sha256']}
     if retest_pilot is not None:
         from cellquant.batch_retest import DESIGN as retest_design,read_document_pilot,retest_partitions
         from cellquant.gates import resolve_rules_path
@@ -199,6 +212,12 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
             fresh = draw_documents(blocks,screen,excluded,design=crossfit_design)
             if {str(s):[block_identity(b) for b in dev] for s, (_,dev) in fresh.items()} != new_cohort['heldout']:
                 raise ValueError('Pinned tokenizer or sampled row-crossfit documents differ from the frozen list')
+            if row_refresh_sources is not None:
+                excluded.extend(b for docs in new_cohort['heldout'].values() for b in docs)
+                excluded.extend(refresh['previous_small_heldout'])
+                fresh = draw_documents(blocks,screen,excluded,design=refresh_design)
+                if {str(s):[block_identity(b) for b in dev] for s,(_,dev) in fresh.items()} != refresh['heldout']:
+                    raise ValueError('Pinned tokenizer or sampled row-refresh documents differ from the frozen list')
         formal['heldout_sequences'] = bilateral_design['documents_per_seed']
         formal['heldout_tokens_per_panel'] = bilateral_design['documents_per_seed'] * bilateral_design['tokens_per_document']
     elif retest_pilot is not None:
@@ -267,6 +286,8 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
         protocol.update(bilateral_document_pilot=config['bilateral_document_pilot'],formal_pilot=formal)
         if row_crossfit_cohort is not None:
             protocol['row_crossfit'] = config['row_crossfit']
+            if row_refresh_sources is not None:
+                protocol['row_refresh'] = config['row_refresh']
     elif retest_pilot is not None:
         protocol.update(batch_g1_retest=config['batch_g1_retest'],formal_pilot=formal)
     elif batch_screen is not None:
@@ -297,6 +318,8 @@ if __name__=='__main__':
     p.add_argument('--bilateral-sources', type=Path, nargs=3, metavar=('FIT_ZIP','GRID_ZIP','COHORT'),
                    help='Freeze two completed rotations and prepare new articles for held-out scoring')
     p.add_argument('--row-crossfit-cohort',type=Path,help='Prepare a separate previously unused evaluation cohort for the row-swap experiment')
+    p.add_argument('--row-refresh-sources',type=Path,nargs=2,metavar=('CROSSFIT_ZIP','COHORT'),help='Completed matched grids and unused articles for midpoint row switching')
     a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests,relative_screen=a.relative_g1_screen,
                             matching_study=a.matching_study,batch_screen=a.batch_document_screen,matching_archive=a.matching_archive,
-                            retest_pilot=a.retest_pilot,bilateral_sources=a.bilateral_sources,row_crossfit_cohort=a.row_crossfit_cohort)
+                            retest_pilot=a.retest_pilot,bilateral_sources=a.bilateral_sources,row_crossfit_cohort=a.row_crossfit_cohort,
+                            row_refresh_sources=a.row_refresh_sources)

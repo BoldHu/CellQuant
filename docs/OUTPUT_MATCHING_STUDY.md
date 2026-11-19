@@ -201,6 +201,29 @@ cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matchin
 - `stop_bilateral_variant` 表示对这批冻结旋转与验证文章，现有对照已排除两条 G1 质量路线。保留误差归因，停止扩大该版本。例如任何一个位置在跨种子平均后相对网格的退化超过 10%，即可排除两条路线。
 - `review_inconclusive_pilot` 表示仍有路线可达，但双侧选角相对仅输出选角的迁移证据不足。`insufficient_evidence` 表示存在无法定义的比较。两者均需复核已有记录。全量矩阵仍按正式 G1、G2 和 G3 决策。
 
+## 7B 新文档结论与第 0 层行诊断
+
+A100 在 LLaMA-2-7B 上回放同一轮拟合的四组旋转。种子 11、23 各有 16 篇不同的 WikiText-2 训练集文章，每篇用一个 2048-token 块中的 32 个相同位置。拟合与此前实验已使用的 235 篇文章均已排除。下表的正数表示 W4A4 面板 NMSE 下降。先在各位置平均两个种子的相对降幅，再取位置中位数。95% 区间在固定种子内配对重采样整篇文章 10,000 次。[A100 原始记录](../evidence/output_matching_20261119/bilateral_documents_7b.zip) · [复算摘要](../evidence/output_matching_20261119/bilateral_documents_7b_summary.json)
+
+| 对照与位置 | NMSE 降幅 | 95% 区间 |
+|---|---:|---:|
+| Hadamard，九位置 | +2.740% | [+1.804%, +4.245%] |
+| 完整 256 对网格，九位置 | +0.065% | [−0.356%, +0.411%] |
+| 同一起点仅输出选角，九位置 | +0.121% | [−0.837%, +0.944%] |
+| 同一起点仅输出选角，六个输入位置 | +1.613% | [+0.602%, +2.281%] |
+| 同一起点仅输出选角，三个输出位置 | −1.070% | [−1.182%, −0.955%] |
+| 完整 256 对网格，预先指定的第 0 层 up | −13.892% | [−15.789%, −12.098%] |
+
+相对完整网格，6/9 个位置改善，8/9 个在 2% 非劣界内。九位置中位数在两个种子上分别为 −0.554% 和 +0.525%。第 0 层 up 在两个种子都退化，32/32 篇文章上候选的平方误差均比网格高。相对网格 NMSE，权重误差项在两个种子分别增加 15.59 和 13.75 个百分点，激活项分别抵消 0.64 和 0.96 个百分点，其余由交叉项解释。这里权重项等于量化权重误差乘以量化后的激活。该定义允许逐块闭合总误差。此版本触发按协议预定的停止条件，端到端质量及速度仍待验证。
+
+采集代码始终等距抽取同一组 64 个 up 输出行。下一步使用上述 32 篇已见文章、相同 token 和冻结 R1，以区分行覆盖偏差、短网格起点的代价以及双侧选角自身的影响。输出保留原采样 64 行、其余 10,944 行、全部 11,008 行的逐文档平方误差和目标能量。每次沿输出行分块，保留完整 4096 维归约轴。W4A4、W4Afp（只量化权重）及 WfpA4（只量化激活）共用同一 FP 目标，按平方和汇总。程序逐篇核对原 64 行的 W4A4 与上一轮一致，并比较完整网格、64 对前缀和前缀加双侧选角。该结果用于机制诊断，原文档 pilot 的判定继续有效。
+
+```bash
+cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --diagnose-bilateral-rows
+```
+
+终端末行给出 `bilateral_row_diagnostic.zip` 路径。先读 `row_comparisons.candidate_vs_full_grid.complement`。若退化集中在原采样行，优先检验网格的行选择效应，另取校准行拟合、留出其他行和新文章验证。若其余行也退化，用 `prefix_vs_full_grid` 与 `candidate_vs_prefix` 区分起点损失和提案损失，再看 W4Afp 与 WfpA4。若损失集中于权重端，可以在新拟合文档和独立行块上检验动态权重量化误差约束。只有后续冻结的新候选重新通过正式 G1，才进入单模型 canary。
+
 ## 本地复算
 
 以下两条训练命令分别复现第一批与第二批小模型实验。脚本检查固定公开权重、tokenizer 和数据的 SHA-256。复算已有原始结果只需解压对应 `measurements.zip`，将解压目录传给分析脚本。它会验证逐方法 SHA-256，并从逐块误差重新计算区间与归因图。
@@ -212,6 +235,8 @@ python scripts/run_small_output_matching.py --validate-batches
 python scripts/run_small_output_matching.py --smoke-retest
 python scripts/run_small_output_matching.py --screen-bilateral
 python scripts/run_small_output_matching.py --validate-bilateral
+python scripts/run_small_output_matching.py --diagnose-bilateral-rows
+python scripts/analyze_bilateral_documents.py --output runs/bilateral_documents_audit.json
 python scripts/analyze_batch_retest.py evidence/output_matching_20261119/batch_g1_retest_7b.zip
 python scripts/analyze_bilateral_fit.py --output runs/bilateral_fit_audit.json
 python scripts/analyze_rotation_sites.py --study <解压目录> --output runs/rotation_analysis

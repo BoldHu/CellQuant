@@ -35,7 +35,9 @@ def main():
     modes.add_argument('--smoke-retest',action='store_true',help='Exercise the complete retest and matched controls with a four-pair schedule on 42M')
     modes.add_argument('--screen-bilateral',action='store_true',help='Test input-aware angle proposals on the archived 42M fit panels')
     modes.add_argument('--validate-bilateral',action='store_true',help='Score the frozen 42M input-aware proposals on untouched train articles')
+    modes.add_argument('--diagnose-bilateral-rows',action='store_true',help='Verify the row diagnostic against the frozen 42M document results')
     args=parser.parse_args()
+    document_mode = args.validate_bilateral or args.diagnose_bilateral_rows
     import pyarrow.parquet as parquet
     import torch
     from transformers import LlamaConfig, LlamaForCausalLM, PreTrainedTokenizerFast
@@ -51,8 +53,10 @@ def main():
     prefix='batch_retest_42m_' if args.smoke_retest else 'batch_documents_42m_' if args.validate_batches else 'matching_42m_'
     if args.screen_bilateral:
         prefix='bilateral_fit_42m_'
-    if args.validate_bilateral:
+    if document_mode:
         prefix='bilateral_documents_42m_'
+    if args.diagnose_bilateral_rows:
+        prefix='bilateral_rows_42m_'
     out=ROOT/'runs/experiments'/(prefix+uuid4().hex[:12])
     out.mkdir(parents=True)
     print('Run',out,flush=True)
@@ -89,7 +93,7 @@ def main():
         design.pop('refine_continued_grid')
         design['version']=2
     study_split='validation'
-    if args.validate_batches or args.smoke_retest or args.validate_bilateral:
+    if args.validate_batches or args.smoke_retest or document_mode:
         from cellquant.batch_validation import DESIGN as batch_design, measure_frozen_batches
         from cellquant.matching_batches import load_matching_arms
         from cellquant.matching_study import CONTINUED
@@ -121,7 +125,7 @@ def main():
             design = {**retest_design,'prefix_pairs':2,'extra_grid_pairs':2,'parent_grid_points':17,'batch_size':2}
             cfg['batch_g1_retest']={'design':design,'scope':'pretrained 42M engineering verification','matching_pairs':4}
             cfg['data']['calibration_split']='train'
-        if args.validate_bilateral:
+        if document_mode:
             import json
             from zipfile import ZipFile
             from cellquant.batch_retest import retest_partitions
@@ -152,7 +156,7 @@ def main():
     for seed in cfg['seeds']:
         identity={'model_id':MODEL,'model_revision':MODEL_REV,'tokenizer_revision':MODEL_REV,'dataset_id':DATA,
                   'dataset_revision':DATA_REV,'source_split':study_split,'parquet_sha256':data_hash,'seed':seed,'context_length':256}
-        if args.validate_batches or args.validate_bilateral:
+        if args.validate_batches or document_mode:
             identity.update(fit_split='validation',dev_split='train',fit_parquet_sha256=data_hash,parquet_sha256=train_hash)
         if args.smoke_retest:
             identity.update(fit_split='train',dev_split='train',parquet_sha256=train_hash)
@@ -179,15 +183,19 @@ def main():
     rotate_model(model,out/'fixed_R.bin',device=device)
     install_online_graph(model,cfg['quantization'],quantized=False)
     model.to(device)
-    prepared=prepare_pilot_inputs(cfg,model,graph_identity=graph_id,heldout_only=args.validate_batches or args.validate_bilateral,
+    prepared=prepare_pilot_inputs(cfg,model,graph_identity=graph_id,heldout_only=args.validate_batches or document_mode,
                                   fit_only=args.screen_bilateral)
+    if args.diagnose_bilateral_rows:
+        full_up_weight = model.model.layers[0].mlp.up_proj.module.weight.detach()
     del model
     torch.cuda.empty_cache()
     def emit(phase,**details):
         if phase=='matching.evaluate':
             print(phase,details,flush=True)
-    if args.validate_bilateral:
-        result=score_frozen(cfg,prepared,out,reference,fit_archive)
+    if document_mode:
+        result=score_frozen(cfg,prepared,out,reference,fit_archive,
+            document_reference=ROOT/'evidence/output_matching_20261119/bilateral_documents_42m.zip' if args.diagnose_bilateral_rows else None,
+            full_up_weight=full_up_weight if args.diagnose_bilateral_rows else None)
     elif args.screen_bilateral:
         result=run_screen(cfg,prepared,out,reference)
     elif args.smoke_retest:

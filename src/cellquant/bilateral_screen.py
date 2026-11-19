@@ -155,11 +155,18 @@ def replay_angle_arms(prefix, selection):
 
 
 @torch.inference_mode()
-def score_frozen(config, prepared, output, grid_archive, fit_archive, *, fit_7b=None, progress=None):
+def score_frozen(config, prepared, output, grid_archive, fit_archive, *, fit_7b=None, progress=None,
+                 document_reference=None, full_up_weight=None):
     seeds = DESIGN['seeds']
     original, new = DESIGN['arms']
     device, dimension = config['solver']['device'], prepared['hidden_size']
     design = config['bilateral_document_pilot']['design'] if fit_7b is not None else DOCUMENT_DESIGN
+    if (document_reference is None) != (full_up_weight is None):
+        raise ValueError('Row diagnosis requires both the original document archive and the full up projection')
+    row_seeds = {}
+    if document_reference is not None:
+        from .bilateral_rows import PREFIX, SITE, TILE_ROWS, read_reference, score_seed, summarize_rows
+        document_rows = read_reference(document_reference, grid_archive, fit_archive, design, seeds, (new,CONTINUED))
     if fit_7b is None:
         refs = load_matching_arms(grid_archive, seeds)
         grids = {s:refs[s][CONTINUED] for s in seeds}
@@ -202,8 +209,16 @@ def score_frozen(config, prepared, output, grid_archive, fit_archive, *, fit_7b=
             warm = ref['solver']['grid_stages'][0]
             grid = replay_retest_parent(ref, device)
         prefix, _ = prefix_rotation(dimension, seed, warm, device)
-        rotations = {CONTINUED:grid, HAD:hadamard_rotation(dimension, seed, device), **replay_angle_arms(prefix, traces[seed])}
+        learned = replay_angle_arms(prefix, traces[seed])
         panel_sha = panel_fingerprint(panels)
+        if document_reference is not None:
+            row_seeds[seed] = score_seed(seed, panels, panel_sha, full_up_weight, {CONTINUED:grid, PREFIX:prefix, new:learned[new]},
+                                         ready['specs'], document_rows, progress=progress)
+            path = atomic_json(Path(output)/f'seed_{seed}'/'row_diagnostic.json', row_seeds[seed])
+            raw[path.relative_to(output).as_posix()] = sha256_file(path)
+            del grid, prefix, learned
+            continue
+        rotations = {CONTINUED:grid, HAD:hadamard_rotation(dimension, seed, device), **learned}
         mean_nmse[str(seed)] = {}
         for method, q in rotations.items():
             report(progress, 'bilateral.fresh_documents', seed=seed, method=method, documents=len(ids))
@@ -215,7 +230,15 @@ def score_frozen(config, prepared, output, grid_archive, fit_archive, *, fit_7b=
             path = atomic_json(Path(output)/f'seed_{seed}'/method/'document_result.json', row)
             raw[path.relative_to(output).as_posix()] = sha256_file(path)
             records.append({'seed':seed, 'method':method, 'panels':{p['panel_id']:p['blocks'] for p in measured}})
-        del rotations, prefix, grid, q
+        del rotations, prefix, grid, q, learned
+    if document_reference is not None:
+        return {'status':'DIAGNOSTIC_COMPLETE','source_type':'real_layer','evidence_kind':'FROZEN_ROW_DIAGNOSTIC',
+                'site':SITE,'scope':'post-hoc row and precision ablation on the already evaluated articles',
+                'document_reference_sha256':sha256_file(document_reference),'fit_archive_sha256':sha256_file(fit_archive),
+                'reference_archive_sha256':sha256_file(grid_archive),'bootstrap_draws':design['bootstrap_draws'],
+                'bootstrap_seed':design['bootstrap_seed'],'tile_rows':TILE_ROWS,'row_artifacts':raw,
+                'row_counts_by_seed':{s:r['methods'][new]['row_counts'] for s,r in row_seeds.items()},
+                'row_comparisons':summarize_rows(row_seeds, new, design)}
     stats = paired_site_gains(records, seeds, placements, {'vs_output_only': (new, original), 'vs_full_grid': (new, CONTINUED),
                               'vs_hadamard': (new, HAD)}, repetitions=design['bootstrap_draws'], rng_seed=design['bootstrap_seed'],
                               watched_sites=[design['watch_site']] if fit_7b is not None else ())

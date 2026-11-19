@@ -39,7 +39,8 @@ def main(argv=None):
     modes.add_argument('--retest-batches', action='store_true', help='Confirm the batch algorithm on fresh calibration and evaluation articles for G1')
     modes.add_argument('--screen-bilateral', action='store_true', help='Compare input-aware and output-only proposals on fit articles at a short grid prefix')
     modes.add_argument('--validate-bilateral', action='store_true', help='Score the two frozen A100 fits on 32 previously unused articles')
-    parser.add_argument('--fit-archive', type=Path, help='Use the original bilateral_angle_screen.zip for --validate-bilateral')
+    modes.add_argument('--diagnose-bilateral-rows', action='store_true', help='Measure all first-layer up projection rows on the completed document cohort')
+    parser.add_argument('--fit-archive', type=Path, help='Use the original bilateral_angle_screen.zip for frozen bilateral evaluation')
     parser.add_argument('--all-controls', action='store_true', help='Also measure every matched solver if the parent alone rules out both G1 routes')
     parser.add_argument('--pilot-archive', type=Path, default=Path('evidence/output_matching_20261119/batch_documents_7b.zip'))
     parser.add_argument('--retest-archive', type=Path, default=Path('evidence/output_matching_20261119/batch_g1_retest_7b.zip'),
@@ -48,20 +49,21 @@ def main(argv=None):
     parser.add_argument('--matching-archive', type=Path, default=Path('evidence/output_matching_20261119/measurements.zip'),
                         help='01d measurement archive used in the batch screen')
     args = parser.parse_args(argv)
+    document_mode = args.validate_bilateral or args.diagnose_bilateral_rows
     parent = ROOT/args.config
-    if not args.validate_bilateral and not parent.is_file():
+    if not document_mode and not parent.is_file():
         parser.error(f'Original frozen G1 inputs missing at {parent}. Restore the prepared run or use --config.')
     os.environ['PYTHONPATH'] = os.pathsep.join(filter(None,(str(ROOT/'src'),os.environ.get('PYTHONPATH'))))
     if args.screen_run and not args.validate_batches:
         parser.error('--screen-run is used with --validate-batches')
     if args.all_controls and not args.retest_batches:
         parser.error('--all-controls is used with --retest-batches')
-    if args.fit_archive and not args.validate_bilateral:
-        parser.error('--fit-archive is used with --validate-bilateral')
+    if args.fit_archive and not document_mode:
+        parser.error('--fit-archive is used with a frozen bilateral document or row run')
     mode = ['--matching-study']
     prepare_mode = mode
     prefix, archive_name = 'matching_', 'output_matching.zip'
-    if args.validate_bilateral:
+    if document_mode:
         from cellquant.bilateral_documents import COHORT_FILE, FIT_FILE
         refs = ROOT/'evidence/output_matching_20261119'
         screen = ROOT/args.fit_archive if args.fit_archive else refs/FIT_FILE
@@ -69,6 +71,12 @@ def main(argv=None):
         mode = ['--bilateral-documents']
         prepare_mode = ['--bilateral-sources', str(screen), str(ROOT/args.retest_archive), str(refs/COHORT_FILE)]
         prefix, archive_name = 'bilateral_documents_', 'bilateral_document_pilot.zip'
+        if args.diagnose_bilateral_rows:
+            document_archive = refs/'bilateral_documents_7b.zip'
+            if not document_archive.is_file():
+                parser.error(f'Missing frozen document reference: {document_archive}')
+            mode = ['--bilateral-rows', str(document_archive)]
+            prefix, archive_name = 'bilateral_rows_', 'bilateral_row_diagnostic.zip'
     elif args.screen_bilateral:
         mode = ['--screen-bilateral-angles', str(ROOT / args.retest_archive)]
         prepare_mode = ['--retest-pilot', str(ROOT / args.pilot_archive)]
@@ -96,7 +104,7 @@ def main(argv=None):
         status = stream_command([sys.executable,'-u',*command],work/(label+'.log'),cwd=ROOT,timeout_s=4*3600)
         if status['returncode']:
             print('Study stopped. See', status['log_path'], file=sys.stderr)
-            if not ((args.retest_batches or args.screen_bilateral or args.validate_bilateral) and label=='study' and index.is_file()):
+            if not ((args.retest_batches or args.screen_bilateral or document_mode) and label=='study' and index.is_file()):
                 return status['returncode']
     run = Path(read_json(index)['run_dir'])
     result = read_json(run/'result.json')
@@ -104,7 +112,11 @@ def main(argv=None):
             result.get('source_type') != 'real_layer' or result.get('execution_mode') != 'frozen_bilateral_document_pilot'
             or result.get('evidence_kind') != 'FROZEN_BILATERAL_DOCUMENT_STUDY'):
         raise RuntimeError(f'Expected completed real bilateral document measurements in {run}')
-    if not (args.retest_batches or args.screen_bilateral or args.validate_bilateral) and (result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer'):
+    if args.diagnose_bilateral_rows and status['returncode']==0 and (
+            result['status'] != 'DIAGNOSTIC_COMPLETE' or result.get('source_type') != 'real_layer' or result.get('execution_mode') != 'bilateral_row_diagnostic'
+            or result.get('evidence_kind') != 'FROZEN_ROW_DIAGNOSTIC'):
+        raise RuntimeError(f'Expected the full-row diagnostic in {run}')
+    if not (args.retest_batches or args.screen_bilateral or document_mode) and (result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer'):
         raise RuntimeError(f'Expected completed real measurements in {run}')
     dest = work/archive_name
     with ZipFile(dest.with_suffix('.partial'), 'w', ZIP_DEFLATED) as z:
@@ -114,7 +126,19 @@ def main(argv=None):
         for path in sorted(run.rglob('*.json')):
             z.write(path, Path('run')/path.relative_to(run))
     dest.with_suffix('.partial').replace(dest)
-    if args.screen_bilateral:
+    if args.diagnose_bilateral_rows:
+        print('Bilateral row diagnosis', result['status'])
+        for label, comparison in result.get('row_comparisons', {}).items():
+            for rows, metrics in comparison.items():
+                effect = metrics['W4A4']
+                if 'undefined' in effect:
+                    print(label, rows, 'W4A4', effect['undefined'])
+                    continue
+                lo, hi = effect['paired_95_pct']
+                print(f"{label} {rows} W4A4 {effect['median_gain_pct']:+.3f}% [{lo:+.3f}, {hi:+.3f}]")
+        if result['status'] != 'DIAGNOSTIC_COMPLETE':
+            print(result.get('reason', result.get('readiness', {}).get('missing', [])))
+    elif args.screen_bilateral:
         print('Input-aware fit screen', result['status'], result.get('next_step', result.get('reason', '')))
     elif args.retest_batches:
         print('Formal batch retest', result['status'], 'G1', result.get('gate','not evaluated'))

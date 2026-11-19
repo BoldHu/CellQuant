@@ -129,3 +129,32 @@ def test_terminal_accepts_the_portable_fit_zip_without_an_old_g1_config(tmp_path
     complete = True
     with pytest.raises(RuntimeError,match='Expected completed real bilateral'):
         cli.main(['--validate-bilateral','--fit-archive',str(REFS/docs.FIT_FILE)])
+
+
+def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tmp_path, monkeypatch):
+    spec = importlib.util.spec_from_file_location('row_colab_cli', ROOT/'scripts/run_output_matching.py')
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    monkeypatch.setattr(cli,'ROOT',tmp_path)
+    monkeypatch.setenv('PYTHONPATH','')
+    refs = tmp_path/'evidence/output_matching_20261119'
+    refs.mkdir(parents=True)
+    document_zip = refs/'bilateral_documents_7b.zip'
+    shutil.copyfile(REFS/document_zip.name, document_zip)
+
+    def execute(argv, log, cwd, timeout_s):
+        if '--output' in argv:
+            assert argv[argv.index('--bilateral-sources')+1:] == [str(refs/n) for n in (docs.FIT_FILE,docs.GRID_FILE,docs.COHORT_FILE)]
+            atomic_json(Path(argv[argv.index('--output')+1])/'config.json', {})
+            return {'returncode':0, 'log_path':str(log)}
+        assert argv[argv.index('--bilateral-rows')+1] == str(document_zip)
+        run = tmp_path/'out'
+        atomic_json(run/'result.json', {'status':'RESOURCE_BLOCKED', 'source_type':'not_run', 'reason':'test fixture'})
+        atomic_json(Path(argv[argv.index('--result-index')+1]), {'run_dir':str(run)})
+        return {'returncode':2, 'log_path':str(log)}
+
+    monkeypatch.setattr(cli,'stream_command',execute)
+    assert cli.main(['--diagnose-bilateral-rows']) == 2
+    path, = (tmp_path/'runs/01_pilot').rglob('bilateral_row_diagnostic.zip')
+    with ZipFile(path) as z:
+        assert json.loads(z.read('run/result.json'))['status'] == 'RESOURCE_BLOCKED'

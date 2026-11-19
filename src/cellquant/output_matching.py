@@ -1,6 +1,7 @@
 """One disjoint Givens matching on a shared residual rotation."""
 import math
 import time
+from dataclasses import replace
 
 import numpy as np
 import torch
@@ -112,6 +113,35 @@ def input_risk_bound(z, spec, norm, pairs, grid):
     return bounds
 
 
+def fixed_scale_input_deltas(state, pairs, grid, *, batch_pairs=32, deadline=math.inf):
+    """Single-plane input-product loss changes at the parent's decoding scales."""
+    if state.panel.placement != 'input' or batch_pairs < 1:
+        raise ValueError('Input angle scoring requires an input panel and positive tile size')
+    axes = torch.as_tensor(pairs, device=state.a.device, dtype=torch.long)
+    changes = state.a.new_empty((len(axes), len(grid)))
+    # A scalar here uses the physical scale of its complete group in the parent.
+    # The original nearest-even rounding and signed endpoints apply to every entry.
+    w_scalar = replace(state.wspec, group_size=1)
+    a_scalar = replace(state.aspec, group_size=1)
+    for start in range(0, len(axes), batch_pairs):
+        check_time(deadline)
+        tile = axes[start:start + batch_pairs]
+        w, x = state.a.T[tile], state.x[tile]
+        sw = state.sw.squeeze(-1).T[tile // state.wg].unsqueeze(-1)
+        sx = state.sx.squeeze(-1).T[tile // state.ag].unsqueeze(-1)
+        old_product = torch.bmm(state.ah.T[tile].transpose(1, 2), state.xh[tile])
+        for k, theta in enumerate(grid):
+            wr = rotated_pairs(w[:, 0], w[:, 1], theta)
+            xr = rotated_pairs(x[:, 0], x[:, 1], theta)
+            wh = torch_quantize(wr, w_scalar, scales=sw)[0]
+            xh = torch_quantize(xr, a_scalar, scales=sx)[0]
+            delta = torch.bmm(wh.transpose(1, 2), xh) - old_product
+            # ||E + delta||² - ||E||², including the signed residual cross term.
+            changes[start:start + len(tile), k] = (delta * (2 * state.error + delta)).sum((1, 2))
+        synchronize(state.a.device)
+    return changes / state.denominator
+
+
 def risk_tables(panels, q, specs, pairs, grid, output_delta, deadline):
     w = output_delta.clone()
     a = torch.zeros_like(w)
@@ -162,7 +192,20 @@ def fit_matching(panels, warm_q, specs, pairs, cfg, limits, *, criterion, grid_p
     if not fits_limits(initial, limits, cfg.budget_tolerance):
         raise ValueError('Materialized warm start violates the original fit risk limits')
     grid = proposal_grid(warm_q, cfg.theta_limit, grid_points)
-    costs, coverage, output_delta = pair_costs(panels, warm_q, specs, pairs, grid, criterion, deadline=deadline, progress=progress)
+    score_inputs = criterion == 'bilateral_fixed_scale_proposal'
+    output_criterion = 'product' if score_inputs else criterion
+    costs, coverage, output_delta = pair_costs(panels, warm_q, specs, pairs, grid, output_criterion, deadline=deadline, progress=progress)
+    output_costs = costs
+    if score_inputs:
+        costs = output_costs.clone()
+        for panel in panels:
+            if panel.placement == 'input':
+                report(progress, 'matching.input_angles', panel=panel.panel_id, pair_count=len(pairs))
+                state = PanelState(panel, warm_q, *panel_specs(specs, panel))
+                costs += panel.objective_weight * fixed_scale_input_deltas(state, pairs, grid, deadline=deadline)
+                del state
+        if not bool(torch.isfinite(costs).all()):
+            raise ValueError('Nonfinite bilateral angle scores')
     allocation = None
     if allocate_risk:
         bounds = risk_tables(panels,warm_q,specs,pairs,grid,output_delta,deadline)
@@ -178,6 +221,8 @@ def fit_matching(panels, warm_q, specs, pairs, cfg, limits, *, criterion, grid_p
         chosen = costs.argmin(dim=1)
     angles = grid[chosen]
     proposed_change = float((costs.gather(1, chosen[:,None]).flatten() - costs[:,0]).sum())
+    output_change = (float((output_costs.gather(1, chosen[:,None]).flatten() - output_costs[:,0]).sum())
+                     if score_inputs else proposed_change)
     best_q, best, scale = warm_q, initial, 0.
     trials = [dict(scale=0., feasible=True, **initial)]
     for fraction in step_scales[1:]:
@@ -195,6 +240,6 @@ def fit_matching(panels, warm_q, specs, pairs, cfg, limits, *, criterion, grid_p
                     'grid_radians':grid.tolist(), 'pairs':np.asarray(pairs).tolist(), 'risk_allocation':allocation,
                     'proposed_angles':angles.tolist(), 'selected_scale':scale, 'joint_fit_trials':trials,
                     'output_residual_energy_covered':coverage, 'proposed_cost_change':proposed_change,
-                    'product_replay_minus_predicted_change':(trials[-1]['output_loss'] - initial['output_loss'] - proposed_change
-                                                              if criterion == 'product' else None),
+                    'product_replay_minus_predicted_change':(trials[-1]['output_loss'] - initial['output_loss'] - output_change
+                                                              if output_criterion == 'product' else None),
                     'nonzero_applied_angles':int((angles*scale != 0).sum()), 'seconds':time.monotonic()-start}

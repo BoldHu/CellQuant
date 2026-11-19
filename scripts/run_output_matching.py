@@ -37,8 +37,11 @@ def main(argv=None):
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--validate-batches', action='store_true', help='Evaluate completed batch fits on independent new documents')
     modes.add_argument('--retest-batches', action='store_true', help='Confirm the batch algorithm on fresh calibration and evaluation articles for G1')
+    modes.add_argument('--screen-bilateral', action='store_true', help='Compare input-aware and output-only proposals on fit articles at a short grid prefix')
     parser.add_argument('--all-controls', action='store_true', help='Also measure every matched solver if the parent alone rules out both G1 routes')
     parser.add_argument('--pilot-archive', type=Path, default=Path('evidence/output_matching_20261119/batch_documents_7b.zip'))
+    parser.add_argument('--retest-archive', type=Path, default=Path('evidence/output_matching_20261119/batch_g1_retest_7b.zip'),
+                        help='Completed grid logs from the bound-stopped A100 retest')
     parser.add_argument('--screen-run', type=Path, help='Completed fit screen directory; by default find the latest matching run')
     parser.add_argument('--matching-archive', type=Path, default=Path('evidence/output_matching_20261119/measurements.zip'),
                         help='01d measurement archive used in the batch screen')
@@ -54,7 +57,11 @@ def main(argv=None):
     mode = ['--matching-study']
     prepare_mode = mode
     prefix, archive_name = 'matching_', 'output_matching.zip'
-    if args.retest_batches:
+    if args.screen_bilateral:
+        mode = ['--screen-bilateral-angles', str(ROOT / args.retest_archive)]
+        prepare_mode = ['--retest-pilot', str(ROOT / args.pilot_archive)]
+        prefix, archive_name = 'bilateral_screen_', 'bilateral_angle_screen.zip'
+    elif args.retest_batches:
         mode = ['--batch-retest'] + (['--all-controls'] if args.all_controls else [])
         prepare_mode = ['--retest-pilot', str(ROOT/args.pilot_archive)]
         prefix, archive_name = 'batch_retest_', 'batch_g1_retest.zip'
@@ -77,11 +84,11 @@ def main(argv=None):
         status = stream_command([sys.executable,'-u',*command],work/(label+'.log'),cwd=ROOT,timeout_s=4*3600)
         if status['returncode']:
             print('Study stopped. See', status['log_path'], file=sys.stderr)
-            if not (args.retest_batches and label=='study' and index.is_file()):
+            if not ((args.retest_batches or args.screen_bilateral) and label=='study' and index.is_file()):
                 return status['returncode']
     run = Path(read_json(index)['run_dir'])
     result = read_json(run/'result.json')
-    if not args.retest_batches and (result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer'):
+    if not (args.retest_batches or args.screen_bilateral) and (result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer'):
         raise RuntimeError(f'Expected completed real measurements in {run}')
     dest = work/archive_name
     with ZipFile(dest.with_suffix('.partial'), 'w', ZIP_DEFLATED) as z:
@@ -91,7 +98,9 @@ def main(argv=None):
         for path in sorted(run.rglob('*.json')):
             z.write(path, Path('run')/path.relative_to(run))
     dest.with_suffix('.partial').replace(dest)
-    if args.retest_batches:
+    if args.screen_bilateral:
+        print('Input-aware fit screen', result['status'], result.get('next_step', result.get('reason', '')))
+    elif args.retest_batches:
         print('Formal batch retest', result['status'], 'G1', result.get('gate','not evaluated'))
         if 'route_bounds' in result:
             print('Upper bounds', result['route_bounds'])

@@ -132,6 +132,46 @@ cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matchin
 - 若仍有路线可达，继续同目标的角度网格、STE 和固定尺度搜索。三者共用新拟合的父网格、同一组 2048 个平面、角度范围、风险上限及每方法完整校准预算。网格和 STE 各给每平面 17 次候选评估，固定尺度使用原数值搜索。正式比较对每个种子和位置取父网格及三种匹配求解器中最低的 NMSE。资源中断保留部分记录，不能晋级。
 - 希望无论上界都测量三个求解器时，在同一命令后加 `--all-controls`。完整比较后使用 `configs/gate_rules.json` 生成 `G1.json`，另从逐文档输出计算相对逐位置最强对照的配对区间。结果包名为 `batch_g1_retest.zip`，稠密 Q 保存在 Colab 的运行目录里。正式 G1 PASS 后，下一阶段是检验同一分批方法的单模型 GPTQ canary。
 
+### 7B 复验结果
+
+A100 运行 `2026-11-19T085120.278159_0000_5393b46d7a` 用时 14 分 43 秒。两个种子各用 8 篇新文章从头拟合，另用 16 篇评分。按文档 ID、内容与 token 哈希核对了新旧样本的隔离，8 份方法记录的逐块 NMSE 和 10000 次配对文档抽样均能复算。两个种子最终应用的角度数均为零，256 对网格、分批选角和同批数随机对照的 Q 文件哈希在各自种子内相同。九位置中位改善和文档区间均为 0% [0%, 0%]。这个区间描述固定旋转后同一文档上的相同输出。早期 pilot 的 +0.0812% 仅验证了当时拟合的两个旋转。[原始复验包](../evidence/output_matching_20261119/batch_g1_retest_7b.zip) · [独立复算](../evidence/output_matching_20261119/batch_g1_retest_7b_summary.json)
+
+| 7B 分批追加修正 | 种子 11 | 种子 23 |
+|---|---:|---:|
+| 提出的非零角 | 1530 | 1602 |
+| 试验批数 / 满足尺度限制 / 减少联合拟合误差 | 32 / 32 / 0 | 32 / 32 / 0 |
+| 每批输入损失增量与输出损失降幅之比，中位数 | 4.08 | 3.96 |
+| 256 对网格校准秒数 | 394.55 | 394.69 |
+| 分批方法校准秒数 | 400.23 | 400.35 |
+
+64 批的输出侧拟合误差均下降，输入侧代价均超过这项收益。按完整步长同时试探所有候选角时，种子 11 的输出损失减少 0.007342，输入损失增加 0.018299。种子 23 分别为减少 0.007538 和增加 0.012633。最终相对 Hadamard 改善 3.3700% [1.5665%, 4.9037%]，父网格单独就取得了这一结果。
+
+![两个种子中，每一批的输入损失增量都超过输出损失降幅。虚线表示两者抵消。](../evidence/output_matching_20261119/batch_g1_retest_fit_costs.png)
+
+父网格属于最强对照的候选，因此准确率路线的相对收益至多为 0%，要求为 5%。最快对照的校准速度比至多为 0.9858×，要求为 2×。程序返回 `RETEST_STOPPED_BY_BOUND` 和 `stop_batch_variant`，完整匹配比较未执行。本次没有新的正式 `G1.json`。停止追加式版本，保留旧正式 G1 的 FAIL。单纯把输出修正前移到 128 对后，早先 01d 已测得相对 256 对网格中位改善 −0.28%，对应六个输入位置为 −1.04%。本次仅跑完 128 对前缀已需 198.80 和 198.12 秒，两者均超过各自完整网格耗时的一半。[G1 判据](../configs/gate_rules.json) · [此前的短网格结果](#7b-实测与下一轮决策)
+
+### 在选角时计入输入侧误差
+
+新诊断从 256 对网格的前 64 对出发。每个不相交平面考察原来的 17 个角。对输入面板，沿用父旋转完整分组的解码尺度，对改变的两列权重和两行激活同时重新舍入。设父旋转的量化乘积残差为 $E$，该平面两通道解码乘积的变化为 $D$。固定尺度时，单平面平方误差的变化准确等于 $2\langle E,D\rangle + \lVert D\rVert_F^2$。实现把这项估计与输出侧可精确计算的损失变化相加，用来选角。多个平面同时作用或组尺度改变时，输入损失会有额外项。每次接受一批前，对九个拟合面板重新执行完整的动态量化并检查原尺度预算。[选角实现](../src/cellquant/output_matching.py) · [短测与冻结回放](../src/cellquant/bilateral_screen.py)
+
+本机预训练 42M 使用同样规则，从完整 32 对网格的前 8 对出发。仅按输出选角的对照使用相同的起点、候选平面、风险上限与批大小。两个种子各用八篇拟合文章，均接受 4/4 批，相对仅输出选角的联合拟合损失分别下降 2.553% 和 2.840%。冻结旋转后，在另外 32 篇 WikiText 文章上评分。抽样排除了此前的 42M 文档及本轮 7B 复验和其清单内的旧文章。42M 模型前向为 FP32，求解器为 FP64，上下文 256。以下为九位置中位相对 NMSE 降幅，以固定的两个拟合结果为条件。[拟合追踪](../evidence/output_matching_20261119/bilateral_fit_42m.zip) · [验证测量](../evidence/output_matching_20261119/bilateral_documents_42m.zip) · [统计汇总](../evidence/output_matching_20261119/bilateral_documents_42m_summary.json)
+
+| 42M 独立验证比较 | 九位置中位数 | 文档配对 95% 区间 | 种子 11 | 种子 23 |
+|---|---:|---:|---:|---:|
+| 输入与输出共同选角，相对同起点仅输出选角 | +3.6570% | [+2.9300%, +4.6226%] | +0.4490% | +5.1704% |
+| 相对完整 32 对网格 | +1.0445% | [+0.6099%, +1.3469%] | +0.2694% | +0.6433% |
+| 相对 Hadamard | +5.9862% | [+4.7540%, +6.9698%] | +3.2812% | +5.3178% |
+
+相对仅输出选角，六个输入的中位改善为 4.3972%，三个输出退化 0.6866%。相对完整网格，三个输出中位改善 0.8865%。短测从归档恢复网格，只测量追加校准时间。端到端校准速度须从同机从头拟合测得。
+
+在原 G1 输入可用的 Colab A100 终端运行下行。程序重新生成本次复验的同一份文档清单，从归档因子重建完整网格和 64 对前缀，并在收集拟合面板后核对指纹及拟合损失。无需重跑 256 对角度搜索或 01 系列 notebook。
+
+```bash
+cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --screen-bilateral
+```
+
+程序在拟合前固定两项短测条件。两个种子都要在九位置联合拟合损失上优于同起点仅输出选角，而且各自至少有 6/9 个位置的 NMSE 在完整网格的 2% 以内（含优于网格的位置）。符合时返回 `fresh_document_pilot`，下一步冻结新旋转并用未参与开发的文章评分。否则返回 `stop_bilateral_proposal`。两种结果都写入终端所列的 `bilateral_angle_screen.zip`。正式 G1、模型级 GPTQ 验证及 G3 准备条件分别决定后续投入。
+
 ## 本地复算
 
 以下两条训练命令分别复现第一批与第二批小模型实验。脚本检查固定公开权重、tokenizer 和数据的 SHA-256。复算已有原始结果只需解压对应 `measurements.zip`，将解压目录传给分析脚本。它会验证逐方法 SHA-256，并从逐块误差重新计算区间与归因图。
@@ -141,5 +181,8 @@ python scripts/run_small_output_matching.py
 python scripts/run_small_output_matching.py --confirm-hybrid
 python scripts/run_small_output_matching.py --validate-batches
 python scripts/run_small_output_matching.py --smoke-retest
+python scripts/run_small_output_matching.py --screen-bilateral
+python scripts/run_small_output_matching.py --validate-bilateral
+python scripts/analyze_batch_retest.py evidence/output_matching_20261119/batch_g1_retest_7b.zip
 python scripts/analyze_rotation_sites.py --study <解压目录> --output runs/rotation_analysis
 ```

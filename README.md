@@ -4,10 +4,12 @@
 
 **2026-11-18 的正式 A100 G1 已完成，判定为 FAIL。** LLaMA-2-7B 两个 seed、五种方法共 10 份结果齐全。CellQuant 在独立文档上相对 Hadamard 的跨位置中位 NMSE 降幅为 2.569%，相对逐位置最强匹配搜索为 0.017%。同卡校准速度比为 0.264×。当前停在 G1，G2 和全量实验尚未启动。[正式判定](evidence/colab_a100_g1_20261118/G1.json) · [实测分析](docs/IMPLEMENTATION_STATUS.md#a100-正式-g1) · [实验协议](docs/COLAB_A100_TEST.md)
 
-**7B 分批旋转在 32 篇新文章上达到正式 G1 复验条件。** 相对 256 对网格，九位置中位 NMSE 下降 0.0812%，文档配对 95% 区间 [0.0378%, 0.1329%]，种子 11、23 分别下降 0.0749% 和 0.0875%。相对同批数随机选择的中位改善为 −0.0072%，区间跨零。下一步在 A100 上重新拟合，用另外 48 篇文章进行限额复验。推送代码后，在保留原 G1 输入的 Colab 终端执行下行。[逐文档结果](evidence/output_matching_20261119/batch_documents_7b_summary.json) · [正式复验方案](docs/OUTPUT_MATCHING_STUDY.md#7b-独立文档结果与正式复验)
+**7B 新文档 G1 复验已按上界停止，当前不进入全量实验。** 早期 pilot 比 256 对网格改善 0.0812%。另取 16 篇拟合和 32 篇验证文章后，两个种子共 64 个候选批次全部降低输出侧拟合损失，也全部增加九位置联合损失。最终两次旋转均等于网格，独立文档中位改善为 0%，校准速度比上界为 0.9858×。三个追加匹配求解器按协议跳过。[复验原始测量与结论](docs/OUTPUT_MATCHING_STUDY.md#7b-复验结果)
+
+**下一项 A100 短测**在同一批拟合文章上把网格前缀缩到 64 对，并在选角时计入输入侧乘积误差。在预训练 42M 的另外 32 篇独立文章上，这一规则相对同起点的只看输出规则改善 3.66%，相对该模型完整的 32 对网格改善 1.04%。在保留原 G1 输入的 Colab 终端运行下行。[改法与 42M 结果](docs/OUTPUT_MATCHING_STUDY.md#在选角时计入输入侧误差)
 
 ```bash
-cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --retest-batches
+cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --screen-bilateral
 ```
 
 16 份验证文档的配对抽样给出相对最强匹配对照的 95% 区间 [−0.2054%，+0.0482%]。后续 A100 拟合诊断已完成。改变配对后，CellQuant 相对网格的额外收益在一个种子上扩大，在另一个种子上缩小。依据事先记录的条件，停止这条配对修正。[文档区间](evidence/colab_a100_g1_20261118/document_intervals.json) · [A100 诊断结果](evidence/g1_pair_diagnostic_20261118/a100_summary.json) · [诊断协议](docs/G1_PAIR_DIAGNOSTIC.md)
@@ -24,7 +26,7 @@ cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matchin
 - 合成 G0：3 seeds、24 cases，真实计算为 PASS；完整 d=4096、FFN=11008 工程 smoke 已运行，使用少 tokens/窄角域。
 - 随机小 LLaMA 的 FP 融合/旋转、GPTQ、RTN 恢复、MHA/GQA、R1/R2 训练和恢复已实际执行。
 - 五本阶段 notebook 和新增 GitHub/Colab 初始化 notebook 的默认路径均在本地运行成功；不会自动下载模型或启动 sweep。
-- 本机 RTX 3050 Laptop 4 GiB 已运行 42M 预训练模型的分批拟合、独立文档验证和缩短坐标序列的匹配对照。A100 已完成原版 7B 正式 G1、01d、分批拟合和新文档 pilot。7B 新版正式复验与整模型 G2–G4 待运行。
+- 本机 RTX 3050 Laptop 4 GiB 已运行 42M 输入侧选角拟合和独立文档验证。A100 已完成原版 7B G1、01d、分批拟合、新文档 pilot 与上界复验。7B 输入侧选角短测待运行。整模型 G2–G4 尚未执行。
 
 ## 开始运行
 

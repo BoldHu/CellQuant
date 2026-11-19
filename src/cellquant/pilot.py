@@ -330,7 +330,8 @@ def build_g1_evidence(paths,output,*,g0_evidence_path,include_original_grid=Fals
             row=read_json(path)
             if row.get('evidence_kind')=='PAIR_PROFILE_ONLY':raise ValueError('Pair profiles cannot form G1 evidence')
             if row.get('evidence_kind') in {'FIT_OBJECTIVE_SCREEN','FIT_PAIR_DIAGNOSTIC','OUTPUT_MATCHING_STUDY',
-                                           'FIT_MATCHING_BATCH_SCREEN','FROZEN_BATCH_DOCUMENT_PILOT','BATCH_RETEST_ENGINEERING'}:
+                                           'FIT_MATCHING_BATCH_SCREEN','FROZEN_BATCH_DOCUMENT_PILOT','BATCH_RETEST_ENGINEERING',
+                                           'FIT_BILATERAL_ANGLE_SCREEN','FROZEN_BILATERAL_DOCUMENT_STUDY'}:
                 raise ValueError('Diagnostic results cannot form G1 evidence')
             if row.get('source_type')!='real_layer':raise ValueError('Only real-layer artifacts can form G1')
             if (row.get('pilot_variant') == BATCH_CANDIDATE) != batch_retest:

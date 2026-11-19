@@ -93,3 +93,53 @@ def test_colab_retest_archives_a_bound_stop_or_a_resource_interruption(tmp_path,
     assert cli.main(args)==returncode
     package,=(tmp_path/'runs/01_pilot').rglob('batch_g1_retest.zip')
     with ZipFile(package) as z: assert 'run/result.json' in z.namelist() and 'inputs/protocol.json' in z.namelist()
+
+
+def test_bilateral_fit_entry_recreates_stopped_cohort_without_running_the_old_solver(tmp_path, monkeypatch):
+    import importlib.util
+    from cellquant.runtime import atomic_json
+    spec = importlib.util.spec_from_file_location('screen_fit_cli', ROOT/'scripts/run_output_matching.py')
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    monkeypatch.setattr(cli, 'ROOT', tmp_path)
+    parent = atomic_json(tmp_path/'prepared.json', {})
+    def study(argv, log, cwd, timeout_s):
+        if '--output' in argv:
+            assert argv[argv.index('--config')+1] == str(parent) and '--retest-pilot' in argv
+            atomic_json(Path(argv[argv.index('--output')+1])/'config.json', {})
+            return {'returncode':0, 'log_path':str(log)}
+        assert '--screen-bilateral-angles' in argv and '--batch-retest' not in argv
+        assert Path(argv[argv.index('--config')+1]).parent.name == 'inputs'
+        out = tmp_path/'measured'
+        atomic_json(out/'result.json', {'status':'DIAGNOSTIC_COMPLETE','source_type':'real_layer','next_step':'fresh_document_pilot'})
+        atomic_json(Path(argv[argv.index('--result-index')+1]), {'run_dir':str(out)})
+        return {'returncode':0, 'log_path':str(log)}
+    monkeypatch.setattr(cli, 'stream_command', study)
+    assert cli.main(['--screen-bilateral', '--config', str(parent)]) == 0
+    package, = (tmp_path/'runs/01_pilot').rglob('bilateral_angle_screen.zip')
+    with ZipFile(package) as archive:
+        assert set(archive.namelist()) == {'inputs/config.json', 'run/result.json'}
+
+
+def test_bilateral_screen_binds_the_stopped_cohorts_token_hashes(tmp_path, monkeypatch):
+    import json
+    from cellquant import experiment
+    from cellquant.bilateral_screen import retest_grid_rows
+    path = ROOT/'evidence/output_matching_20261119/batch_g1_retest_7b.zip'
+    with ZipFile(path) as archive:
+        cfg = json.loads(archive.read('run/config.json'))
+        for name in ('protocol.json', 'prior_documents.json'):
+            (tmp_path/name).write_bytes(archive.read('inputs/'+name))
+        cfg['protocol_manifest_path'] = str(tmp_path/'protocol.json')
+        for seed in cfg['seeds']:
+            cached = tmp_path/f'{seed}.json'
+            cached.write_bytes(archive.read(f'inputs/seed_{seed}/data_manifest.json'))
+            cfg['data']['token_manifests'][str(seed)] = str(cached)
+    rows = retest_grid_rows(path, cfg)
+    assert all(row['solver']['completed_pairs'] == 256 for row in rows.values())
+    monkeypatch.setattr(experiment, 'preflight', lambda *args: {'status':'READY', 'missing':[]})
+    ready = experiment.run_experiment(cfg, project_root=tmp_path, preflight_only=True, bilateral_archive=path)
+    assert ready['execution_mode'] == 'bilateral_angle_fit_screen' and ready['readiness']['status'] == 'READY'
+    cached.write_bytes(b'{}')
+    with pytest.raises(ValueError, match='articles'):
+        retest_grid_rows(path, cfg)

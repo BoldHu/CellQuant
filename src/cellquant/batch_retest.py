@@ -12,7 +12,7 @@ import numpy as np
 
 from . import batch_validation as study
 from .data import confirmation_partitions, token_hash
-from .matching_batches import BATCH_SIZE, q_digest, screen_batches
+from .matching_batches import BATCH_SIZE, q_digest, replay_selected_batches, screen_batches
 from .matching_study import CONTINUED, HAD
 from .output_matching import apply_matching, disjoint_pairs, fit_matching
 from .pilot import BATCH_CANDIDATE as CANDIDATE, build_g1_evidence, panel_metrics, pilot_solver_config, summarize_pilot_results
@@ -220,24 +220,18 @@ def fit_parent(panels, q0, specs, schedule, cfg, design, capture_cost, progress)
     return q, limits, accumulated, steps
 
 
-def fit_candidate(panels, specs, parent, pairs, limits, cfg, parent_cost, seed, design, progress):
-    _, proposal = fit_matching(panels, parent, specs, pairs, remaining(cfg,parent_cost), limits, criterion='product',
+def fit_candidate(panels, specs, parent, pairs, limits, cfg, parent_cost, seed, design, progress, *, criterion='product'):
+    _, proposal = fit_matching(panels, parent, specs, pairs, remaining(cfg,parent_cost), limits, criterion=criterion,
                                grid_points=design['matching_grid_points'], step_scales=design['step_scales'], progress=progress)
     spent = parent_cost + proposal['seconds']
     trace = screen_batches(panels, specs, parent, proposal, remaining(cfg,spent), seed,
                            batch_size=design['batch_size'], progress=progress)
     angles = parent.new_tensor(proposal['proposed_angles'])
-    chosen = parent
+    chosen = replay_selected_batches(parent, pairs, angles, design['batch_size'], trace)
     mask = angles.new_zeros(len(angles))
-    for index in trace['accepted_batches']:
-        start = index*design['batch_size']
-        block = slice(start,start+design['batch_size'])
-        chosen = apply_matching(chosen, pairs[block], angles[block])
     for index in trace['same_count_random']['batches']:
         start = index*design['batch_size']
         mask[start:start+design['batch_size']] = angles[start:start+design['batch_size']]
-    if q_digest(chosen) != trace['final_q_sha256']:
-        raise ValueError('Replayed candidate differs from the fitted global rotation')
     return chosen, apply_matching(parent,pairs,mask), spent+trace['fit_screen_seconds'], proposal, trace
 
 

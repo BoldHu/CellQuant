@@ -33,6 +33,8 @@ def main():
     modes.add_argument('--confirm-hybrid',action='store_true',help='Evaluate the fixed grid-then-matching combination on eight untouched shared articles')
     modes.add_argument('--validate-batches',action='store_true',help='Replay the archived 42M batch fits on 32 unused train articles')
     modes.add_argument('--smoke-retest',action='store_true',help='Exercise the complete retest and matched controls with a four-pair schedule on 42M')
+    modes.add_argument('--screen-bilateral',action='store_true',help='Test input-aware angle proposals on the archived 42M fit panels')
+    modes.add_argument('--validate-bilateral',action='store_true',help='Score the frozen 42M input-aware proposals on untouched train articles')
     args=parser.parse_args()
     import pyarrow.parquet as parquet
     import torch
@@ -47,6 +49,10 @@ def main():
     cfg=read_json(ROOT/'configs/colab_pilot.json')
     overlay=activate_overlay(ROOT/cfg['spinquant_overlay'])
     prefix='batch_retest_42m_' if args.smoke_retest else 'batch_documents_42m_' if args.validate_batches else 'matching_42m_'
+    if args.screen_bilateral:
+        prefix='bilateral_fit_42m_'
+    if args.validate_bilateral:
+        prefix='bilateral_documents_42m_'
     out=ROOT/'runs/experiments'/(prefix+uuid4().hex[:12])
     out.mkdir(parents=True)
     print('Run',out,flush=True)
@@ -83,7 +89,7 @@ def main():
         design.pop('refine_continued_grid')
         design['version']=2
     study_split='validation'
-    if args.validate_batches or args.smoke_retest:
+    if args.validate_batches or args.smoke_retest or args.validate_bilateral:
         from cellquant.batch_validation import DESIGN as batch_design, measure_frozen_batches
         from cellquant.matching_batches import load_matching_arms
         from cellquant.matching_study import CONTINUED
@@ -115,12 +121,38 @@ def main():
             design = {**retest_design,'prefix_pairs':2,'extra_grid_pairs':2,'parent_grid_points':17,'batch_size':2}
             cfg['batch_g1_retest']={'design':design,'scope':'pretrained 42M engineering verification','matching_pairs':4}
             cfg['data']['calibration_split']='train'
+        if args.validate_bilateral:
+            import json
+            from zipfile import ZipFile
+            from cellquant.batch_retest import retest_partitions
+            from cellquant.bilateral_screen import DOCUMENT_DESIGN, score_frozen
+            old = [*blocks, *(b for _, held in final.values() for b in held)]
+            earlier = retest_partitions(train_blocks, original, old)
+            old.extend(b for splits in earlier.values() for articles in splits for b in articles)
+            a100 = ROOT/'evidence/output_matching_20261119/batch_g1_retest_7b.zip'
+            with ZipFile(a100) as archive:
+                old.extend(json.loads(archive.read('inputs/prior_documents.json')))
+                for seed in cfg['seeds']:
+                    parts = json.loads(archive.read(f'inputs/seed_{seed}/data_manifest.json'))['partitions']
+                    old.extend(b for docs in parts.values() for b in docs)
+            design = dict(DOCUMENT_DESIGN)
+            final = confirmation_partitions(train_blocks, original, design['documents_per_seed'],
+                                            namespace=design['partition_namespace'], exclude=old)
+            fit_archive = ROOT/'evidence/output_matching_20261119/bilateral_fit_42m.zip'
+            del cfg['batch_document_pilot']
+            cfg['bilateral_documents'] = {'design':design,'fit_archive_sha256':sha256_file(fit_archive),
+                                           'excluded_7b_archive_sha256':sha256_file(a100)}
+    elif args.screen_bilateral:
+        from cellquant.bilateral_screen import DESIGN as screen_design, run_screen
+        reference=ROOT/'evidence/output_matching_20261118/hybrid_42m/measurements.zip'
+        design=dict(screen_design)
+        cfg['bilateral_screen']={'design':design,'scope':'pretrained 42M development study','reference_sha256':sha256_file(reference)}
     else:
         cfg['output_matching_study']={'design':design, 'scope':'pretrained 42M development study'}
     for seed in cfg['seeds']:
         identity={'model_id':MODEL,'model_revision':MODEL_REV,'tokenizer_revision':MODEL_REV,'dataset_id':DATA,
                   'dataset_revision':DATA_REV,'source_split':study_split,'parquet_sha256':data_hash,'seed':seed,'context_length':256}
-        if args.validate_batches:
+        if args.validate_batches or args.validate_bilateral:
             identity.update(fit_split='validation',dev_split='train',fit_parquet_sha256=data_hash,parquet_sha256=train_hash)
         if args.smoke_retest:
             identity.update(fit_split='train',dev_split='train',parquet_sha256=train_hash)
@@ -147,13 +179,18 @@ def main():
     rotate_model(model,out/'fixed_R.bin',device=device)
     install_online_graph(model,cfg['quantization'],quantized=False)
     model.to(device)
-    prepared=prepare_pilot_inputs(cfg,model,graph_identity=graph_id,heldout_only=args.validate_batches)
+    prepared=prepare_pilot_inputs(cfg,model,graph_identity=graph_id,heldout_only=args.validate_batches or args.validate_bilateral,
+                                  fit_only=args.screen_bilateral)
     del model
     torch.cuda.empty_cache()
     def emit(phase,**details):
         if phase=='matching.evaluate':
             print(phase,details,flush=True)
-    if args.smoke_retest:
+    if args.validate_bilateral:
+        result=score_frozen(cfg,prepared,out,reference,fit_archive)
+    elif args.screen_bilateral:
+        result=run_screen(cfg,prepared,out,reference)
+    elif args.smoke_retest:
         result=run_retest(cfg,prepared,out,graph_id,all_controls=True,engineering_pairs=4)
     elif args.validate_batches:
         result=measure_frozen_batches(prepared,arms,traces,out,device=device)

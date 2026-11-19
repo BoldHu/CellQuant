@@ -11,7 +11,8 @@ torch = pytest.importorskip('torch')
 from cellquant.data import confirmation_partitions
 from cellquant.matching_study import (DESIGN, PRODUCT, WEIGHT, WARM, attribution,
                                       paired_site_gains, run_matching_study)
-from cellquant.output_matching import apply_matching, disjoint_pairs, fit_matching, fit_totals, pair_costs, proposal_grid, risk_tables
+from cellquant.output_matching import (apply_matching, disjoint_pairs, fit_matching, fit_totals,
+                                      fixed_scale_input_deltas, pair_costs, proposal_grid, risk_tables)
 from cellquant.pilot import build_g1_evidence, panel_metrics
 from cellquant.quantization import QuantSpec
 from cellquant.runtime import atomic_json, read_json
@@ -61,6 +62,35 @@ def test_cartesian_cost_equals_independent_pair_costs(criterion):
     assert min(deltas)==pytest.approx(float((table.min(dim=1).values-table[:,0]).sum()),abs=1e-12)
     with pytest.raises(ValueError,match='distinct'):
         apply_matching(q,[(1,2),(2,3)],grid[:2])
+
+
+@pytest.mark.parametrize('group_width', [4, -1])
+def test_input_angle_scores_match_direct_frozen_scale_quantization(group_width):
+    panel = sample(22, 'train')[0]
+    panel.weight[0, :] = 0
+    panel.activation[:, 0] = 0
+    q = hadamard_rotation(8, 11, 'cpu')
+    state = PanelState(panel, q, QuantSpec(group_size=group_width), QuantSpec(bits=3, group_size=4), fixed=True)
+    pairs = [(0, 1), (2, 5)]
+    angles = proposal_grid(q, .72, 7)
+    scores = fixed_scale_input_deltas(state, pairs, angles, batch_pairs=1)
+    for i, pair in enumerate(pairs):
+        for j, theta in enumerate(angles):
+            exact = state.direct(pair, theta)['loss'] - state.loss
+            assert scores[i, j].item() == pytest.approx(exact.item(), abs=2e-14)
+
+
+def test_bilateral_proposal_keeps_exact_output_closure_and_dynamic_fit_caps():
+    fit = sample(22, 'fit')
+    q = hadamard_rotation(8, 11, 'cpu')
+    spec = QuantSpec(group_size=4)
+    start = fit_totals(fit, q, spec)
+    caps = {k:start[k] for k in ('budget_a', 'budget_w')}
+    selected, result = fit_matching(fit, q, spec, disjoint_pairs(8, 1), SolverConfig(), caps,
+                                    criterion='bilateral_fixed_scale_proposal', grid_points=5)
+    assert result['product_replay_minus_predicted_change'] == pytest.approx(0., abs=2e-14)
+    assert result['final'] == pytest.approx(fit_totals(fit, selected, spec), abs=1e-14)
+    assert all(result['final'][k] <= cap+1e-10 for k, cap in caps.items())
 
 
 def test_rotation_joint_fit_risks_and_activation_invariant():

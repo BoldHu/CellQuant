@@ -65,6 +65,21 @@ def q_digest(q):
     return hashlib.sha256(q.detach().contiguous().cpu().numpy().tobytes()).hexdigest()
 
 
+def replay_selected_batches(parent, pairs, angles, batch_size, trace):
+    kept = trace['accepted_batches']
+    if batch_size <= 0 or len(pairs) != len(angles) or kept != sorted(set(kept)):
+        raise ValueError('Invalid fitted batch schedule')
+    q = parent
+    for index in kept:
+        if type(index) != int or not 0 <= index * batch_size < len(angles):
+            raise ValueError('Fitted batch index out of range')
+        rows = slice(index * batch_size, (index + 1) * batch_size)
+        q = apply_matching(q, pairs[rows], angles[rows])
+    if q_digest(q) != trace['final_q_sha256']:
+        raise ValueError('Replayed candidate differs from the fitted global rotation')
+    return q
+
+
 def replay_continued_grid(arms, dimension, seed, device):
     q = hadamard_rotation(dimension, seed, device)
     for method in (HAD, WARM, CONTINUED):

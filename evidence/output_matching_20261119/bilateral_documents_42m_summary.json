@@ -1,0 +1,194 @@
+{
+  "archive_sha256": "22e11668b60298f4f64ba19ccbcd25e1f47457276f12313b053d0232aacc642c",
+  "design": {
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 2026111904,
+    "documents_per_seed": 16,
+    "partition_namespace": 2026111904,
+    "primary": "nine-site median vs output-only at the same prefix",
+    "quality_reference": "continued_grid",
+    "tokens_per_document": 32,
+    "version": 1
+  },
+  "document_artifacts": {
+    "seed_11/bilateral_fixed_scale_proposal/document_result.json": "c889d734fc7ec5e67301c876103255fff168ae5bbbf1efda63ccd48ab702adb7",
+    "seed_11/continued_grid/document_result.json": "56be9742840f476e8ea6bb15026082e8dbb7fd902dd1fdb95a1f9ffb3b82635c",
+    "seed_11/hadamard_shared/document_result.json": "efbf23b6c5fe02e728efc4e18fe6e6d89c1cb2ea5e4ca9b9833b2e1c984e8c83",
+    "seed_11/product/document_result.json": "85f868ea82bad7b09f0b8e768090489fa5d72fde67827c883816b9cc294c1139",
+    "seed_23/bilateral_fixed_scale_proposal/document_result.json": "f2da912b8c908cb491a393b45d71e8b51547fd8c4dccebf49e69089dc5cab13c",
+    "seed_23/continued_grid/document_result.json": "576f433dffbed646a66819ae3b038a1b2109e934d0fa0db0690f76e8bc84fe5b",
+    "seed_23/hadamard_shared/document_result.json": "c08bc5366faeebb1c2ebf3e81d8d12c733deb7a09dc7fc8f0d3fad8e7a2b4cf1",
+    "seed_23/product/document_result.json": "449f911b4d277809cc1a27c5e74462333f00e449946d7cfc8574b29f814ab1dd"
+  },
+  "document_summary": {
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 2026111904,
+    "comparisons": {
+      "vs_full_grid": {
+        "all": {
+          "median_gain_pct": 1.044535817287151,
+          "paired_95_pct": [
+            0.6099453213487842,
+            1.3468710563593045
+          ],
+          "seed_medians_pct": {
+            "11": 0.2694095578560485,
+            "23": 0.6432761711602453
+          }
+        },
+        "input": {
+          "median_gain_pct": 1.4656976366028278,
+          "paired_95_pct": [
+            0.5284506611959071,
+            1.8975885740320313
+          ],
+          "seed_medians_pct": {
+            "11": -0.2952217469195717,
+            "23": 1.7630163163739443
+          }
+        },
+        "output": {
+          "median_gain_pct": 0.8865369297156256,
+          "paired_95_pct": [
+            0.5410809323789294,
+            1.1211916260925463
+          ],
+          "seed_medians_pct": {
+            "11": 0.5858635304698212,
+            "23": 0.3247372132096582
+          }
+        },
+        "site_gain_pct": {
+          "layer_0.down_proj": 1.044535817287151,
+          "layer_0.q_proj": -1.7568292725458234,
+          "layer_0.up_proj": 1.9597403730429783,
+          "layer_3.down_proj": 0.1552479979089083,
+          "layer_3.q_proj": 1.392984548564269,
+          "layer_3.up_proj": 1.576083009721846,
+          "layer_7.down_proj": 0.8865369297156256,
+          "layer_7.q_proj": 1.538410724641387,
+          "layer_7.up_proj": -0.32301758478848197
+        }
+      },
+      "vs_hadamard": {
+        "all": {
+          "median_gain_pct": 5.986205605061124,
+          "paired_95_pct": [
+            4.754007638222257,
+            6.9697517331176
+          ],
+          "seed_medians_pct": {
+            "11": 3.281169632022396,
+            "23": 5.317811513796633
+          }
+        },
+        "input": {
+          "median_gain_pct": 7.31369931196271,
+          "paired_95_pct": [
+            6.322337998387524,
+            7.7036807766024715
+          ],
+          "seed_medians_pct": {
+            "11": 5.068396978408896,
+            "23": 8.786022490764129
+          }
+        },
+        "output": {
+          "median_gain_pct": 1.2070219103899826,
+          "paired_95_pct": [
+            0.8776157091189452,
+            1.527099104483148
+          ],
+          "seed_medians_pct": {
+            "11": 1.4818011921337249,
+            "23": 0.6728727638899867
+          }
+        },
+        "site_gain_pct": {
+          "layer_0.down_proj": 1.7098692099969226,
+          "layer_0.q_proj": 1.9335871770817525,
+          "layer_0.up_proj": 5.986205605061124,
+          "layer_3.down_proj": 0.36281052327178376,
+          "layer_3.q_proj": 7.336321777297921,
+          "layer_3.up_proj": 7.291076846627498,
+          "layer_7.down_proj": 1.2070219103899826,
+          "layer_7.q_proj": 7.7034342171587555,
+          "layer_7.up_proj": 7.388598907159632
+        }
+      },
+      "vs_output_only": {
+        "all": {
+          "median_gain_pct": 3.656961771922134,
+          "paired_95_pct": [
+            2.9300133215242754,
+            4.622584342812268
+          ],
+          "seed_medians_pct": {
+            "11": 0.449037466902269,
+            "23": 5.170381572994732
+          }
+        },
+        "input": {
+          "median_gain_pct": 4.397210168991705,
+          "paired_95_pct": [
+            3.851842768471576,
+            5.16828598073205
+          ],
+          "seed_medians_pct": {
+            "11": 3.6758316299838,
+            "23": 6.303049342241413
+          }
+        },
+        "output": {
+          "median_gain_pct": -0.6865629093466108,
+          "paired_95_pct": [
+            -0.9363262556250052,
+            -0.5703245017456616
+          ],
+          "seed_medians_pct": {
+            "11": -0.5594678958868338,
+            "23": -0.9870432638594551
+          }
+        },
+        "site_gain_pct": {
+          "layer_0.down_proj": -0.6637780130615778,
+          "layer_0.q_proj": 3.656961771922134,
+          "layer_0.up_proj": 3.619436570658946,
+          "layer_3.down_proj": -0.6865629093466108,
+          "layer_3.q_proj": 5.198233959644611,
+          "layer_3.up_proj": 4.2317061439410715,
+          "layer_7.down_proj": -1.2443373808439295,
+          "layer_7.q_proj": 5.335106423516805,
+          "layer_7.up_proj": 4.562714194042339
+        }
+      }
+    },
+    "distinct_documents": 32,
+    "seeds_held_fixed": [
+      11,
+      23
+    ],
+    "sites": [
+      "layer_0.down_proj",
+      "layer_0.q_proj",
+      "layer_0.up_proj",
+      "layer_3.down_proj",
+      "layer_3.q_proj",
+      "layer_3.up_proj",
+      "layer_7.down_proj",
+      "layer_7.q_proj",
+      "layer_7.up_proj"
+    ]
+  },
+  "evidence_kind": "FROZEN_BILATERAL_DOCUMENT_STUDY",
+  "fit_archive_sha256": "97ae35d761735f087e4ade0695f23653bf16a1f626ffb11307a144d2dad97cff",
+  "graph_identity": "84fbf84d0dfed02b60cdce71da55631ee923ddf3b8494b3064ff69565c715826",
+  "model_id": "Xenova/llama2.c-stories42M",
+  "model_revision": "be9e05cce52ef2a4615026726bddb12639d541f5",
+  "parameters_after_norm_fusion_billions": 0.0580736,
+  "pretrained_parameter_count": 41689600,
+  "reference_archive_sha256": "23312ff86ebb1be260f0c69caa43dff2289141a9236bbb3605a87703ef08d17f",
+  "scope": "Pretrained 42M, FP32 graph and FP64 solver, eight calibration articles and sixteen held-out articles per seed. Same fitted rotations across document resamples. No end-to-end model or throughput claim.",
+  "source_type": "real_layer",
+  "status": "STUDY_COMPLETE"
+}

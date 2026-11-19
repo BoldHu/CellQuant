@@ -50,8 +50,9 @@ def read_reference(path, grid_archive, fit_archive, design, seeds, methods):
 
 def row_energies(weights, panel, q, specs, *, tile_rows=TILE_ROWS, alternate_rows=None):
     """Sum the projected errors and FP target energy per document across whole output rows."""
-    if panel.panel_id != SITE or panel.placement != 'input' or weights.ndim != 2 or tile_rows < 1:
-        raise ValueError('Expected a full input-side layer_0.up_proj weight and a positive row tile')
+    if (panel.placement != 'input' or weights.ndim != 2 or tile_rows < 1 or q.ndim != 2
+            or q.shape != (weights.shape[1],weights.shape[1])):
+        raise ValueError('Expected a full input-side projection, its shared square rotation and a positive row tile')
     weights = weights.detach().to(q.device)
     sampled = torch.as_tensor(panel.metadata['weight_row_ids'], device=q.device, dtype=torch.long)
     if (not 0 < len(sampled) < len(weights) or sampled.unique().numel() != len(sampled)

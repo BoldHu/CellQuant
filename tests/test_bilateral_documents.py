@@ -40,7 +40,7 @@ def test_real_screen_traces_and_frozen_cohort_are_bound_to_both_seeds(tmp_path):
         docs.draw_documents(blocks,fit,[])
 
 
-@pytest.mark.parametrize('study',['documents','crossfit','refresh'])
+@pytest.mark.parametrize('study',['documents','crossfit','refresh','transfer'])
 def test_preflight_binds_fresh_documents_and_dispatches_only_the_document_mode(tmp_path, monkeypatch, study):
     refs = tmp_path/'fit_reference'
     refs.mkdir()
@@ -52,11 +52,14 @@ def test_preflight_binds_fresh_documents_and_dispatches_only_the_document_mode(t
         from cellquant.row_crossfit import COHORT_FILE, DESIGN
         shutil.copyfile(REFS/COHORT_FILE,refs/COHORT_FILE)
         cohort = read_json(refs/COHORT_FILE)
-    if study == 'refresh':
+    if study in ('refresh','transfer'):
         from cellquant.row_refresh import COHORT_FILE as refresh_file, DESIGN as refresh_design, REFERENCE_FILE
         for name in (refresh_file,REFERENCE_FILE):
             shutil.copyfile(REFS/name,refs/name)
         cohort = read_json(refs/refresh_file)
+    if study == 'transfer':
+        from cellquant.row_transfer import REFERENCE_FILE as transfer_file, transfer_design
+        shutil.copyfile(REFS/transfer_file,refs/transfer_file)
     with ZipFile(refs/docs.FIT_FILE) as z:
         cfg = json.loads(z.read('run/config.json'))
         parent = cfg.pop('batch_g1_retest')
@@ -72,16 +75,19 @@ def test_preflight_binds_fresh_documents_and_dispatches_only_the_document_mode(t
         protocol.update(bilateral_document_pilot=cfg['bilateral_document_pilot'],token_manifest_sha256={k:sha256_file(v) for k,v in files.items()})
         if study != 'documents':
             cfg['row_crossfit'] = protocol['row_crossfit'] = {'design':DESIGN,'cohort_sha256':sha256_file(refs/COHORT_FILE)}
-        if study == 'refresh':
+        if study in ('refresh','transfer'):
             cfg['row_refresh'] = protocol['row_refresh'] = {'design':refresh_design,'cohort_sha256':sha256_file(refs/refresh_file),
                                                             'crossfit_sha256':sha256_file(refs/REFERENCE_FILE)}
+        if study == 'transfer':
+            cfg['row_transfer'] = protocol['row_transfer'] = {'design':transfer_design(),'refresh_sha256':sha256_file(refs/transfer_file)}
     path = atomic_json(tmp_path/'protocol.json',protocol)
     cfg.update(protocol_manifest_path=str(path),protocol_sha256=sha256_file(path))
     cfg['data']['token_manifests'] = files
     monkeypatch.setattr(experiment,'preflight',lambda *a: {'status':'READY','missing':[]})
     assert experiment.run_experiment(cfg,project_root=tmp_path,preflight_only=True)['readiness']['status'] == 'BLOCKED'
-    mode = {'documents':'frozen_bilateral_document_pilot','crossfit':'matched_row_crossfit','refresh':'matched_row_refresh'}[study]
-    flags = dict(bilateral_documents=study=='documents',row_crossfit=study=='crossfit',row_refresh=study=='refresh')
+    mode = {'documents':'frozen_bilateral_document_pilot','crossfit':'matched_row_crossfit','refresh':'matched_row_refresh',
+            'transfer':'frozen_cross_layer_row_transfer'}[study]
+    flags = dict(bilateral_documents=study=='documents',row_crossfit=study=='crossfit',row_refresh=study=='refresh',row_transfer=study=='transfer')
     out = experiment.run_experiment(cfg,project_root=tmp_path,preflight_only=True,**flags)
     assert out['execution_mode'] == mode and out['readiness']['status'] == 'READY'
     bad = read_json(files['23'])
@@ -90,7 +96,7 @@ def test_preflight_binds_fresh_documents_and_dispatches_only_the_document_mode(t
     protocol['token_manifest_sha256']['23'] = sha256_file(files['23'])
     cfg['protocol_sha256'] = sha256_file(atomic_json(path,protocol))
     with pytest.raises(ValueError,match='identity'):
-        docs.verify_document_inputs(cfg,row_crossfit=flags['row_crossfit'],row_refresh=flags['row_refresh'])
+        docs.verify_document_inputs(cfg,row_crossfit=flags['row_crossfit'],row_refresh=flags['row_refresh'],row_transfer=flags['row_transfer'])
 
 
 def test_document_decision_separates_mechanism_from_grid_tail_and_efficiency():
@@ -148,7 +154,7 @@ def test_terminal_accepts_the_portable_fit_zip_without_an_old_g1_config(tmp_path
         cli.main(['--validate-bilateral','--fit-archive',str(REFS/docs.FIT_FILE)])
 
 
-@pytest.mark.parametrize('study',['diagnosis','crossfit','refresh'])
+@pytest.mark.parametrize('study',['diagnosis','crossfit','refresh','transfer'])
 def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tmp_path, monkeypatch,study):
     spec = importlib.util.spec_from_file_location('row_colab_cli', ROOT/'scripts/run_output_matching.py')
     cli = importlib.util.module_from_spec(spec)
@@ -166,13 +172,18 @@ def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tm
             if study != 'diagnosis':
                 from cellquant.row_crossfit import COHORT_FILE
                 expected.extend(['--row-crossfit-cohort',str(refs/COHORT_FILE)])
-            if study == 'refresh':
+            if study in ('refresh','transfer'):
                 from cellquant.row_refresh import COHORT_FILE, REFERENCE_FILE
                 expected.extend(['--row-refresh-sources',str(refs/REFERENCE_FILE),str(refs/COHORT_FILE)])
+            if study == 'transfer':
+                from cellquant.row_transfer import REFERENCE_FILE as transfer_file
+                expected.extend(['--row-transfer-archive',str(refs/transfer_file)])
             assert argv[argv.index('--bilateral-sources')+1:] == expected
             atomic_json(Path(argv[argv.index('--output')+1])/'config.json', {})
             return {'returncode':0, 'log_path':str(log)}
-        if study == 'refresh':
+        if study == 'transfer':
+            assert '--audit-row-transfer' in argv and '--refresh-rows' not in argv
+        elif study == 'refresh':
             assert '--refresh-rows' in argv and '--crossfit-rows' not in argv
         elif study == 'crossfit':
             assert '--crossfit-rows' in argv and '--bilateral-rows' not in argv
@@ -185,7 +196,8 @@ def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tm
 
     monkeypatch.setattr(cli,'stream_command',execute)
     flag,filename = {'refresh':('--refresh-rows','row_refresh.zip'),'crossfit':('--crossfit-rows','row_crossfit.zip'),
-                     'diagnosis':('--diagnose-bilateral-rows','bilateral_row_diagnostic.zip')}[study]
+                     'diagnosis':('--diagnose-bilateral-rows','bilateral_row_diagnostic.zip'),
+                     'transfer':('--audit-row-transfer','row_transfer.zip')}[study]
     assert cli.main([flag]) == 2
     path, = (tmp_path/'runs/01_pilot').rglob(filename)
     with ZipFile(path) as z:

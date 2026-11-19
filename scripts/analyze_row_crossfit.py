@@ -18,16 +18,16 @@ from cellquant.runtime import atomic_json, config_hash, read_json, sha256_file
 from cellquant.solver import pair_schedule
 
 
-def paired_sums(rows):
+def paired_sums(rows, design=DESIGN):
     """Independent implementation for disjoint seed strata, one block per article."""
     # Strata in the registered sampling code are visited in global document-ID order.
     seeds = sorted(rows, key=lambda seed:min(rows[seed]['heldout_documents']))
-    rng = np.random.default_rng(DESIGN['bootstrap_seed'])
+    rng = np.random.default_rng(design['bootstrap_seed'])
     result = {}
     for seed in seeds:
         docs = sorted(rows[seed]['heldout_documents'])
         n = len(docs)
-        weights = rng.multinomial(n,np.full(n,1/n),size=DESIGN['bootstrap_draws'])
+        weights = rng.multinomial(n,np.full(n,1/n),size=design['bootstrap_draws'])
         weights = np.vstack([np.ones(n),weights])
         methods = {}
         for method, measurement in rows[seed]['methods'].items():

@@ -44,7 +44,7 @@ def alternate_row_ids(total, original, row_seed):
     return rows
 
 
-def paired_row_effect(by_seed, new, baseline, groups, precision, *, draws, rng_seed, difference=None, paired_orders=()):
+def paired_row_effect(by_seed, new, baseline, groups, precision, *, draws, rng_seed, difference=None, paired_orders=(), gap_groups=None):
     """Use one document multiplicity across methods and row groups, with the fitted seeds fixed."""
     records = []
     seeds = sorted(by_seed)
@@ -79,6 +79,9 @@ def paired_row_effect(by_seed, new, baseline, groups, precision, *, draws, rng_s
     if difference is not None:
         left, right = (groups.index(g) for g in difference)
         result['difference_pp'] = interval(gains[:,:,left] - gains[:,:,right])
+    for name, group_pairs in (gap_groups or {}).items():
+        gaps = [gains[:,:,groups.index(left)] - gains[:,:,groups.index(right)] for left,right in group_pairs]
+        result[name] = interval(np.mean(gaps,axis=0))
     return result
 
 

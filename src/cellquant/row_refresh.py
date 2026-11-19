@@ -33,6 +33,28 @@ DESIGN = {**CROSSFIT, 'partition_namespace':2026111907, 'bootstrap_seed':2026111
 ORDERS = {'ab_vs_aa':('ab','aa'), 'ba_vs_bb':('ba','bb')}
 
 
+def read_refresh_archive(path, crossfit, grid, *, small):
+    """Read the four measured rotations and their document energies, bound to both parent archives."""
+    prefix = '' if small else 'run/'
+    with ZipFile(path) as archive:
+        result = json.loads(archive.read(prefix+'result.json'))
+        design = {**DESIGN,'grid_pairs':32 if small else 256}
+        if (result['status'] != 'STUDY_COMPLETE' or result['source_type'] != 'real_layer'
+                or result['evidence_kind'] != 'MATCHED_ROW_REFRESH' or result['design'] != design
+                or (not small and result.get('execution_mode') != 'matched_row_refresh')
+                or result['reference_archive_sha256'] != sha256_file(grid) or result['crossfit_reference_sha256'] != sha256_file(crossfit)):
+            raise ValueError('Row-refresh archive differs from the fitted models or study design')
+        rows = {}
+        for seed in design['seeds']:
+            name = f'seed_{seed}/row_refresh.json'
+            row = checked_json(archive,prefix+name,result['row_artifacts'][name])
+            if (row['seed'] != seed or row['source_type'] != 'real_layer' or row['site'] != SITE
+                    or set(row['methods']) != set(design['methods']) or set(row['tails']) != {'ab','ba'}):
+                raise ValueError('Incomplete row-refresh measurements')
+            rows[seed] = row
+    return result, rows
+
+
 def read_crossfit_archive(path, grid_archive, *, small):
     """Load the completed row comparison and bind its raw measurements to their original fits."""
     prefix = '' if small else 'run/'

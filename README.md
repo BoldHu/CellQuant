@@ -10,10 +10,12 @@
 
 **更换拟合行后，7B 网格的优势随之移动。** 在 32 篇新文章的第 0 层 up，B 拟合的网格相对 A 网格在 A 行误差高 32.77%，在 B 行低 28.28%。两组降幅相差 61.05 个百分点 [58.83, 63.36]。两个种子分别复现反转。两组都未拟合的 10,880 行上，变化为 −0.172% [−0.383%, +0.042%]，正数表示改善。研究证据支持固定行上测得的增益可能大幅高估整投影收益。[7B 逐篇复算](evidence/output_matching_20261119/row_crossfit_7b_summary.json) · [42M 与 7B 对照图](evidence/output_matching_20261119/row_crossfit_transfer.png)
 
-下一步用相同的 256 对搜索预算，在第 128 对后更换拟合行，分别比较 A→B 对 A→A、B→A 对 B→B。42M 的两个顺序在未见行上一正一负。7B 将以两个顺序的配对平均为主指标，另用 32 篇未见文章。推送后在 A100 执行下行，末尾给出 `row_refresh.zip`。[实验协议与判据](docs/OUTPUT_MATCHING_STUDY.md#固定预算下中途更换拟合行)
+**7B 中途换行在未见行上的误差增加了 0.230%。** 两个换行顺序相对各自固定网格的平均 NMSE 降幅为 −0.230% [−0.308%, −0.148%]，整投影为 −0.148% [−0.225%, −0.066%]。原 256 对网格在新一批 32 篇文章上再次各自赢得自己的拟合行，行组间的相对优势相差 62.54 个百分点 [60.71, 64.15]。按事先约定，单次换行策略到此结束。[7B 逐篇复算](evidence/output_matching_20261119/row_refresh_7b_summary.json) · [换行收益与退化](evidence/output_matching_20261119/row_refresh_transfer.png)
+
+下一步回放同一条网格轨迹的短、长两个旋转，在已有的 32 篇文章上完整测量首、中、末层的 `up_proj` 和 `q_proj`。主指标为中层和末层 `up_proj` 的拟合行增益比未拟合行高多少。推送后在原 A100 运行下行，末尾给出 `row_transfer.zip`。[跨层回放协议](docs/OUTPUT_MATCHING_STUDY.md#跨层测量拟合行与未见行)
 
 ```bash
-cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --refresh-rows
+cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --audit-row-transfer
 ```
 
 16 份验证文档的配对抽样给出相对最强匹配对照的 95% 区间 [−0.2054%，+0.0482%]。后续 A100 拟合诊断已完成。改变配对后，CellQuant 相对网格的额外收益在一个种子上扩大，在另一个种子上缩小。依据事先记录的条件，停止这条配对修正。[文档区间](evidence/colab_a100_g1_20261118/document_intervals.json) · [A100 诊断结果](evidence/g1_pair_diagnostic_20261118/a100_summary.json) · [诊断协议](docs/G1_PAIR_DIAGNOSTIC.md)
@@ -30,7 +32,7 @@ cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matchin
 - 合成 G0：3 seeds、24 cases，真实计算为 PASS；完整 d=4096、FFN=11008 工程 smoke 已运行，使用少 tokens/窄角域。
 - 随机小 LLaMA 的 FP 融合/旋转、GPTQ、RTN 恢复、MHA/GQA、R1/R2 训练和恢复已实际执行。
 - 五本阶段 notebook 和新增 GitHub/Colab 初始化 notebook 的默认路径均在本地运行成功；不会自动下载模型或启动 sweep。
-- 本机 RTX 3050 Laptop 4 GiB 已完成预训练 42M 的两组固定行和两种中途换行顺序的实测。A100 已完成原版 7B G1、01d、分批拟合、两次文档 pilot、上界复验、双侧选角拟合、全行诊断和两组固定行的换行复验。7B 中途换行与整模型 G2–G4 待实测。
+- 本机 RTX 3050 Laptop 4 GiB 已完成预训练 42M 的固定行、中途换行和跨层回放实测。A100 已完成 7B G1、01d、分批拟合、两次文档 pilot、上界复验、双侧选角拟合、全行诊断、固定行与中途换行复验。7B 的六投影回放和整模型 G2–G4 待实测。
 
 ## 开始运行
 

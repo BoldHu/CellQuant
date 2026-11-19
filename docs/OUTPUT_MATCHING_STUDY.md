@@ -281,6 +281,35 @@ LLaMA-2-7B 在 A100 上用 782.17 秒完成两种子验证。输入为事先冻�
 cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --refresh-rows
 ```
 
+## 7B 中途换行结果
+
+LLaMA-2-7B 的 A100 作业耗时 762.89 秒。32 篇文章与先前 331 篇隔离，两个种子各 16 篇。四条后半段搜索均完成 128 对，开始与结束均满足对应面板的尺度约束。下表为换行相对各自固定网格的 W4A4 归一化误差降幅，正值表示改善。两种顺序的平均在同一次文档重采样中计算，区间为固定两个种子的配对 95% 区间。[原始 ZIP](../evidence/output_matching_20261119/row_refresh_7b.zip) · [逐篇结果及其余八个位置](../evidence/output_matching_20261119/row_refresh_7b_summary.json) · [结果图](../evidence/output_matching_20261119/row_refresh_transfer.png)
+
+| 范围 | A→B 对 A→A | B→A 对 B→B | 两种顺序的平均与 95% 区间 |
+|---|---:|---:|---:|
+| A 的 64 行 | −9.817% | +21.053% | +5.618% [5.199%, 6.065%] |
+| B 的 64 行 | +22.836% | −12.469% | +5.184% [4.770%, 5.575%] |
+| 均未拟合的 10,880 行 | −0.285% | −0.175% | −0.230% [−0.308%, −0.148%] |
+| 整个投影 11,008 行 | −0.187% | −0.108% | −0.148% [−0.225%, −0.066%] |
+
+未见行上，种子 11、23 的平均降幅分别为 −0.410% 和 −0.050%。换行让第二段使用的行在每篇文章上变好，也让第一段使用的行逐篇变差。两种顺序在其余八个位置的中位降幅分别为 −0.166%、−0.103%。预定投入判定为 `retain_row_effect_stop_single_switch`，这条策略到此结束。
+
+对原始单侧量化误差作事后分解，三项都除以同一固定对照的 W4A4 误差。A→B 在 B 行的 +22.836% 中，权重单侧误差的变化贡献 +22.949 个百分点。B→A 在 A 行的 +21.053% 中，这一项为 +20.775 个百分点。未见行的 −0.230% 可分为权重单侧 −0.165 个百分点 [−0.180, −0.150]、激活单侧 −0.051 [−0.124, +0.027] 和剩余项 −0.014 [−0.033, +0.005]。剩余项包含权重与激活量化误差的乘积及平方展开的交叉项。
+
+单独比较这批文章上的原固定 A、B 网格，其拟合行相对降幅反转了 62.54 个百分点 [60.71, 64.15]，此前为 61.05 [58.83, 63.36]。两个网格在这批 32 篇文章上再次各自赢得自己的行。两批使用相同的两个种子、行集和旋转，这项复现衡量的是换文章后的稳定性。未见行上的固定网格差异为 −0.069% [−0.240%, +0.112%]。由此可以分开量化固定行评估效应及尝试修正它的代价。
+
+## 跨层测量拟合行与未见行
+
+沿原来的 A 网格轨迹回放两个已冻结的全模型共享 R1。7B 比较第 256 对与第 64 对后的旋转，42M 比较第 32 对与第 8 对后的旋转。两个种子都完整测量原面板中所有的输入侧 `q_proj` 和 `up_proj`，覆盖首、中、末三层。每个投影报告原 64 个拟合行、剩余所有行和整投影。7B 的剩余集合在 up 有 10,944 行、在 q 有 4,032 行。全量归约通道、动态尺度、固定 SpinQuant 图及各自上下文保持一致。每个种子的完整旋转必须逐篇重现最近一次归档的六个拟合行面板。首层 up 同时核对整投影。[实现](../src/cellquant/row_transfer.py)
+
+主指标为 W4A4 下中、末两个 up 投影的“拟合行 NMSE 降幅减去剩余行 NMSE 降幅”，对两层和两个种子等权。按文章在种子内配对重采样 10,000 次，角度、行组、层和方法共用文档抽样。首层为已有发现，三个 q 和两种单侧量化为辅助结果。主指标的配对 95% 区间下限大于零且两层在两个种子上的四个差值均为正时，下一步用独立文章、不同拟合行和第三个校准种子做交叉换行复验。否则将结论限制在已复现的位置。这是针对采样评估偏差的研究，不改变正式 G1。此次回放复用上一轮 32 篇留出文章，属于回顾性跨层核查。
+
+```bash
+cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --audit-row-transfer
+```
+
+末行输出 `row_transfer.zip` 的路径。7B 的六投影数值待 A100 测量。已有 A100 单投影回放耗时 75 秒，换行作业的模型加载和面板采集合计 63 秒。缓存就绪时预计这次约 2–5 分钟。
+
 ## 本地复算
 
 以下两条训练命令分别复现第一批与第二批小模型实验。脚本检查固定公开权重、tokenizer 和数据的 SHA-256。复算已有原始结果只需解压对应 `measurements.zip`，将解压目录传给分析脚本。它会验证逐方法 SHA-256，并从逐块误差重新计算区间与归因图。
@@ -295,6 +324,8 @@ python scripts/run_small_output_matching.py --validate-bilateral
 python scripts/run_small_output_matching.py --diagnose-bilateral-rows
 python scripts/run_small_output_matching.py --crossfit-rows
 python scripts/run_small_output_matching.py --refresh-rows
+python scripts/run_small_output_matching.py --audit-row-transfer
+python scripts/analyze_row_refresh.py --output runs/row_refresh_audit.json --replay-cuda --figure runs/row_refresh.png
 python scripts/analyze_row_crossfit.py --output runs/row_crossfit_audit.json --figure runs/row_crossfit.png
 python scripts/analyze_bilateral_rows.py --output runs/bilateral_rows_audit.json --figure runs/bilateral_rows.png
 python scripts/analyze_bilateral_documents.py --output runs/bilateral_documents_audit.json

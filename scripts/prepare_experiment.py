@@ -28,7 +28,8 @@ def cached_matching_model(config, model_id, weight_files, cache):
 
 
 def prepare(config_path,output,*,include_tests=False,relative_screen=None,matching_study=False,
-            batch_screen=None,matching_archive=None,retest_pilot=None,bilateral_sources=None,row_crossfit_cohort=None,row_refresh_sources=None):
+            batch_screen=None,matching_archive=None,retest_pilot=None,bilateral_sources=None,row_crossfit_cohort=None,
+            row_refresh_sources=None,row_transfer_archive=None):
     output=Path(output).resolve()
     previous=None
     parent_dataset_fingerprints=set()
@@ -37,6 +38,8 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
         raise ValueError('The row swap requires the archived fits and their previous document cohort')
     if row_refresh_sources is not None and row_crossfit_cohort is None:
         raise ValueError('Row refresh requires the original row-crossfit cohort')
+    if row_transfer_archive is not None and row_refresh_sources is None:
+        raise ValueError('Cross-layer scoring requires the original row-refresh cohort and rotations')
     if bilateral_sources is not None:
         from cellquant.bilateral_documents import COHORT_FILE, FIT_FILE, GRID_FILE, DESIGN as bilateral_design
         from cellquant.bilateral_documents import block_identity, draw_documents, read_7b_fit
@@ -123,6 +126,12 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
                     raise ValueError('Row refresh requires the completed reciprocal row experiment and registered cohort')
                 config['row_refresh'] = {'design':refresh_design,'cohort_sha256':sha256_file(refs/refresh_file),
                                          'crossfit_sha256':refresh['crossfit_sha256']}
+                if row_transfer_archive is not None:
+                    from cellquant.row_transfer import REFERENCE_FILE as transfer_file, transfer_design
+                    from cellquant.row_refresh import read_refresh_archive
+                    shutil.copyfile(row_transfer_archive, refs/transfer_file)
+                    read_refresh_archive(refs/transfer_file,refs/REFERENCE_FILE,refs/GRID_FILE,small=False)
+                    config['row_transfer'] = {'design':transfer_design(),'refresh_sha256':sha256_file(refs/transfer_file)}
     if retest_pilot is not None:
         from cellquant.batch_retest import DESIGN as retest_design,read_document_pilot,retest_partitions
         from cellquant.gates import resolve_rules_path
@@ -288,6 +297,8 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
             protocol['row_crossfit'] = config['row_crossfit']
             if row_refresh_sources is not None:
                 protocol['row_refresh'] = config['row_refresh']
+                if row_transfer_archive is not None:
+                    protocol['row_transfer'] = config['row_transfer']
     elif retest_pilot is not None:
         protocol.update(batch_g1_retest=config['batch_g1_retest'],formal_pilot=formal)
     elif batch_screen is not None:
@@ -319,7 +330,8 @@ if __name__=='__main__':
                    help='Freeze two completed rotations and prepare new articles for held-out scoring')
     p.add_argument('--row-crossfit-cohort',type=Path,help='Prepare a separate previously unused evaluation cohort for the row-swap experiment')
     p.add_argument('--row-refresh-sources',type=Path,nargs=2,metavar=('CROSSFIT_ZIP','COHORT'),help='Completed matched grids and unused articles for midpoint row switching')
+    p.add_argument('--row-transfer-archive',type=Path,help='Replay the frozen trajectory on the completed row-refresh documents')
     a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests,relative_screen=a.relative_g1_screen,
                             matching_study=a.matching_study,batch_screen=a.batch_document_screen,matching_archive=a.matching_archive,
                             retest_pilot=a.retest_pilot,bilateral_sources=a.bilateral_sources,row_crossfit_cohort=a.row_crossfit_cohort,
-                            row_refresh_sources=a.row_refresh_sources)
+                            row_refresh_sources=a.row_refresh_sources,row_transfer_archive=a.row_transfer_archive)

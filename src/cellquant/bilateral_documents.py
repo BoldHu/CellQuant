@@ -95,7 +95,7 @@ def draw_documents(blocks, fit, small_model_blocks, *, design=DESIGN):
                                    exclude=[*fit['prior'], *small_model_blocks])
 
 
-def verify_document_inputs(config, *, row_crossfit=False, row_refresh=False):
+def verify_document_inputs(config, *, row_crossfit=False, row_refresh=False, row_transfer=False):
     verify_parent_manifests(config)
     directory = Path(config['protocol_manifest_path']).parent
     protocol = read_json(directory/'protocol.json')
@@ -122,8 +122,15 @@ def verify_document_inputs(config, *, row_crossfit=False, row_refresh=False):
     old = [*fit['prior'], *cohort['previous_42m_train_blocks'],
            *(b for p in fit['parts'].values() for rows in p.values() for b in rows)]
     heldout = cohort['heldout']
-    if bool(config.get('row_crossfit')) != (row_crossfit or row_refresh) or bool(config.get('row_refresh')) != row_refresh:
+    row_refresh = row_refresh or row_transfer
+    if (bool(config.get('row_crossfit')) != (row_crossfit or row_refresh) or bool(config.get('row_refresh')) != row_refresh
+            or bool(config.get('row_transfer')) != row_transfer):
         raise ValueError('Use the runner bound to this document protocol')
+    if row_transfer:
+        from .row_transfer import REFERENCE_FILE as transfer_file, transfer_design
+        binding = {'design':transfer_design(),'refresh_sha256':sha256_file(folder/transfer_file)}
+        if config['row_transfer'] != binding or protocol.get('row_transfer') != binding:
+            raise ValueError('Cross-layer transfer design or reference changed')
     if row_crossfit or row_refresh:
         from .row_crossfit import COHORT_FILE as crossfit_file, DESIGN as crossfit_design
         spec = config['row_crossfit']

@@ -68,3 +68,31 @@ def test_refresh_averages_matched_orders_in_each_draw_and_requires_feasible_endp
     assert result['next_step'] == 'replicate_refresh_on_more_projections'
     rows[11]['tails']['ba']['destination_feasible_at_end'] = False
     assert summarize_refresh(rows,{**DESIGN,'bootstrap_draws':100})['next_step'] == 'retain_row_effect_stop_single_switch'
+
+
+def test_cross_layer_gap_pairs_articles_and_excludes_the_discovery_layer():
+    from cellquant.bilateral_rows import PRECISIONS, ROW_SETS
+    from cellquant.row_transfer import summarize_transfer, transfer_design
+    design = {**transfer_design(),'bootstrap_draws':200}
+    rows = {}
+    for seed in design['seeds']:
+        sites = {}
+        for layer,ratio in zip(design['layers'],[2.,0.8,0.9]):
+            for projection in design['projections']:
+                site = f'layer_{layer}.{projection}'
+                sites[site] = {}
+                for name in ('full','short'):
+                    data = {}
+                    for group in ROW_SETS:
+                        fit = group=='sampled' and name=='full'
+                        multiplier = (ratio if projection=='up_proj' else 1.4) if fit else 1.
+                        data[group] = [{'document_id':f'{seed}/{j}','block_id':f'{seed}/{j}:0','sampled_tokens':2,
+                                        'target_energy':10*j,**{p:j*multiplier for p in PRECISIONS}} for j in (1,2)]
+                    sites[site][name] = {'blocks':data}
+        rows[seed] = {'sites':sites}
+    report = summarize_transfer(rows,design)
+    assert report['effects']['W4A4']['mean_middle_last_up_gap_pp']['paired_95'] == pytest.approx([15.,15.])
+    assert report['next_step'] == 'confirm_with_independent_row_swap_and_third_seed'
+    for b in rows[23]['sites']['layer_31.up_proj']['full']['blocks']['sampled']:
+        b['W4A4'] *= 1.2
+    assert summarize_transfer(rows,design)['next_step'] == 'limit_claim_to_replicated_sites'

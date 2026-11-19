@@ -38,9 +38,11 @@ def main():
     modes.add_argument('--diagnose-bilateral-rows',action='store_true',help='Verify the row diagnostic against the frozen 42M document results')
     modes.add_argument('--crossfit-rows',action='store_true',help='Swap the first up projection calibration rows on pretrained 42M')
     modes.add_argument('--refresh-rows',action='store_true',help='Switch row sets halfway through the grid fit on pretrained 42M')
+    modes.add_argument('--audit-row-transfer',action='store_true',help='Reconstruct the frozen checkpoints and measure all six input projections')
     args=parser.parse_args()
     document_mode = args.validate_bilateral or args.diagnose_bilateral_rows
-    row_study = args.crossfit_rows or args.refresh_rows
+    use_refresh_cohort = args.refresh_rows or args.audit_row_transfer
+    row_study = args.crossfit_rows or use_refresh_cohort
     import pyarrow.parquet as parquet
     import torch
     from transformers import LlamaConfig, LlamaForCausalLM, PreTrainedTokenizerFast
@@ -61,7 +63,9 @@ def main():
     if args.diagnose_bilateral_rows:
         prefix='bilateral_rows_42m_'
     if row_study:
-        prefix='row_refresh_42m_' if args.refresh_rows else 'row_crossfit_42m_'
+        prefix='row_refresh_42m_' if use_refresh_cohort else 'row_crossfit_42m_'
+    if args.audit_row_transfer:
+        prefix='row_transfer_42m_'
     out=ROOT/'runs/experiments'/(prefix+uuid4().hex[:12])
     out.mkdir(parents=True)
     print('Run',out,flush=True)
@@ -165,7 +169,7 @@ def main():
                                                 namespace=design['partition_namespace'],exclude=old)
                 del cfg['bilateral_documents']
                 cfg['row_crossfit'] = {'design':design,'excluded_7b_cohort_hash':config_hash(read_json(folder/COHORT_FILE))}
-                if args.refresh_rows:
+                if use_refresh_cohort:
                     from cellquant.row_refresh import COHORT_FILE as refresh_file, DESIGN as refresh_design, run_refresh
                     refresh = read_json(folder/refresh_file)
                     previous = [b for _,docs in final.values() for b in docs]
@@ -179,6 +183,11 @@ def main():
                     crossfit_archive = folder/'row_crossfit_42m.zip'
                     cfg['row_refresh'] = {'design':design,'crossfit_sha256':sha256_file(crossfit_archive),
                                           'excluded_7b_cohort_hash':config_hash(refresh)}
+                    if args.audit_row_transfer:
+                        from cellquant.row_transfer import transfer_design, full_weights, run_transfer
+                        refresh_archive = folder/'row_refresh_42m.zip'
+                        design = transfer_design(small=True)
+                        cfg['row_transfer'] = {'design':design,'refresh_sha256':sha256_file(refresh_archive)}
     elif args.screen_bilateral:
         from cellquant.bilateral_screen import DESIGN as screen_design, run_screen
         reference=ROOT/'evidence/output_matching_20261118/hybrid_42m/measurements.zip'
@@ -216,16 +225,20 @@ def main():
     rotate_model(model,out/'fixed_R.bin',device=device)
     install_online_graph(model,cfg['quantization'],quantized=False)
     model.to(device)
-    prepared=prepare_pilot_inputs(cfg,model,graph_identity=graph_id,heldout_only=args.validate_batches or document_mode,
+    prepared=prepare_pilot_inputs(cfg,model,graph_identity=graph_id,heldout_only=args.validate_batches or document_mode or args.audit_row_transfer,
                                   fit_only=args.screen_bilateral)
-    if args.diagnose_bilateral_rows or row_study:
+    if args.audit_row_transfer:
+        input_weights = full_weights(model,design)
+    elif args.diagnose_bilateral_rows or row_study:
         full_up_weight = model.model.layers[0].mlp.up_proj.module.weight.detach()
     del model
     torch.cuda.empty_cache()
     def emit(phase,**details):
         if phase=='matching.evaluate':
             print(phase,details,flush=True)
-    if args.refresh_rows:
+    if args.audit_row_transfer:
+        result=run_transfer(cfg,prepared,input_weights,out,reference,crossfit_archive,refresh_archive)
+    elif args.refresh_rows:
         result=run_refresh(cfg,prepared,full_up_weight,out,reference,crossfit_archive)
     elif args.crossfit_rows:
         result=run_crossfit(cfg,prepared,full_up_weight,out,reference)

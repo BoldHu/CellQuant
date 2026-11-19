@@ -42,6 +42,7 @@ def main(argv=None):
     modes.add_argument('--diagnose-bilateral-rows', action='store_true', help='Measure all first-layer up projection rows on the completed document cohort')
     modes.add_argument('--crossfit-rows', action='store_true', help='Swap the 64 up projection fit rows and compare both matched grids on new articles')
     modes.add_argument('--refresh-rows', action='store_true', help='Test a midpoint row switch against both fixed-row grids on new articles')
+    modes.add_argument('--audit-row-transfer', action='store_true', help='Score fitted and unseen rows at six input projections without refitting')
     parser.add_argument('--fit-archive', type=Path, help='Use the original bilateral_angle_screen.zip for frozen bilateral evaluation')
     parser.add_argument('--all-controls', action='store_true', help='Also measure every matched solver if the parent alone rules out both G1 routes')
     parser.add_argument('--pilot-archive', type=Path, default=Path('evidence/output_matching_20261119/batch_documents_7b.zip'))
@@ -51,7 +52,8 @@ def main(argv=None):
     parser.add_argument('--matching-archive', type=Path, default=Path('evidence/output_matching_20261119/measurements.zip'),
                         help='01d measurement archive used in the batch screen')
     args = parser.parse_args(argv)
-    document_mode = args.validate_bilateral or args.diagnose_bilateral_rows or args.crossfit_rows or args.refresh_rows
+    use_refresh_cohort = args.refresh_rows or args.audit_row_transfer
+    document_mode = args.validate_bilateral or args.diagnose_bilateral_rows or args.crossfit_rows or use_refresh_cohort
     parent = ROOT/args.config
     if not document_mode and not parent.is_file():
         parser.error(f'Original frozen G1 inputs missing at {parent}. Restore the prepared run or use --config.')
@@ -73,16 +75,21 @@ def main(argv=None):
         mode = ['--bilateral-documents']
         prepare_mode = ['--bilateral-sources', str(screen), str(ROOT/args.retest_archive), str(refs/COHORT_FILE)]
         prefix, archive_name = 'bilateral_documents_', 'bilateral_document_pilot.zip'
-        if args.crossfit_rows or args.refresh_rows:
+        if args.crossfit_rows or use_refresh_cohort:
             from cellquant.row_crossfit import COHORT_FILE as crossfit_file
             mode = ['--crossfit-rows']
             prepare_mode += ['--row-crossfit-cohort', str(refs/crossfit_file)]
             prefix, archive_name = 'row_crossfit_', 'row_crossfit.zip'
-            if args.refresh_rows:
+            if use_refresh_cohort:
                 from cellquant.row_refresh import COHORT_FILE as refresh_file, REFERENCE_FILE
                 mode = ['--refresh-rows']
                 prepare_mode += ['--row-refresh-sources',str(refs/REFERENCE_FILE),str(refs/refresh_file)]
                 prefix, archive_name = 'row_refresh_', 'row_refresh.zip'
+                if args.audit_row_transfer:
+                    from cellquant.row_transfer import REFERENCE_FILE as transfer_file
+                    prepare_mode += ['--row-transfer-archive',str(refs/transfer_file)]
+                    mode = ['--audit-row-transfer']
+                    prefix, archive_name = 'row_transfer_', 'row_transfer.zip'
         if args.diagnose_bilateral_rows:
             document_archive = refs/'bilateral_documents_7b.zip'
             if not document_archive.is_file():
@@ -128,6 +135,10 @@ def main(argv=None):
             result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer'
             or result.get('execution_mode') != 'matched_row_refresh' or result.get('evidence_kind') != 'MATCHED_ROW_REFRESH'):
         raise RuntimeError(f'Expected a completed real row-refresh study in {run}')
+    if args.audit_row_transfer and status['returncode']==0 and (
+            result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer'
+            or result.get('execution_mode') != 'frozen_cross_layer_row_transfer' or result.get('evidence_kind') != 'FROZEN_CROSS_LAYER_ROW_TRANSFER'):
+        raise RuntimeError(f'Expected a completed real cross-layer row audit in {run}')
     if args.validate_bilateral and result['status'] == 'STUDY_COMPLETE' and (
             result.get('source_type') != 'real_layer' or result.get('execution_mode') != 'frozen_bilateral_document_pilot'
             or result.get('evidence_kind') != 'FROZEN_BILATERAL_DOCUMENT_STUDY'):
@@ -146,7 +157,15 @@ def main(argv=None):
         for path in sorted(run.rglob('*.json')):
             z.write(path, Path('run')/path.relative_to(run))
     dest.with_suffix('.partial').replace(dest)
-    if args.refresh_rows:
+    if args.audit_row_transfer:
+        print('Cross-layer row audit',result['status'])
+        if 'row_transfer_summary' in result:
+            summary = result['row_transfer_summary']
+            print('Fitted minus unseen gain, middle and last up (pp)',summary['effects']['W4A4']['mean_middle_last_up_gap_pp'])
+            print('Next step',summary['next_step'])
+        else:
+            print(result.get('reason',result.get('readiness',{}).get('missing',[])))
+    elif args.refresh_rows:
         print('Matched row refresh',result['status'])
         if 'refresh_summary' in result:
             summary = result['refresh_summary']

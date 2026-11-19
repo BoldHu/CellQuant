@@ -236,7 +236,7 @@ def _verify_weight_files(config,output):
 def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False,profile_pairs=None,
                    diagnose_pairs=False,screen_objective=False,matching_study=False,matching_batch_archive=None,
                    batch_documents=False,batch_retest=False,all_controls=False,bilateral_archive=None,bilateral_documents=False,
-                   bilateral_row_reference=None,row_crossfit=False,row_refresh=False):
+                   bilateral_row_reference=None,row_crossfit=False,row_refresh=False,row_transfer=False):
     config=read_json(config) if isinstance(config,(str,Path)) else copy.deepcopy(config)
     profile_pair=profile_pair or profile_pairs is not None
     batch_screen = matching_batch_archive is not None
@@ -247,7 +247,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     bilateral_documents = bilateral_documents or row_diagnostic
     if all_controls and not batch_retest:raise ValueError('The complete-controls option belongs to the batch G1 retest')
     if sum((bool(profile_pair), diagnose_pairs, screen_objective, matching_study, batch_screen, batch_documents,
-            batch_retest, bilateral_screen, bilateral_documents, row_crossfit, row_refresh)) > 1:
+            batch_retest, bilateral_screen, bilateral_documents, row_crossfit, row_refresh, row_transfer)) > 1:
         raise ValueError('Choose either a single profiling mode or a single diagnostic per run')
     profile_count=1 if profile_pairs is None else profile_pairs
     if profile_pair:
@@ -259,7 +259,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     atomic_json(output/'config.json',config)
     # The diagnostic writes only its own run directory and optional invocation index.
     diagnostic = (diagnose_pairs or screen_objective or matching_study or batch_screen or batch_documents or
-                  batch_retest or bilateral_screen or bilateral_documents or row_crossfit or row_refresh)
+                  batch_retest or bilateral_screen or bilateral_documents or row_crossfit or row_refresh or row_transfer)
     checks = {k: v for k, v in config.items() if k != 'result_path'} if diagnostic else config
     ready=preflight(checks,root)
     if batch_screen or bilateral_screen:
@@ -307,15 +307,16 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
         except (ValueError, KeyError, OSError) as exc:
             ready['missing'].append(str(exc))
             ready['status']='BLOCKED'
-    row_study = row_crossfit or row_refresh
+    row_study = row_crossfit or row_refresh or row_transfer
     if (bool(config.get('bilateral_document_pilot')) != (bilateral_documents or row_study)
-            or bool(config.get('row_crossfit')) != row_study or bool(config.get('row_refresh')) != row_refresh):
+            or bool(config.get('row_crossfit')) != row_study or bool(config.get('row_refresh')) != (row_refresh or row_transfer)
+            or bool(config.get('row_transfer')) != row_transfer):
         ready['missing'].append('Choose the evaluation or row-crossfit runner bound to the prepared document cohort')
         ready['status']='BLOCKED'
     elif bilateral_documents or row_study:
         from .bilateral_documents import verify_document_inputs
         try:
-            frozen_angles = verify_document_inputs(config,row_crossfit=row_crossfit,row_refresh=row_refresh)
+            frozen_angles = verify_document_inputs(config,row_crossfit=row_crossfit,row_refresh=row_refresh,row_transfer=row_transfer)
             if row_diagnostic and not (root/bilateral_row_reference).is_file():
                 raise ValueError(f'Missing frozen document archive: {bilateral_row_reference}')
         except (ValueError, KeyError, OSError, BadZipFile) as exc:
@@ -350,6 +351,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     if row_diagnostic:base['execution_mode']='bilateral_row_diagnostic'
     if row_crossfit:base['execution_mode']='matched_row_crossfit'
     if row_refresh:base['execution_mode']='matched_row_refresh'
+    if row_transfer:base['execution_mode']='frozen_cross_layer_row_transfer'
     if batch_documents:base['execution_mode']='frozen_batch_document_pilot'
     if batch_retest:base['execution_mode']='batch_g1_retest'
     if preflight_only or ready['status']!='READY':
@@ -424,8 +426,11 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                 with measured('capture'):
                     prepared=prepare_pilot_inputs(config,model,graph_identity=graph_identity,
                                                   progress=progress.step,profile_only=profile_pair,fit_only=diagnose_pairs or batch_screen or bilateral_screen,
-                                                  screen_objective=screen_objective,heldout_only=batch_documents or bilateral_documents)
-                    if row_diagnostic or row_study:
+                                                  screen_objective=screen_objective,heldout_only=batch_documents or bilateral_documents or row_transfer)
+                    if row_transfer:
+                        from .row_transfer import full_weights
+                        input_weights = full_weights(model,config['row_transfer']['design'])
+                    elif row_diagnostic or row_study:
                         full_up_weight = model.model.layers[0].mlp.up_proj.module.weight.detach()
                 del model;model=None;gc.collect();torch.cuda.empty_cache()
                 captured_splits = [split for split in ('fit','screen_validation','heldout')
@@ -440,7 +445,12 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
             elif row_study:
                 from .bilateral_documents import GRID_FILE
                 folder = Path(config['protocol_manifest_path']).parent/'fit_reference'
-                if row_refresh:
+                if row_transfer:
+                    from .row_refresh import REFERENCE_FILE as crossfit_file
+                    from .row_transfer import REFERENCE_FILE as refresh_file, run_transfer
+                    summary = run_transfer(config,prepared,input_weights,output,folder/GRID_FILE,folder/crossfit_file,folder/refresh_file,
+                                           fit_7b=frozen_angles,progress=progress.step)
+                elif row_refresh:
                     from .row_refresh import run_refresh, REFERENCE_FILE
                     summary = run_refresh(config,prepared,full_up_weight,output,folder/GRID_FILE,folder/REFERENCE_FILE,fit_7b=frozen_angles,progress=progress.step)
                 else:
@@ -695,6 +705,7 @@ def main():
     parser.add_argument('--bilateral-rows',type=Path,metavar='DOCUMENT_ZIP',help='Replay the scored articles with the complete first up projection')
     parser.add_argument('--crossfit-rows',action='store_true',help='Refit the matched grid on a disjoint row panel and score both fits on fresh documents')
     parser.add_argument('--refresh-rows',action='store_true',help='Switch calibration rows halfway through the two matched grid fits')
+    parser.add_argument('--audit-row-transfer',action='store_true',help='Replay the short and full A grid at six fitted and unseen row panels')
     parser.add_argument('--batch-retest',action='store_true',help='Refit and validate the frozen batch algorithm on new calibration and validation documents')
     parser.add_argument('--all-controls',action='store_true',help='Finish every matched solver even if the parent already rules out both G1 routes')
     args=parser.parse_args()
@@ -704,7 +715,7 @@ def main():
                           matching_batch_archive=args.screen_matching_batches,batch_documents=args.batch_documents,
                           batch_retest=args.batch_retest,all_controls=args.all_controls,bilateral_archive=args.screen_bilateral_angles,
                           bilateral_documents=args.bilateral_documents,bilateral_row_reference=args.bilateral_rows,row_crossfit=args.crossfit_rows,
-                          row_refresh=args.refresh_rows)
+                          row_refresh=args.refresh_rows,row_transfer=args.audit_row_transfer)
     if args.result_index:atomic_json(args.result_index,{k:result[k] for k in ['run_id','run_dir','status']})
     display={'status':result['status'],'run_dir':result['run_dir'],'reason':result.get('reason'),
                       'incomplete_methods':result.get('incomplete_methods',[]),

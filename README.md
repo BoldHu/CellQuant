@@ -4,10 +4,10 @@
 
 **2026-11-18 的正式 A100 G1 已完成，判定为 FAIL。** LLaMA-2-7B 两个 seed、五种方法共 10 份结果齐全。CellQuant 在独立文档上相对 Hadamard 的跨位置中位 NMSE 降幅为 2.569%，相对逐位置最强匹配搜索为 0.017%。同卡校准速度比为 0.264×。当前停在 G1，G2 和全量实验尚未启动。[正式判定](evidence/colab_a100_g1_20261118/G1.json) · [实测分析](docs/IMPLEMENTATION_STATUS.md#a100-正式-g1) · [实验协议](docs/COLAB_A100_TEST.md)
 
-**下一轮 A100 运行 01d。** 新方法从已拟合的共享旋转出发，利用输出行对的可分离性和原尺度预算修正 `down_proj`。42M 预训练 LLaMA 的两批独立验证文档上，相对起始网格，输出中位 NMSE 分别下降 1.84% 和 1.70%。在第二批上，延长网格后再加修正，相对延长网格的输出改善为 1.16%，九位置为 0.71% [−0.46%, 1.07%]。已有上轮冻结输入的 Colab 在终端执行一行即可准备新文档并启动 7B 研究。[原理、消融及 A100 判读](docs/OUTPUT_MATCHING_STUDY.md) · [实测图](evidence/output_matching_20261118/hybrid_42m/site_effects.png)
+**2026-11-19 的 7B 输出匹配实验 01d 已完成。** 相对 128 对网格，三个输出投影的中位 NMSE 下降 1.55%，种子 11 下降 3.10%，种子 23 持平。从 256 对网格追加同一修正时，两个种子的六次非零步长试探都满足尺度预算，但输入投影增加的误差超过输出收益，最终两次都保留原网格。下一步在 A100 上复用已归档的角度做拟合短测，每 64 对联合检查一次。使用原 G1 准备好的输入，在 Colab 终端运行下行。[实测与下一轮决策](docs/OUTPUT_MATCHING_STUDY.md#7b-实测与下一轮决策) · [7B 实测图](evidence/output_matching_20261119/colab_7b_effects.png)
 
 ```bash
-cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py
+cd /content/CellQuant && git pull --ff-only && PYTHONPATH=src python -m cellquant.experiment --config runs/prepared/g1_gpu/config.json --screen-matching-batches evidence/output_matching_20261119/measurements.zip
 ```
 
 16 份验证文档的配对抽样给出相对最强匹配对照的 95% 区间 [−0.2054%，+0.0482%]。后续 A100 拟合诊断已完成。改变配对后，CellQuant 相对网格的额外收益在一个种子上扩大，在另一个种子上缩小。依据事先记录的条件，停止这条配对修正。[文档区间](evidence/colab_a100_g1_20261118/document_intervals.json) · [A100 诊断结果](evidence/g1_pair_diagnostic_20261118/a100_summary.json) · [诊断协议](docs/G1_PAIR_DIAGNOSTIC.md)
@@ -24,7 +24,7 @@ cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matchin
 - 合成 G0：3 seeds、24 cases，真实计算为 PASS；完整 d=4096、FFN=11008 工程 smoke 已运行，使用少 tokens/窄角域。
 - 随机小 LLaMA 的 FP 融合/旋转、GPTQ、RTN 恢复、MHA/GQA、R1/R2 训练和恢复已实际执行。
 - 五本阶段 notebook 和新增 GitHub/Colab 初始化 notebook 的默认路径均在本地运行成功；不会自动下载模型或启动 sweep。
-- 本机 GPU 为 RTX 3050 Laptop 4GiB，42M 预训练模型与完整输出轴形状均已实测。原 7B 真实层 G1 在 A100 上完成。新输出匹配的 7B 验证、整模型 G2–G4 与 96GB Blackwell 测试待运行。
+- 本机 RTX 3050 Laptop 4 GiB 已运行 42M 预训练模型及完整输出轴形状检查。A100 已完成 7B 正式 G1 和 01d 真实层实验。分批短测已在 42M 拟合文档上验证，7B 分批结果、整模型 G2–G4 和 96 GB Blackwell 测试待运行。
 
 ## 开始运行
 

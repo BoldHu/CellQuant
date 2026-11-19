@@ -231,11 +231,12 @@ def _verify_weight_files(config,output):
 
 
 def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False,profile_pairs=None,
-                   diagnose_pairs=False,screen_objective=False,matching_study=False):
+                   diagnose_pairs=False,screen_objective=False,matching_study=False,matching_batch_archive=None):
     config=read_json(config) if isinstance(config,(str,Path)) else copy.deepcopy(config)
     profile_pair=profile_pair or profile_pairs is not None
-    if sum((bool(profile_pair), diagnose_pairs, screen_objective,matching_study)) > 1:
-        raise ValueError('Choose either pair profiling, the coordinate diagnostic, the objective screen, or the matching study')
+    batch_screen = matching_batch_archive is not None
+    if sum((bool(profile_pair), diagnose_pairs, screen_objective, matching_study, batch_screen)) > 1:
+        raise ValueError('Choose either a single profiling mode or a single diagnostic per run')
     profile_count=1 if profile_pairs is None else profile_pairs
     if profile_pair:
         from .pilot import validate_profile_pair_count
@@ -245,9 +246,17 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     output=root/'runs'/'experiments'/run_id;output.mkdir(parents=True)
     atomic_json(output/'config.json',config)
     # The diagnostic writes only its own run directory and optional invocation index.
-    diagnostic = diagnose_pairs or screen_objective or matching_study
+    diagnostic = diagnose_pairs or screen_objective or matching_study or batch_screen
     checks = {k: v for k, v in config.items() if k != 'result_path'} if diagnostic else config
     ready=preflight(checks,root)
+    if batch_screen:
+        matching_batch_archive = root / matching_batch_archive
+        if not matching_batch_archive.is_file():
+            ready['missing'].append(f'01d measurement archive missing: {matching_batch_archive}')
+            ready['status']='BLOCKED'
+        if config.get('solver', {}).get('fit_objective', 'sum_nmse') != 'sum_nmse':
+            ready['missing'].append('Use the original sum-NMSE objective for the 01d fit replay')
+            ready['status']='BLOCKED'
     if profile_pair and (config.get('stage')!='G1' or not config.get('runtime',{}).get('model_device','').startswith('cuda') or config.get('resume_run_dir')):
         ready['missing'].append('Pair profile requires a GPU-resident G1 config without resume_run_dir')
         ready['status']='BLOCKED'
@@ -284,6 +293,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     if diagnose_pairs:base['execution_mode']='fit_pair_diagnostic'
     if screen_objective:base['execution_mode']='fit_objective_screen'
     if matching_study:base['execution_mode']='output_matching_study'
+    if batch_screen:base['execution_mode']='fit_matching_batch_screen'
     if preflight_only or ready['status']!='READY':
         result={**base,'readiness':ready,'status':'PREFLIGHT_ONLY' if preflight_only else 'BLOCKED'}
         atomic_json(output/'result.json',result);return result
@@ -355,13 +365,17 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                 from .pilot import prepare_pilot_inputs
                 with measured('capture'):
                     prepared=prepare_pilot_inputs(config,model,graph_identity=graph_identity,
-                                                  progress=progress.step,profile_only=profile_pair,fit_only=diagnose_pairs,
+                                                  progress=progress.step,profile_only=profile_pair,fit_only=diagnose_pairs or batch_screen,
                                                   screen_objective=screen_objective)
                 del model;model=None;gc.collect();torch.cuda.empty_cache()
                 progress.step('g1.model_released',captured_seeds=list(prepared['seeds']),
-                              captured_splits=['fit','screen_validation'] if screen_objective else (['fit'] if profile_pair or diagnose_pairs else ['fit','heldout']),
+                              captured_splits=['fit','screen_validation'] if screen_objective else (['fit'] if profile_pair or diagnose_pairs or batch_screen else ['fit','heldout']),
                               reason='requested panels captured and resident on CUDA')
-            if matching_study:
+            if batch_screen:
+                from .matching_batches import run_batch_screen
+                summary=run_batch_screen(config,prepared,output,matching_batch_archive,progress=progress.step)
+                result={**base,**summary,'timings':timings}
+            elif matching_study:
                 from .matching_study import run_matching_study
                 summary=run_matching_study(config,prepared,output,execution_fingerprint=fingerprint['sha256'],progress=progress.step)
                 result={**base,**summary,'timings':timings}
@@ -577,10 +591,13 @@ def main():
     parser.add_argument('--diagnose-pairs',action='store_true',help='Compare output error coverage and matched single-pair gains on fit panels at Q0')
     parser.add_argument('--screen-objective',action='store_true',help='Compare absolute and initial-relative fit losses on a split of the eight calibration documents')
     parser.add_argument('--matching-study',action='store_true',help='Measure output matching on a fresh frozen cohort')
+    parser.add_argument('--screen-matching-batches',type=Path,metavar='01D_ZIP',
+                        help='Use the original G1 config and replay archived 01d rotations on fit documents only')
     args=parser.parse_args()
     if args.result_index and Path(args.result_index).exists():raise FileExistsError('Result index already exists; choose a unique path')
     result=run_experiment(args.config,preflight_only=args.preflight,profile_pair=args.profile_pair,profile_pairs=args.profile_pairs,
-                          diagnose_pairs=args.diagnose_pairs,screen_objective=args.screen_objective,matching_study=args.matching_study)
+                          diagnose_pairs=args.diagnose_pairs,screen_objective=args.screen_objective,matching_study=args.matching_study,
+                          matching_batch_archive=args.screen_matching_batches)
     if args.result_index:atomic_json(args.result_index,{k:result[k] for k in ['run_id','run_dir','status']})
     display={'status':result['status'],'run_dir':result['run_dir'],'reason':result.get('reason'),
                       'incomplete_methods':result.get('incomplete_methods',[]),
@@ -590,6 +607,7 @@ def main():
     if 'paired_fit_summary' in result:display['paired_fit_summary']=result['paired_fit_summary']
     if 'objective_screen' in result:display['objective_screen']=result['objective_screen']
     if 'matching_summary' in result:display['comparisons']=result['matching_summary']['comparisons']
+    if 'fit_screen' in result:display.update(fit_screen=result['fit_screen'],next_step=result['next_step'])
     print(json.dumps(display,ensure_ascii=False,indent=2))
     return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY','PROFILE_COMPLETE','DIAGNOSTIC_COMPLETE','SCREEN_COMPLETE','STUDY_COMPLETE'} else 2
 

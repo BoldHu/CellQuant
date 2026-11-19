@@ -126,14 +126,17 @@ def risk_tables(panels, q, specs, pairs, grid, output_delta, deadline):
     return {'budget_w':w,'budget_a':a}
 
 
-def fit_totals(panels, q, specs):
+def fit_totals(panels, q, specs, *, site_nmse=None):
     result = {'loss':0., 'output_loss':0., 'budget_w':0., 'budget_a':0.}
     for panel in panels:
         s = PanelState(panel, q, *panel_specs(specs, panel))
         weight = panel.objective_weight
-        result['loss'] += weight * float(s.loss)
+        nmse = float(s.loss)
+        if site_nmse is not None:
+            site_nmse[panel.panel_id] = nmse
+        result['loss'] += weight * nmse
         if panel.placement == 'output':
-            result['output_loss'] += weight * float(s.loss)
+            result['output_loss'] += weight * nmse
         result['budget_w'] += weight * float(s.bw)
         result['budget_a'] += weight * float(s.ba)
         del s

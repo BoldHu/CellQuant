@@ -318,7 +318,8 @@ def build_g1_evidence(paths,output,*,g0_evidence_path,include_original_grid=Fals
         for path in paths:
             row=read_json(path)
             if row.get('evidence_kind')=='PAIR_PROFILE_ONLY':raise ValueError('Pair profiles cannot form G1 evidence')
-            if row.get('evidence_kind') in {'FIT_OBJECTIVE_SCREEN','FIT_PAIR_DIAGNOSTIC','OUTPUT_MATCHING_STUDY'}:
+            if row.get('evidence_kind') in {'FIT_OBJECTIVE_SCREEN','FIT_PAIR_DIAGNOSTIC','OUTPUT_MATCHING_STUDY',
+                                           'FIT_MATCHING_BATCH_SCREEN'}:
                 raise ValueError('Diagnostic results cannot form G1 evidence')
             if row.get('source_type')!='real_layer':raise ValueError('Only real-layer artifacts can form G1')
             for k,h in [('q_path','q_sha256'),('data_manifest_path','data_manifest_sha256')]:

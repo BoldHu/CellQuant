@@ -109,6 +109,73 @@ def test_study_pipeline_writes_raw_paired_evidence_without_a_gate(tmp_path):
         build_g1_evidence([result['matching_artifacts'][0]['path']],tmp_path/'not_g1',g0_evidence_path='unused')
 
 
+def test_batch_screen_replays_fit_only_and_materializes_accepted_batches():
+    from cellquant.matching_batches import screen_batches
+    fit = sample(22, 'fit')
+    q = hadamard_rotation(8, 11, 'cpu')
+    specs = QuantSpec(group_size=4)
+    cfg = SolverConfig(device='cpu')
+    limits = {k: v for k, v in fit_totals(fit, q, specs).items() if k.startswith('budget_')}
+    planes = disjoint_pairs(8, 11)
+    _, ref = fit_matching(fit, q, specs, planes, cfg, limits, criterion='product', grid_points=5)
+    result = screen_batches(fit, specs, q, ref, cfg, 11, batch_size=1)
+    angles = np.asarray(ref['proposed_angles'])
+    mask = np.zeros_like(angles)
+    mask[result['accepted_batches']] = angles[result['accepted_batches']]
+    expected = fit_totals(fit, apply_matching(q, planes, mask), specs)
+    assert result['final'] == pytest.approx(expected)
+    assert len(result['same_count_random']['batches']) == len(result['accepted_batches'])
+    last = result['initial']['loss']
+    for step in result['trace']:
+        assert step['parent_loss'] == last
+        assert step['accepted'] == (step['feasible'] and step['loss'] < last)
+        if step['accepted']:
+            last = step['loss']
+    assert last == pytest.approx(expected['loss']) and len(result['trace']) == 4
+    ref['joint_fit_trials'][-1]['output_loss'] += .01
+    with pytest.raises(ValueError, match='replay differs'):
+        screen_batches(fit, specs, q, ref, cfg, 11)
+
+
+def test_batch_archive_checks_bytes_and_seed_and_discards_heldout(tmp_path):
+    from cellquant.matching_batches import load_fit_reference
+    source = Path(__file__).resolve().parents[1]/'evidence/output_matching_20261119/measurements.zip'
+    records = load_fit_reference(source, [11, 23])
+    assert all('heldout' not in arm for arms in records.values() for arm in arms.values())
+    with pytest.raises(ValueError, match='missing'):
+        load_fit_reference(source, [11, 23, 77])
+    for corrupt in (False, True):
+        archive = tmp_path/'colab.zip'
+        with ZipFile(source) as original, ZipFile(archive, 'w') as wrapped:
+            for name in original.namelist():
+                suffix = b' ' if corrupt and name == 'seed_11/warm_grid/matching_result.json' else b''
+                wrapped.writestr('run/'+name, original.read(name)+suffix)
+        if corrupt:
+            with pytest.raises(ValueError, match='checksum'):
+                load_fit_reference(archive, [11, 23])
+        else:
+            assert load_fit_reference(archive, [11, 23]) == records
+
+
+def test_batch_screen_uses_a_separate_fit_run_and_the_original_objective(tmp_path, monkeypatch):
+    from cellquant import experiment
+    source = Path(__file__).resolve().parents[1]/'evidence/output_matching_20261119/measurements.zip'
+    cfg = {'stage': 'G1', 'runtime': {'model_device': 'cuda:0'}, 'result_path': str(tmp_path/'prior.json'),
+           'solver': {'device': 'cuda:0', 'backend': 'torch', 'compute_dtype': 'float64'}}
+    def ready(checks, root):
+        assert 'result_path' not in checks
+        return {'status': 'READY', 'missing': []}
+    monkeypatch.setattr(experiment, 'preflight', ready)
+    def preflight(archive):
+        return experiment.run_experiment(cfg, project_root=tmp_path, preflight_only=True, matching_batch_archive=archive)
+    current = preflight(source)
+    assert current['readiness']['status'] == 'READY' and current['execution_mode'] == 'fit_matching_batch_screen'
+    assert preflight(tmp_path/'missing.zip')['readiness']['status'] == 'BLOCKED'
+    cfg['solver']['fit_objective'] = 'relative_site_nmse'
+    assert preflight(source)['readiness']['status'] == 'BLOCKED'
+    assert not Path(cfg['result_path']).exists()
+
+
 def test_fresh_matching_validation_excludes_reserved_documents_and_content():
     def block(i):
         return {'document_id':str(i),'document_sha256':'h'+str(i),'token_ids_sha256':'t'+str(i)}

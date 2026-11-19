@@ -231,11 +231,12 @@ def _verify_weight_files(config,output):
 
 
 def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False,profile_pairs=None,
-                   diagnose_pairs=False,screen_objective=False,matching_study=False,matching_batch_archive=None):
+                   diagnose_pairs=False,screen_objective=False,matching_study=False,matching_batch_archive=None,
+                   batch_documents=False):
     config=read_json(config) if isinstance(config,(str,Path)) else copy.deepcopy(config)
     profile_pair=profile_pair or profile_pairs is not None
     batch_screen = matching_batch_archive is not None
-    if sum((bool(profile_pair), diagnose_pairs, screen_objective, matching_study, batch_screen)) > 1:
+    if sum((bool(profile_pair), diagnose_pairs, screen_objective, matching_study, batch_screen, batch_documents)) > 1:
         raise ValueError('Choose either a single profiling mode or a single diagnostic per run')
     profile_count=1 if profile_pairs is None else profile_pairs
     if profile_pair:
@@ -246,7 +247,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     output=root/'runs'/'experiments'/run_id;output.mkdir(parents=True)
     atomic_json(output/'config.json',config)
     # The diagnostic writes only its own run directory and optional invocation index.
-    diagnostic = diagnose_pairs or screen_objective or matching_study or batch_screen
+    diagnostic = diagnose_pairs or screen_objective or matching_study or batch_screen or batch_documents
     checks = {k: v for k, v in config.items() if k != 'result_path'} if diagnostic else config
     ready=preflight(checks,root)
     if batch_screen:
@@ -270,6 +271,16 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     if bool(config.get('output_matching_study')) != matching_study:
         ready['missing'].append('Use the matching-study runner with its own frozen document cohort')
         ready['status']='BLOCKED'
+    if bool(config.get('batch_document_pilot')) != batch_documents:
+        ready['missing'].append('Use the frozen batch document protocol with --batch-documents')
+        ready['status']='BLOCKED'
+    elif batch_documents:
+        from .batch_validation import verify_document_protocol
+        try:
+            verify_document_protocol(config)
+        except (ValueError, KeyError, OSError) as exc:
+            ready['missing'].append(str(exc))
+            ready['status']='BLOCKED'
     if screen_objective or matching_study:
         from .objective_screen import validate_screen_config, verify_parent_manifests
         try:
@@ -294,6 +305,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     if screen_objective:base['execution_mode']='fit_objective_screen'
     if matching_study:base['execution_mode']='output_matching_study'
     if batch_screen:base['execution_mode']='fit_matching_batch_screen'
+    if batch_documents:base['execution_mode']='frozen_batch_document_pilot'
     if preflight_only or ready['status']!='READY':
         result={**base,'readiness':ready,'status':'PREFLIGHT_ONLY' if preflight_only else 'BLOCKED'}
         atomic_json(output/'result.json',result);return result
@@ -366,12 +378,18 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                 with measured('capture'):
                     prepared=prepare_pilot_inputs(config,model,graph_identity=graph_identity,
                                                   progress=progress.step,profile_only=profile_pair,fit_only=diagnose_pairs or batch_screen,
-                                                  screen_objective=screen_objective)
+                                                  screen_objective=screen_objective,heldout_only=batch_documents)
                 del model;model=None;gc.collect();torch.cuda.empty_cache()
+                captured_splits = [split for split in ('fit','screen_validation','heldout')
+                                   if any(split in panels for panels in prepared['seeds'].values())]
                 progress.step('g1.model_released',captured_seeds=list(prepared['seeds']),
-                              captured_splits=['fit','screen_validation'] if screen_objective else (['fit'] if profile_pair or diagnose_pairs or batch_screen else ['fit','heldout']),
+                              captured_splits=captured_splits,
                               reason='requested panels captured and resident on CUDA')
-            if batch_screen:
+            if batch_documents:
+                from .batch_validation import run_document_pilot
+                summary=run_document_pilot(config,prepared,output,progress=progress.step)
+                result={**base,**summary,'timings':timings}
+            elif batch_screen:
                 from .matching_batches import run_batch_screen
                 summary=run_batch_screen(config,prepared,output,matching_batch_archive,progress=progress.step)
                 result={**base,**summary,'timings':timings}
@@ -593,11 +611,12 @@ def main():
     parser.add_argument('--matching-study',action='store_true',help='Measure output matching on a fresh frozen cohort')
     parser.add_argument('--screen-matching-batches',type=Path,metavar='01D_ZIP',
                         help='Use the original G1 config and replay archived 01d rotations on fit documents only')
+    parser.add_argument('--batch-documents',action='store_true',help='Score frozen batch selections on the new document cohort')
     args=parser.parse_args()
     if args.result_index and Path(args.result_index).exists():raise FileExistsError('Result index already exists; choose a unique path')
     result=run_experiment(args.config,preflight_only=args.preflight,profile_pair=args.profile_pair,profile_pairs=args.profile_pairs,
                           diagnose_pairs=args.diagnose_pairs,screen_objective=args.screen_objective,matching_study=args.matching_study,
-                          matching_batch_archive=args.screen_matching_batches)
+                          matching_batch_archive=args.screen_matching_batches,batch_documents=args.batch_documents)
     if args.result_index:atomic_json(args.result_index,{k:result[k] for k in ['run_id','run_dir','status']})
     display={'status':result['status'],'run_dir':result['run_dir'],'reason':result.get('reason'),
                       'incomplete_methods':result.get('incomplete_methods',[]),
@@ -608,6 +627,7 @@ def main():
     if 'objective_screen' in result:display['objective_screen']=result['objective_screen']
     if 'matching_summary' in result:display['comparisons']=result['matching_summary']['comparisons']
     if 'fit_screen' in result:display.update(fit_screen=result['fit_screen'],next_step=result['next_step'])
+    if 'document_summary' in result:display.update(document_summary=result['document_summary'],next_step=result['next_step'])
     print(json.dumps(display,ensure_ascii=False,indent=2))
     return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY','PROFILE_COMPLETE','DIAGNOSTIC_COMPLETE','SCREEN_COMPLETE','STUDY_COMPLETE'} else 2
 

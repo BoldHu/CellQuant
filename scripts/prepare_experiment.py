@@ -25,18 +25,20 @@ def cached_matching_model(config, model_id, weight_files, cache):
             and all(cached(name,config['tokenizer_revision']) for name in ('tokenizer_config.json','tokenizer.json')))
 
 
-def prepare(config_path,output,*,include_tests=False,relative_screen=None,matching_study=False):
+def prepare(config_path,output,*,include_tests=False,relative_screen=None,matching_study=False,
+            batch_screen=None,matching_archive=None):
     config=read_json(config_path);output=Path(output).resolve()
     previous=None
     parent_dataset_fingerprints=set()
-    if relative_screen is not None or matching_study:
+    reuse_matching_inputs = matching_study or batch_screen is not None
+    if relative_screen is not None or reuse_matching_inputs:
         from cellquant.objective_screen import verified_screen, validate_screen_config, verify_parent_manifests
         if (config.get('stage')!='G1' or include_tests or config.get('resume_run_dir')
-                or config.get('g1_confirmation') or config.get('output_matching_study')
-                or (relative_screen is not None and matching_study)):
+                or config.get('g1_confirmation') or config.get('output_matching_study') or config.get('batch_document_pilot')
+                or sum((relative_screen is not None, matching_study, batch_screen is not None)) != 1):
             raise ValueError('Select one study on the original frozen G1 training documents')
         validate_screen_config(config)
-        if matching_study:
+        if reuse_matching_inputs:
             verify_parent_manifests(config)
         else:
             screen_sha=verified_screen(relative_screen,config)
@@ -55,19 +57,26 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
         if matching_study:
             from cellquant.matching_study import DESIGN
             config['output_matching_study']={**parent, 'design':DESIGN}
-        else:
+        elif batch_screen is None:
             config['g1_confirmation']={**parent,'screen_result_sha256':screen_sha,
                 'partition_seed_namespace':20261118,'extra_control':'original_objective_grid'}
             config['solver']['fit_objective']='relative_site_nmse'
         config.pop('result_path',None)
     if output.exists() and any(output.iterdir()):raise ValueError('Use a new preparation directory; frozen artifacts are immutable')
     output.mkdir(parents=True,exist_ok=True)
+    if batch_screen is not None:
+        from cellquant.batch_validation import DESIGN as batch_design, draw_fresh_documents, freeze_batch_inputs
+        from cellquant.matching_batches import load_matching_arms
+        if matching_archive is None:
+            raise ValueError('Expected the matching archive used by the fit screen')
+        config['batch_document_pilot']={**parent, **freeze_batch_inputs(
+            output,Path(batch_screen),Path(matching_archive),config['seeds'],parent['parent_config_sha256'])}
     data=config['data'];model_id=config.get('model_id',config.get('formal_pilot',{}).get('model_id'))
     token=os.environ.get('HF_TOKEN') or None
     cache,dataset_cache=huggingface_cache_paths(config.get('runtime'))
     from transformers import AutoTokenizer
     from datasets import load_dataset
-    if matching_study:
+    if reuse_matching_inputs:
         if not all(immutable_revision(config.get(k)) for k in ('model_revision','tokenizer_revision','dataset_revision')):
             raise ValueError('Output matching requires the three pinned revisions from the original G1')
     else:
@@ -85,7 +94,7 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
         ev.setdefault('harness_path','third_party/lm-evaluation-harness')
         c4=ev['c4'];c4['revision']=resolve_revision(c4['dataset_id'],c4.get('revision'),repo_type='dataset',token=token)
     weight_files=[]
-    if matching_study:
+    if reuse_matching_inputs:
         parent_source=Path(config['model_source_manifest_path'])
         if sha256_file(parent_source)!=config['model_source_manifest_sha256']:
             raise ValueError('Original model shard metadata changed')
@@ -105,10 +114,10 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
     model_manifest=atomic_json(output/'model_source_manifest.json',{'model_id':model_id,'revision':config['model_revision'],'files':weight_files})
     config['model_source_manifest_path']=str(model_manifest)
     config['model_source_manifest_sha256']=sha256_file(model_manifest)
-    if matching_study and cached_matching_model(config,model_id,weight_files,cache):
+    if reuse_matching_inputs and cached_matching_model(config,model_id,weight_files,cache):
         config['runtime']['local_cache_only']=True
     tokenizer=AutoTokenizer.from_pretrained(model_id,revision=config['tokenizer_revision'],cache_dir=str(cache),token=token,
-                                           local_files_only=matching_study and config['runtime'].get('local_cache_only',False),
+                                           local_files_only=reuse_matching_inputs and config['runtime'].get('local_cache_only',False),
                                            add_bos_token=False,add_eos_token=False)
     ds=load_dataset(data['calibration_dataset'],data['dataset_config'],split='train',revision=config['dataset_revision'],cache_dir=str(dataset_cache),token=token)
     if previous is not None and parent_dataset_fingerprints!={ds._fingerprint}:
@@ -122,7 +131,14 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
     config['runtime'].update(dtype=dtype,cache_dir=str(cache),dataset_cache_dir=str(dataset_cache))
     manifests={};formal=config.get('formal_pilot',{})
     fresh=confirmation_partitions(blocks,previous,formal['heldout_sequences']) if previous is not None else None
-    if matching_study:
+    if batch_screen is not None:
+        reserved = [b for _, dev in fresh.values() for b in dev]
+        arms = load_matching_arms(output/'fit_reference/measurements.zip',config['seeds'])
+        fresh, exclusions = draw_fresh_documents(blocks, previous, reserved, arms)
+        config['batch_document_pilot']['prior_documents_sha256']=sha256_file(atomic_json(output/'prior_documents.json',exclusions))
+        formal['heldout_sequences'] = batch_design['documents_per_seed']
+        formal['heldout_tokens_per_panel'] = batch_design['documents_per_seed']*batch_design['tokens_per_document']
+    elif matching_study:
         reserved = [b for _, dev in fresh.values() for b in dev]
         fresh=confirmation_partitions(blocks,previous,formal['heldout_sequences'],
                                       namespace=DESIGN['partition_namespace'],exclude=reserved)
@@ -171,7 +187,9 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
               'harness_commit':config.get('harness_commit'),
               'tokenization':'per-document nonoverlapping blocks; no BOS; drop short tails',
               'note':'Own matched protocol; do not compare these PPL values to stock concatenated WikiText numbers'}
-    if matching_study:
+    if batch_screen is not None:
+        protocol.update(batch_document_pilot=config['batch_document_pilot'],formal_pilot=formal)
+    elif matching_study:
         protocol['output_matching_study']=config['output_matching_study']
     elif previous is not None:
         protocol['g1_confirmation']=config['g1_confirmation']
@@ -191,4 +209,7 @@ if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--config',required=True);p.add_argument('--output',required=True);p.add_argument('--include-tests',action='store_true')
     p.add_argument('--relative-g1-screen',help='Completed objective-screen run for the single fresh G1 confirmation')
     p.add_argument('--matching-study',action='store_true',help='Freeze a new disjoint train-document cohort for output matching')
-    a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests,relative_screen=a.relative_g1_screen,matching_study=a.matching_study)
+    p.add_argument('--batch-document-screen',type=Path,help='Use the frozen rotations from this completed fit screen')
+    p.add_argument('--matching-archive',type=Path,help='01d archive referenced by the fit screen')
+    a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests,relative_screen=a.relative_g1_screen,
+                            matching_study=a.matching_study,batch_screen=a.batch_document_screen,matching_archive=a.matching_archive)

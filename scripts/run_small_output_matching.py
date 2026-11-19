@@ -16,9 +16,9 @@ DATA = 'Salesforce/wikitext'
 DATA_REV = 'b08601e04326c79dfdd32d625aee71d232d685c3'
 
 
-def asset(name, digest, dataset=False):
+def asset(name, digest, dataset=False, cache_name=None):
     from huggingface_hub import hf_hub_download
-    path = ROOT/'.cache/output_matching_small'/Path(name).name
+    path = ROOT/'.cache/output_matching_small'/(cache_name or Path(name).name)
     if not path.is_file():
         path = Path(hf_hub_download(DATA if dataset else MODEL, name, revision=DATA_REV if dataset else MODEL_REV,
                                     repo_type='dataset' if dataset else 'model'))
@@ -29,7 +29,9 @@ def asset(name, digest, dataset=False):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--confirm-hybrid',action='store_true',help='Evaluate the fixed grid-then-matching combination on eight untouched shared articles')
+    modes=parser.add_mutually_exclusive_group()
+    modes.add_argument('--confirm-hybrid',action='store_true',help='Evaluate the fixed grid-then-matching combination on eight untouched shared articles')
+    modes.add_argument('--validate-batches',action='store_true',help='Replay the archived 42M batch fits on 32 unused train articles')
     args=parser.parse_args()
     import pyarrow.parquet as parquet
     import torch
@@ -43,7 +45,8 @@ def main():
     os.environ['CELLQUANT_FHT_BACKEND']='torch_reference'
     cfg=read_json(ROOT/'configs/colab_pilot.json')
     overlay=activate_overlay(ROOT/cfg['spinquant_overlay'])
-    out=ROOT/'runs/experiments'/('matching_42m_'+uuid4().hex[:12])
+    prefix='batch_documents_42m_' if args.validate_batches else 'matching_42m_'
+    out=ROOT/'runs/experiments'/(prefix+uuid4().hex[:12])
     out.mkdir(parents=True)
     print('Run',out,flush=True)
     device='cuda:0'
@@ -78,15 +81,43 @@ def main():
     if not args.confirm_hybrid:
         design.pop('refine_continued_grid')
         design['version']=2
-    cfg['output_matching_study']={'design':design, 'scope':'pretrained 42M development study'}
+    study_split='validation'
+    if args.validate_batches:
+        from cellquant.batch_validation import DESIGN as batch_design, measure_frozen_batches
+        from cellquant.matching_batches import load_matching_arms
+        from cellquant.matching_study import CONTINUED
+        fit_source=ROOT/'evidence/output_matching_20261119/fit_batches_42m.json'
+        reference=ROOT/'evidence/output_matching_20261118/hybrid_42m/measurements.zip'
+        screen=read_json(fit_source)
+        if screen['archive_sha256']!=sha256_file(reference) or screen['next_step']!='fresh_document_pilot':
+            raise ValueError('42M batch fits do not match the archived rotations')
+        arms=load_matching_arms(reference,cfg['seeds'])
+        traces={int(s):t for s,t in screen['by_seed'].items()}
+        if any(arms[s][CONTINUED]['fit_documents']!=sorted(b['document_id'] for b in original[s]['fit']) for s in traces):
+            raise ValueError('42M fit documents do not match the archive')
+        train_hash='e83889baabc497075506f91975be5fac0d45c5290b6b20582c8cd1e853d0c9f7'
+        train=asset('wikitext-2-raw-v1/train-00000-of-00001.parquet',train_hash,dataset=True,cache_name='train.parquet')
+        train_blocks=tokenize_documents(wikitext_documents(parquet.read_table(train,columns=['text']).to_pylist()),tok,256)
+        final=confirmation_partitions(train_blocks,original,batch_design['documents_per_seed'],
+                                      namespace=batch_design['partition_namespace'],exclude=blocks)
+        design=dict(batch_design)
+        study_split='train'
+        cfg['formal_pilot'].update(heldout_sequences=design['documents_per_seed'],
+                                   heldout_tokens_per_panel=design['documents_per_seed']*design['tokens_per_document'])
+        cfg['batch_document_pilot']={'design':design, 'scope':'pretrained 42M engineering verification',
+                                    'reference_sha256':sha256_file(reference),'fit_source_sha256':sha256_file(fit_source)}
+    else:
+        cfg['output_matching_study']={'design':design, 'scope':'pretrained 42M development study'}
     for seed in cfg['seeds']:
         identity={'model_id':MODEL,'model_revision':MODEL_REV,'tokenizer_revision':MODEL_REV,'dataset_id':DATA,
-                  'dataset_revision':DATA_REV,'source_split':'validation','parquet_sha256':data_hash,'seed':seed}
+                  'dataset_revision':DATA_REV,'source_split':study_split,'parquet_sha256':data_hash,'seed':seed}
+        if args.validate_batches:
+            identity.update(fit_split='validation',dev_split='train',fit_parquet_sha256=data_hash,parquet_sha256=train_hash)
         training,validation=final[seed]
         path=save_token_manifest(out/f'inputs_{seed}',{'fit':training,'dev':validation},identity)
         cfg['data']['token_manifests'][str(seed)]=str(path)
     protocol=atomic_json(out/'protocol.json',{'status':'FROZEN','design':design,'layers':[0,3,7],'context':256,
-        'quantization':cfg['quantization'],'source_split':'validation','token_manifests':{
+        'quantization':cfg['quantization'],'fit_split':'validation','source_split':study_split,'token_manifests':{
         s:sha256_file(p) for s,p in cfg['data']['token_manifests'].items()}})
     first=cfg['data']['token_manifests']['11']
     provenance=atomic_json(out/'execution_provenance.json',{'models':{MODEL:{'model_revision':MODEL_REV,'tokenizer_revision':MODEL_REV}},
@@ -105,13 +136,17 @@ def main():
     rotate_model(model,out/'fixed_R.bin',device=device)
     install_online_graph(model,cfg['quantization'],quantized=False)
     model.to(device)
-    prepared=prepare_pilot_inputs(cfg,model,graph_identity=graph_id)
+    prepared=prepare_pilot_inputs(cfg,model,graph_identity=graph_id,heldout_only=args.validate_batches)
     del model
     torch.cuda.empty_cache()
     def emit(phase,**details):
         if phase=='matching.evaluate':
             print(phase,details,flush=True)
-    result=run_matching_study(cfg,prepared,out,execution_fingerprint=fingerprint['sha256'],progress=emit)
+    if args.validate_batches:
+        result=measure_frozen_batches(prepared,arms,traces,out,device=device)
+        result.update(scope='pretrained 42M engineering verification',fit_source=cfg['batch_document_pilot'])
+    else:
+        result=run_matching_study(cfg,prepared,out,execution_fingerprint=fingerprint['sha256'],progress=emit)
     atomic_json(out/'result.json',{**result,'model_id':MODEL,'model_revision':MODEL_REV,
                                    'pretrained_parameter_count':pretrained_parameters,
                                    'parameters_after_norm_fusion_billions':prepared['model_parameter_billions'],'graph_identity':graph_id})

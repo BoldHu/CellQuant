@@ -204,7 +204,7 @@ def test_preparation_binds_cached_weights_and_reuses_only_fit_documents(tmp_path
     # The only remote substitutes are the dataset rows, tokenizer, and cache lookup.
     class Corpus(list):
         _fingerprint='fixture_revision'
-    corpus=Corpus({'text':f'= Article {i} ='} for i in range(90))
+    corpus=Corpus({'text':f'= Article {i} ='} for i in range(128))
     def tokenizer(text,**kwargs):
         i=int(text.split()[2])
         return {'input_ids':[i]*2048}
@@ -253,6 +253,34 @@ def test_preparation_binds_cached_weights_and_reuses_only_fit_documents(tmp_path
     prepared['solver']['theta_limit']/=2
     changed=experiment.run_experiment(prepared,project_root=tmp_path,preflight_only=True,matching_study=True)
     assert changed['readiness']['status']=='BLOCKED'
+
+    from cellquant import matching_batches
+    from cellquant.batch_validation import verify_document_protocol
+    from cellquant.matching_study import CONTINUED
+    from cellquant.runtime import config_hash
+    # Map the archive's document lookup onto this test corpus, keeping the original fit receipts.
+    old_panels={}
+    for seed in cfg['seeds']:
+        _,old=data.load_token_manifest(prepared['data']['token_manifests'][str(seed)],allow_fixture=True)
+        old_panels[seed]={CONTINUED:{'fit_documents':[b['document_id'] for b in old['fit']],
+                                     'heldout':[{'blocks':old['dev']}]}}
+    monkeypatch.setattr(matching_batches,'load_matching_arms',lambda archive,seeds:old_panels)
+    screen=read_json(root/'evidence/output_matching_20261119/fit_batches_42m.json')
+    for seed,trace in screen.pop('by_seed').items():
+        atomic_json(tmp_path/'screen'/f'seed_{seed}'/'batch_fit.json',trace)
+    atomic_json(tmp_path/'screen/result.json',{**screen,'run_id':'test_source','config_sha256':config_hash(cfg)})
+    batch=read_json(prep.prepare(tmp_path/'parent.json',tmp_path/'batch_docs',batch_screen=tmp_path/'screen',
+                    matching_archive=root/'evidence/output_matching_20261118/hybrid_42m/measurements.zip'))
+    verify_document_protocol(batch)
+    ids=set()
+    for seed in cfg['seeds']:
+        _,parts=data.load_token_manifest(batch['data']['token_manifests'][str(seed)],allow_fixture=True)
+        assert [b['token_ids_sha256'] for b in parts['fit']]==[b['token_ids_sha256'] for b in original[seed]['fit']]
+        ids.update(b['document_id'] for b in parts['dev'])
+    assert len(ids)==32 and ids.isdisjoint(new_docs) and ids.isdisjoint(reserved)
+    assert batch['formal_pilot']['heldout_tokens_per_panel']==512
+    assert experiment.run_experiment(batch,project_root=tmp_path,preflight_only=True,batch_documents=True)['readiness']['status']=='READY'
+    assert experiment.run_experiment(batch,project_root=tmp_path,preflight_only=True)['readiness']['status']=='BLOCKED'
 
 
 def test_colab_terminal_entry_runs_preparation_and_only_the_registered_study(tmp_path,monkeypatch,capsys):

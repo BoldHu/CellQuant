@@ -1,0 +1,24 @@
+{
+  "elapsed_seconds": 72.0,
+  "last_phase": "matching.fit_batch",
+  "last_phase_details": {
+    "batch": 32,
+    "batches": 32,
+    "seed": 23
+  },
+  "next_step": "fresh_document_pilot",
+  "reported_seed_summary": {
+    "23": {
+      "accepted_batches": 1,
+      "applied_pairs": 46,
+      "delta_loss_vs_whole": -4.036928892725555e-06,
+      "delta_output_loss_vs_grid": -0.00021150670471800637,
+      "fit_trace_sha256": "775acb79d6b2d88afcb78361284ad3ddae00f666bcc6a9ce2abaa3fc98ffec9b"
+    }
+  },
+  "scope": "Fit screen only. The terminal excerpt contains the numerical row for seed 23.",
+  "source": "user_supplied_colab_terminal_excerpt",
+  "source_type": "real_layer",
+  "status": "DIAGNOSTIC_COMPLETE",
+  "updated_at_utc": "2026-11-19T07:45:07.491484+00:00"
+}

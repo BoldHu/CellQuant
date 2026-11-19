@@ -85,6 +85,25 @@ cd /content/CellQuant && git pull --ff-only && PYTHONPATH=src python -m cellquan
 
 终端打印 `run_dir` 和 `next_step`，每个种子另写 `batch_fit.json`。若两个种子的联合拟合损失都低于原整批最佳步，且输出拟合损失都低于 256 对网格，则返回 `fresh_document_pilot`。随后冻结这一版，在排除已读验证文章的新文档上与相同 256 对网格配对比较，并报告同批数随机参照、最差位置和校准总时间。沿用 01d 的投入原则，在新文档上九位置区间下限为正且两种子均改善时，进入含完整匹配对照的正式 G1。若短测返回 `stop_batch_variant`，本轮分批方案到此结束。服务器全量实验仍按 G1 之后的受限 canary 和后续 G2/G3 执行。
 
+### 分批旋转的独立文档验证
+
+2026-11-19 的 7B A100 拟合短测用时 72 秒，返回 `fresh_document_pilot`。按程序，两种子的九位置拟合损失均低于整批最佳步，三个输出位置的损失均低于 256 对网格。保存的终端片段给出了种子 23 的明细。它保留 1/32 批、46 个非零角。九位置拟合损失之和下降 0.000004037，输出项下降 0.000211507，六个输入位置合计增加 0.000207470，抵消约 98.1% 的输出收益。百分比的分母分别取原网格的九位置损失 0.1839143 和输出损失 0.0940084。两个种子的原始逐批记录由下次运行从原 Colab 抄入结果包。[终端记录](../evidence/output_matching_20261119/fit_batches_7b_terminal.json) · [01d 网格测量](../evidence/output_matching_20261119/measurements.zip)
+
+在保留原拟合结果的 Colab 终端执行以下命令。
+
+```bash
+cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --validate-batches
+```
+
+- **冻结旋转。** 程序按原 G1 配置和 01d 归档的 SHA-256 寻找最近一次匹配的拟合运行，核对两个种子的逐批文件、所选批次和重建 Q 的指纹。每个种子回放三种方法，包括原 256 对网格、其上追加已接受批次，以及其上追加拟合时已抽定的同批数随机对照。随机批的非零角数可能不同。
+- **验证数据。** 使用原 WikiText-2 train 修订，排除两种子的原拟合及验证文档、01c 预留文章和 01d 实际评分文档。两个种子各抽 16 篇，互不重叠。按文档 ID、全文哈希及 token 块哈希复核。每篇在 2048-token 上下文中取 32 个位置，每个种子的三种方法共用同一面板。
+- **主指标。** 各位置用逐文档平方误差之和除以目标能量之和。对每个种子计算相对网格的 NMSE 降幅，在每个位置平均两个种子的降幅，再取九位置中位数。共做 10000 次按种子分层、在文档层配对的 bootstrap，区间以这两个拟合结果为条件。同时报告每种子的九位置中位数、输入与输出子组、最差位置和同批数随机对照。校准成本按原网格、原候选生成及分批复核的实测耗时相加，含拟合时回放和随机对照的开销。
+- **决策。** 仅当两个种子的九位置中位降幅分别大于零，且主指标 95% 区间下限大于零，返回 `formal_g1_retest`，随后安排新方法和完整匹配对照的正式 G1 复验。其余可计算的结果返回 `stop_batch_variant`。若分母为零导致主比较无法计算，返回 `insufficient_evidence`。保留原 G1 判定以及后续 canary、G2 和 G3 的门槛。
+
+终端最后一行给出 `runs/01_pilot/batch_documents_<id>/batch_document_pilot.zip`，其中包含准备协议、文档与 token 哈希、原拟合记录、六份逐文档测量和汇总。若拟合目录已从 Drive 恢复到其他位置，在同一命令末尾加 `--screen-run /实际路径`。目录里应有 `result.json` 和两个 `seed_*/batch_fit.json`。原 G1 输入可通过 `--config` 指定。若实例已经释放且拟合目录没有备份，先使用上节的短测命令在原 G1 输入上重建分批选择。
+
+本机 42M 在 RTX 3050 上回放了自己已拟合的旋转，使用 32 篇未参与此前 42M 实验的 train 文章。对其 32 对父网格，九位置中位 NMSE 改善 1.554%，配对 95% 区间为 [0.856%, 1.633%]。两个种子各改善 0.705% 和 1.007%，最差位置为第 0 层 up_proj，平均退化 2.445%。42M 的 256-token 上下文及网格预算均与 7B 有别。这个测量验证了回放、独立文档评分和区间计算流程。[42M 原始逐文档测量](../evidence/output_matching_20261119/batch_documents_42m.zip)
+
 ## 本地复算
 
 以下两条训练命令分别复现第一批与第二批小模型实验。脚本检查固定公开权重、tokenizer 和数据的 SHA-256。复算已有原始结果只需解压对应 `measurements.zip`，将解压目录传给分析脚本。它会验证逐方法 SHA-256，并从逐块误差重新计算区间与归因图。
@@ -92,5 +111,6 @@ cd /content/CellQuant && git pull --ff-only && PYTHONPATH=src python -m cellquan
 ```bash
 python scripts/run_small_output_matching.py
 python scripts/run_small_output_matching.py --confirm-hybrid
+python scripts/run_small_output_matching.py --validate-batches
 python scripts/analyze_rotation_sites.py --study <解压目录> --output runs/rotation_analysis
 ```

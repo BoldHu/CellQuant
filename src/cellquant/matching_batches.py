@@ -22,8 +22,13 @@ BATCH_SIZE = 64
 BATCH_STUDY_KIND = 'FIT_MATCHING_BATCH_SCREEN'
 
 
-def load_fit_reference(archive_path, seeds):
-    """Read the fit fields of four hash-verified arms per seed from a 01d archive."""
+def random_batch_indices(total, count, seed):
+    rng = np.random.default_rng(np.random.SeedSequence([2026111901, seed]))
+    return sorted(rng.choice(total, count, replace=False).tolist())
+
+
+def load_matching_arms(archive_path, seeds):
+    """Read the four hash-verified 01d records used to reconstruct each fit."""
     records = {seed: {} for seed in seeds}
     with ZipFile(archive_path) as archive:
         prefix = 'run/' if 'run/matching_summary.json' in archive.namelist() else ''
@@ -43,15 +48,31 @@ def load_fit_reference(archive_path, seeds):
             if (parts != [f'seed_{seed}', method, 'matching_result.json'] or seed not in records
                     or method in records[seed] or row['source_type'] != 'real_layer' or row['evidence_kind'] != KIND):
                 raise ValueError('Archive method identity differs from the requested reference')
-            records[seed][method] = {k: row[k] for k in ('solver', 'q_sha256', 'fit_panel_sha256', 'fit_documents')}
+            records[seed][method] = row
     for arms in records.values():
         if set(arms) != {HAD, WARM, CONTINUED, HYBRID} or arms[HYBRID]['solver']['parent'] != CONTINUED:
             raise ValueError('Archive is missing the required fit reference or its continued-grid parent')
     return records
 
 
+def load_fit_reference(archive_path, seeds):
+    fields = ('solver', 'q_sha256', 'fit_panel_sha256', 'fit_documents')
+    return {seed: {m: {k: row[k] for k in fields} for m, row in arms.items()}
+            for seed, arms in load_matching_arms(archive_path, seeds).items()}
+
+
 def q_digest(q):
     return hashlib.sha256(q.detach().contiguous().cpu().numpy().tobytes()).hexdigest()
+
+
+def replay_continued_grid(arms, dimension, seed, device):
+    q = hadamard_rotation(dimension, seed, device)
+    for method in (HAD, WARM, CONTINUED):
+        for factor in arms[method]['solver']['factors']:
+            rotate_rows(q, factor['pair'], factor['theta'])
+        if q_digest(q) != arms[method]['q_sha256']:
+            raise ValueError(f'Seed {seed} failed to reproduce the archived {method} rotation')
+    return q
 
 
 def check_replay(measured, recorded):
@@ -103,8 +124,7 @@ def screen_batches(fit, specs, q, reference, cfg, seed, *, batch_size=BATCH_SIZE
     final = fit_totals(fit, current_q, specs, site_nmse=end_sites)
     check_replay(final, current)
     # Use the same number of full batches, selected independently of their losses.
-    rng = np.random.default_rng(np.random.SeedSequence([2026111901, seed]))
-    random_batches = sorted(rng.choice(len(blocks), len(kept), replace=False).tolist())
+    random_batches = random_batch_indices(len(blocks), len(kept), seed)
     mask_angles = torch.zeros_like(angles)
     for index in random_batches:
         block = blocks[index]
@@ -135,12 +155,7 @@ def run_batch_screen(config, prepared, output, archive_path, *, progress=None):
         if (any(p.metadata.get('source_type') != 'real_layer' for p in panels['fit']) or
                 any(r['fit_panel_sha256'] != fingerprint or r['fit_documents'] != documents for r in arms.values())):
             raise ValueError(f'Recaptured seed {seed} fit panels differ from the archived 01d inputs')
-        q = hadamard_rotation(prepared['hidden_size'], seed, cfg.device)
-        for method in (HAD, WARM, CONTINUED):
-            for factor in arms[method]['solver']['factors']:
-                rotate_rows(q, factor['pair'], factor['theta'])
-            if q_digest(q) != arms[method]['q_sha256']:
-                raise ValueError(f'Seed {seed} failed to reproduce the archived {method} rotation')
+        q = replay_continued_grid(arms, prepared['hidden_size'], seed, cfg.device)
         record = screen_batches(panels['fit'], panels['specs'], q, arms[HYBRID]['solver'], cfg, seed, progress=progress)
         path = atomic_json(Path(output)/f'seed_{seed}'/'batch_fit.json', {
             'source_type': 'real_layer', 'evidence_kind': BATCH_STUDY_KIND, 'seed': seed,

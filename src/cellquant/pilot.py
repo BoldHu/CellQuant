@@ -82,10 +82,13 @@ def panel_metrics(panels,q,specs,device='cpu',*,progress=None,error_terms=False)
     return rows
 
 
-def prepare_pilot_inputs(config,model,*,graph_identity,progress=None,profile_only=False,fit_only=False,screen_objective=False):
+def prepare_pilot_inputs(config,model,*,graph_identity,progress=None,profile_only=False,fit_only=False,screen_objective=False,
+                         heldout_only=False):
     """Capture the panels consumed by this run before releasing the model."""
     from .spinquant_adapter import panel_quant_specs
     from .tensor_solver import synchronize
+    if heldout_only and (profile_only or fit_only or screen_objective):
+        raise ValueError('Frozen held-out scoring cannot also request training panels')
     device=config['runtime']['model_device'];formal=config['formal_pilot'];seeds={}
     requested_seeds = config['seeds'][:1] if profile_only else config['seeds']
     for seed in requested_seeds:
@@ -101,18 +104,21 @@ def prepare_pilot_inputs(config,model,*,graph_identity,progress=None,profile_onl
             verify_disjoint(training, validation)
         kwargs=dict(layers=formal['layers'],projections=formal['projections'],input_weight_rows=formal['input_weight_rows'],
                     seed=seed,device=device,graph_identity=graph_identity,resident=True)
-        synchronize(device);start=time.perf_counter()
-        fit=capture_panels(model,training,tokens_per_panel=formal['fit_tokens_per_panel'],
-            progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split='fit',**d),**kwargs)
-        specs=panel_quant_specs(model,fit,config['quantization']);synchronize(device)
-        seconds=time.perf_counter()-start
-        seeds[seed]={'fit':fit,'specs':specs,'capture_seconds':seconds}
+        seeds[seed]={}
+        if not heldout_only:
+            synchronize(device);start=time.perf_counter()
+            fit=capture_panels(model,training,tokens_per_panel=formal['fit_tokens_per_panel'],
+                progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split='fit',**d),**kwargs)
+            specs=panel_quant_specs(model,fit,config['quantization']);synchronize(device)
+            seeds[seed].update(fit=fit,specs=specs,capture_seconds=time.perf_counter()-start)
         if screen_objective:
             seeds[seed]['parent_manifest_sha256']=sha256_file(manifest_path)
         if not (profile_only or fit_only):
             split='screen_validation' if screen_objective else 'heldout'
             seeds[seed][split]=capture_panels(model,validation,tokens_per_panel=formal['heldout_tokens_per_panel'],
                 progress=lambda phase,**d:report(progress,'g1.'+phase,seed=seed,split=split,**d),**kwargs)
+            if heldout_only:
+                seeds[seed]['specs']=panel_quant_specs(model,seeds[seed][split],config['quantization'])
     return {'seeds':seeds,'hidden_size':model.config.hidden_size,
             'model_parameter_billions':sum(p.numel() for p in model.parameters())/1e9}
 
@@ -319,7 +325,7 @@ def build_g1_evidence(paths,output,*,g0_evidence_path,include_original_grid=Fals
             row=read_json(path)
             if row.get('evidence_kind')=='PAIR_PROFILE_ONLY':raise ValueError('Pair profiles cannot form G1 evidence')
             if row.get('evidence_kind') in {'FIT_OBJECTIVE_SCREEN','FIT_PAIR_DIAGNOSTIC','OUTPUT_MATCHING_STUDY',
-                                           'FIT_MATCHING_BATCH_SCREEN'}:
+                                           'FIT_MATCHING_BATCH_SCREEN','FROZEN_BATCH_DOCUMENT_PILOT'}:
                 raise ValueError('Diagnostic results cannot form G1 evidence')
             if row.get('source_type')!='real_layer':raise ValueError('Only real-layer artifacts can form G1')
             for k,h in [('q_path','q_sha256'),('data_manifest_path','data_manifest_sha256')]:

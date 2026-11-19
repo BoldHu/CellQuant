@@ -4,7 +4,7 @@
 
 **01d 的 7B A100 研究已完成。** 两个种子、八种方法、九个位置和 16 篇新验证文章均有原始记录。相对 128 对网格，三个输出的中位 NMSE 改善 1.55% [1.47%, 1.63%]，种子 11 改善 3.10%，种子 23 持平。在 256 对网格上追加修正，两个种子的三次非零步长都满足尺度预算，输入代价使联合拟合损失上升，两次都返回原网格。七组区间均从逐文档测量复算一致。预定的 7B 增量条件未达到。[7B 原始测量和诊断](../evidence/output_matching_20261119/colab_7b_summary.json) · [原协议与结果](OUTPUT_MATCHING_STUDY.md#7b-实测与下一轮决策)
 
-此前 42M 的两批独立文档在 16 对网格起点上分别改善输出中位 NMSE 1.84% 和 1.70%。本轮新增分批拟合诊断，只采集原拟合面板，回放父网格和原四个步长，按 64 对一批联合检查九位置及原尺度预算。在本机预训练 42M 上，两个种子的联合拟合损失相对原整批最佳步再降 0.53% 和 0.83%。7B 分批短测及随后使用新文档的检验待运行。[42M 实测](../evidence/output_matching_20261119/fit_batches_42m.json) · [Colab 命令](OUTPUT_MATCHING_STUDY.md#在-colab-运行分批拟合短测)
+7B 分批短测已在 A100 完成，返回 `fresh_document_pilot`。种子 23 的 46 个非零角使输出拟合损失下降 0.225%，九位置拟合损失下降 0.0022%。已提供基于原始旋转和全新 32 篇文章的配对验证入口，7B 独立文档结果待测。本机预训练 42M 已跑通同一评分流程，在其 32 对父网格上九位置中位改善 1.554%，配对 95% 区间 [0.856%, 1.633%]。42M 的两批早期独立文档在 16 对网格起点上分别改善输出中位 NMSE 1.84% 和 1.70%。[7B 终端记录](../evidence/output_matching_20261119/fit_batches_7b_terminal.json) · [42M 新文档实测](../evidence/output_matching_20261119/batch_documents_42m.zip) · [下一条 Colab 命令](OUTPUT_MATCHING_STUDY.md#分批旋转的独立文档验证)
 
 拟合目标 `relative_site_nmse` 的 01c 已在真实 A100 上运行完成，状态为 `SCREEN_COMPLETE`，判定为 **STOP**。两种子、九位置、每组 32 对。新 CellQuant 相对两个网格中较强者的中位改善为 −0.0337%，种子 11 为 −0.0627%，种子 23 为 −0.0373%。相对旧 CellQuant 为 −0.0044%。三项预设条件均未满足，程序跳过正式 G1 复验。此次评估使用原校准文档内的划分。[01c 实测摘要](../evidence/g1_objective_20261118/a100_summary.json) · [本轮协议](G1_OBJECTIVE_TRIAL.md) · [本地工程验证](../evidence/g1_objective_20261118/local_validation.json)
 

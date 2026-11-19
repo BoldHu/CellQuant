@@ -28,11 +28,13 @@ def cached_matching_model(config, model_id, weight_files, cache):
 
 
 def prepare(config_path,output,*,include_tests=False,relative_screen=None,matching_study=False,
-            batch_screen=None,matching_archive=None,retest_pilot=None,bilateral_sources=None):
+            batch_screen=None,matching_archive=None,retest_pilot=None,bilateral_sources=None,row_crossfit_cohort=None):
     output=Path(output).resolve()
     previous=None
     parent_dataset_fingerprints=set()
     reuse_matching_inputs = matching_study or batch_screen is not None or retest_pilot is not None or bilateral_sources is not None
+    if row_crossfit_cohort is not None and bilateral_sources is None:
+        raise ValueError('The row swap requires the archived fits and their previous document cohort')
     if bilateral_sources is not None:
         from cellquant.bilateral_documents import COHORT_FILE, FIT_FILE, GRID_FILE, DESIGN as bilateral_design
         from cellquant.bilateral_documents import block_identity, draw_documents, read_7b_fit
@@ -100,6 +102,14 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
             config['model_source_manifest_path'] = str(model_source)
         config['bilateral_document_pilot'] = {**parent, 'design':bilateral_design, 'archives':hashes, 'quality_rules_sha256':config_hash(load_rules()),
                                                'screen_run_id':screen['receipt']['run_id']}
+        if row_crossfit_cohort is not None:
+            from cellquant.row_crossfit import COHORT_FILE as crossfit_file, DESIGN as crossfit_design
+            dest = refs/crossfit_file
+            shutil.copyfile(row_crossfit_cohort,dest)
+            new_cohort = read_json(dest)
+            if new_cohort['previous_cohort_hash'] != config_hash(cohort) or new_cohort['design'] != crossfit_design:
+                raise ValueError('Row-crossfit documents do not follow the registered original cohort')
+            config['row_crossfit'] = {'design':crossfit_design,'cohort_sha256':sha256_file(dest)}
     if retest_pilot is not None:
         from cellquant.batch_retest import DESIGN as retest_design,read_document_pilot,retest_partitions
         from cellquant.gates import resolve_rules_path
@@ -184,6 +194,11 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
         fresh = draw_documents(blocks, screen, cohort['previous_42m_train_blocks'])
         if {str(s):[block_identity(b) for b in dev] for s, (_, dev) in fresh.items()} != cohort['heldout']:
             raise ValueError('Pinned 7B tokenizer or fresh article selection differs from the frozen list')
+        if row_crossfit_cohort is not None:
+            excluded = [*cohort['previous_42m_train_blocks'], *(b for docs in cohort['heldout'].values() for b in docs)]
+            fresh = draw_documents(blocks,screen,excluded,design=crossfit_design)
+            if {str(s):[block_identity(b) for b in dev] for s, (_,dev) in fresh.items()} != new_cohort['heldout']:
+                raise ValueError('Pinned tokenizer or sampled row-crossfit documents differ from the frozen list')
         formal['heldout_sequences'] = bilateral_design['documents_per_seed']
         formal['heldout_tokens_per_panel'] = bilateral_design['documents_per_seed'] * bilateral_design['tokens_per_document']
     elif retest_pilot is not None:
@@ -250,6 +265,8 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
               'note':'Own matched protocol; do not compare these PPL values to stock concatenated WikiText numbers'}
     if bilateral_sources is not None:
         protocol.update(bilateral_document_pilot=config['bilateral_document_pilot'],formal_pilot=formal)
+        if row_crossfit_cohort is not None:
+            protocol['row_crossfit'] = config['row_crossfit']
     elif retest_pilot is not None:
         protocol.update(batch_g1_retest=config['batch_g1_retest'],formal_pilot=formal)
     elif batch_screen is not None:
@@ -279,6 +296,7 @@ if __name__=='__main__':
     p.add_argument('--retest-pilot',type=Path,help='Verified document-pilot bundle for an independent formal batch G1 retest')
     p.add_argument('--bilateral-sources', type=Path, nargs=3, metavar=('FIT_ZIP','GRID_ZIP','COHORT'),
                    help='Freeze two completed rotations and prepare new articles for held-out scoring')
+    p.add_argument('--row-crossfit-cohort',type=Path,help='Prepare a separate previously unused evaluation cohort for the row-swap experiment')
     a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests,relative_screen=a.relative_g1_screen,
                             matching_study=a.matching_study,batch_screen=a.batch_document_screen,matching_archive=a.matching_archive,
-                            retest_pilot=a.retest_pilot,bilateral_sources=a.bilateral_sources)
+                            retest_pilot=a.retest_pilot,bilateral_sources=a.bilateral_sources,row_crossfit_cohort=a.row_crossfit_cohort)

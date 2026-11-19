@@ -48,7 +48,7 @@ def read_reference(path, grid_archive, fit_archive, design, seeds, methods):
     return refs
 
 
-def row_energies(weights, panel, q, specs, *, tile_rows=TILE_ROWS):
+def row_energies(weights, panel, q, specs, *, tile_rows=TILE_ROWS, alternate_rows=None):
     """Sum the projected errors and FP target energy per document across whole output rows."""
     if panel.panel_id != SITE or panel.placement != 'input' or weights.ndim != 2 or tile_rows < 1:
         raise ValueError('Expected a full input-side layer_0.up_proj weight and a positive row tile')
@@ -60,7 +60,16 @@ def row_energies(weights, panel, q, specs, *, tile_rows=TILE_ROWS):
         raise ValueError('Sampled output rows differ from the captured layer weights')
     mask = torch.ones(len(weights), dtype=torch.bool, device=q.device)
     mask[sampled] = False
-    complement = mask.nonzero().flatten()
+    row_sets = {'sampled':sampled}
+    if alternate_rows is not None:
+        alternate = torch.as_tensor(alternate_rows, device=q.device)
+        if (alternate.dtype != torch.long or alternate.shape != sampled.shape or alternate.unique().numel() != len(sampled)
+                or alternate.min() < 0 or alternate.max() >= len(weights) or not mask[alternate].all()
+                or 2*len(sampled) >= len(weights)):
+            raise ValueError('The two fitted row sets must be disjoint, equally sized and leave unselected rows')
+        row_sets['alternate'] = alternate
+        mask[alternate] = False
+    row_sets['complement'] = mask.nonzero().flatten()
     wspec, aspec = panel_specs(specs, panel)
     if wspec.bits != 4 or aspec.bits != 4:
         raise ValueError('The row diagnostic requires the original INT4 weight and activation quantizers')
@@ -74,7 +83,7 @@ def row_energies(weights, panel, q, specs, *, tile_rows=TILE_ROWS):
     document_mask = torch.eye(len(counts), dtype=torch.float64, device=q.device).repeat_interleave(
         torch.tensor(counts, device=q.device), dim=1, output_size=activation.shape[1])
     totals = {}
-    for label, rows in (('sampled',sampled), ('complement',complement)):
+    for label, rows in row_sets.items():
         total = torch.zeros((len(counts), 1+len(PRECISIONS)), device=q.device, dtype=torch.float64)
         for tile in rows.split(tile_rows):
             tile_weight = weights.index_select(0, tile).double()
@@ -86,7 +95,7 @@ def row_energies(weights, panel, q, specs, *, tile_rows=TILE_ROWS):
             per_token = torch.stack([v.square().sum(dim=0) for v in columns], dim=1)
             total += document_mask @ per_token
         totals[label] = total
-    totals['all_rows'] = totals['sampled'] + totals['complement']
+    totals['all_rows'] = sum(totals.values())
     blocks = {}
     for name, column in totals.items():
         values = column.cpu().numpy()
@@ -95,7 +104,7 @@ def row_energies(weights, panel, q, specs, *, tile_rows=TILE_ROWS):
         blocks[name] = [{'block_id':bid,'document_id':doc,'sampled_tokens':count,'target_energy':v[0],
                          **dict(zip(PRECISIONS,v[1:]))}
                         for bid,doc,count,v in zip(panel.metadata['block_ids'],panel.metadata['document_ids'],counts,values.tolist())]
-    return {'row_counts':{'sampled':len(sampled), 'complement':len(complement), 'all_rows':len(weights)}, 'blocks':blocks}
+    return {'row_counts':{**{name:len(rows) for name,rows in row_sets.items()}, 'all_rows':len(weights)}, 'blocks':blocks}
 
 
 def score_seed(seed, panels, panel_sha, weights, rotations, specs, reference, *, progress=None):

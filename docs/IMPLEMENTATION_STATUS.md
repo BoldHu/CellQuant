@@ -2,13 +2,15 @@
 
 更新于 2026-11-19。2026-11-18 的 LLaMA-2-7B 正式 A100 G1 为 **FAIL**。G2–G4 尚未执行。
 
+**7B 全行诊断已完成，下一步为交换拟合行。** 在第 0 层 up 原 64 行上，双侧选角相对 256 对网格的 W4A4 误差高 13.89%，同一批文档上整投影高 0.267%。从 64 对前缀追加双侧选角使整投影误差增加 0.288%。原短前缀与完整网格在拟合行上已有 13.50% 差距。预训练 42M 更换网格的一组拟合行后，两个种子的误差优势都随行移动，配对交互量为 +9.63 个百分点 [8.79, 10.50]。7B 换行实验已冻结 32 篇新文章与判据，等待 A100 运行。[7B 全行统计](../evidence/output_matching_20261119/bilateral_rows_7b_summary.json) · [42M 两种子的测量](../evidence/output_matching_20261119/row_crossfit_42m.zip) · [7B 验证协议](OUTPUT_MATCHING_STUDY.md#交换拟合行的配对实验)
+
 **01d 的 7B A100 研究已完成。** 两个种子、八种方法、九个位置和 16 篇新验证文章均有原始记录。相对 128 对网格，三个输出的中位 NMSE 改善 1.55% [1.47%, 1.63%]，种子 11 改善 3.10%，种子 23 持平。在 256 对网格上追加修正，两个种子的三次非零步长都满足尺度预算，输入代价使联合拟合损失上升，两次都返回原网格。七组区间均从逐文档测量复算一致。预定的 7B 增量条件未达到。[7B 原始测量和诊断](../evidence/output_matching_20261119/colab_7b_summary.json) · [原协议与结果](OUTPUT_MATCHING_STUDY.md#7b-实测与下一轮决策)
 
 7B 分批追加修正已在独立拟合和验证文档上完成复验，状态为 **RETEST_STOPPED_BY_BOUND**。此前 pilot 的 +0.0812% 未能复现。两个新拟合结果各接受 0/32 批，原网格、选批及同批数随机对照在 32 篇验证文章的九个位置误差相同。相对最强匹配对照的准确率收益上界为 0%，相对最快对照的校准加速上界为 0.9858×。原正式 G1 仍为 FAIL；这次停止前完成了八份方法记录。[复验汇总](../evidence/output_matching_20261119/batch_g1_retest_7b_summary.json) · [原 pilot](../evidence/output_matching_20261119/batch_documents_7b_summary.json)
 
 短网格起点的输入感知选角保留一个共享旋转、原动态量化器与风险上限。预训练 42M 的 32 篇新文章上，九位置中位 NMSE 相对同起点的输出选角下降 3.6570% [2.9300%, 4.6226%]，相对完整网格下降 1.0445% [0.6099%, 1.3469%]。[42M 原始统计](../evidence/output_matching_20261119/bilateral_documents_42m_summary.json)
 
-7B A100 双侧选角在拟合阶段比同起点仅输出选角的联合损失低 1.56% 和 2.09%。在两个冻结种子各 16 篇新文章上，九位置中位 NMSE 相对仅输出选角改善 0.121%，配对 95% 区间为 [−0.837%, +0.944%]。相对完整网格的改善为 0.065% [−0.356%, +0.411%]，第 0 层 up 的 64 个已抽行退化 13.89% [12.10%, 15.79%]。已从八份逐文档原始记录复算全部区间与 `stop_bilateral_variant`。运行仅回放冻结旋转。该版本停在文档 pilot，后续 A100 诊断检查同一权重矩阵其余行的误差。[原始拟合](../evidence/output_matching_20261119/bilateral_fit_7b_summary.json) · [文档复算](../evidence/output_matching_20261119/bilateral_documents_7b_summary.json) · [诊断协议](OUTPUT_MATCHING_STUDY.md#7b-新文档结论与第-0-层行诊断)
+7B A100 双侧选角在拟合阶段比同起点仅输出选角的联合损失低 1.56% 和 2.09%。在两个冻结种子各 16 篇新文章上，九位置中位 NMSE 相对仅输出选角改善 0.121%，配对 95% 区间为 [−0.837%, +0.944%]。相对完整网格的改善为 0.065% [−0.356%, +0.411%]，第 0 层 up 的 64 个已抽行退化 13.89% [12.10%, 15.79%]。已从八份逐文档原始记录复算全部区间与 `stop_bilateral_variant`。该版本停在文档 pilot。[原始拟合](../evidence/output_matching_20261119/bilateral_fit_7b_summary.json) · [文档复算](../evidence/output_matching_20261119/bilateral_documents_7b_summary.json)
 
 拟合目标 `relative_site_nmse` 的 01c 已在真实 A100 上运行完成，状态为 `SCREEN_COMPLETE`，判定为 **STOP**。两种子、九位置、每组 32 对。新 CellQuant 相对两个网格中较强者的中位改善为 −0.0337%，种子 11 为 −0.0627%，种子 23 为 −0.0373%。相对旧 CellQuant 为 −0.0044%。三项预设条件均未满足，程序跳过正式 G1 复验。此次评估使用原校准文档内的划分。[01c 实测摘要](../evidence/g1_objective_20261118/a100_summary.json) · [本轮协议](G1_OBJECTIVE_TRIAL.md) · [本地工程验证](../evidence/g1_objective_20261118/local_validation.json)
 

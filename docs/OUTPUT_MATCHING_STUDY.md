@@ -224,6 +224,34 @@ cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matchin
 
 终端末行给出 `bilateral_row_diagnostic.zip` 路径。先读 `row_comparisons.candidate_vs_full_grid.complement`。若退化集中在原采样行，优先检验网格的行选择效应，另取校准行拟合、留出其他行和新文章验证。若其余行也退化，用 `prefix_vs_full_grid` 与 `candidate_vs_prefix` 区分起点损失和提案损失，再看 W4Afp 与 WfpA4。若损失集中于权重端，可以在新拟合文档和独立行块上检验动态权重量化误差约束。只有后续冻结的新候选重新通过正式 G1，才进入单模型 canary。
 
+## 7B 第 0 层 up 全行实测
+
+A100 用时 74.98 秒回放三个冻结旋转。第 0 层 up 的原 64 行只占 11,008 个输出行的 0.58%。核对了两个种子的旋转、面板、文档与 token 哈希，逐篇重现了上一轮原 64 行的误差。每个种子在同一批 16 篇文章上分别汇总误差能量与目标能量，再平均两个种子的相对 NMSE 降幅。正数表示前一种方法误差更小。方括号为固定两种子、按文章配对的 95% 区间。[A100 原包](../evidence/output_matching_20261119/bilateral_rows_7b.zip) · [27 组区间与种子明细](../evidence/output_matching_20261119/bilateral_rows_7b_summary.json) · [分组及单侧量化图](../evidence/output_matching_20261119/bilateral_rows_7b.png)
+
+| W4A4 对照 | 原 64 行 | 其余 10,944 行 | 全部 11,008 行 |
+|---|---:|---:|---:|
+| 双侧选角 vs 完整 256 对网格 | −13.892% [−15.789, −12.098] | −0.209% [−0.463, +0.034] | −0.267% [−0.521, −0.022] |
+| 64 对网格前缀 vs 完整网格 | −13.496% [−14.549, −12.441] | +0.077% [−0.073, +0.230] | +0.020% [−0.130, +0.173] |
+| 双侧选角 vs 同一 64 对前缀 | −0.421% [−2.198, +1.374] | −0.288% [−0.488, −0.084] | −0.288% [−0.489, −0.083] |
+
+就双侧选角相对完整网格而言，其余行的降幅比原 64 行高 13.68 个百分点 [11.95, 15.51]。短前缀与完整网格之间已经有 13.57 个百分点的行组差异 [12.56, 14.58]。双侧选角在原 64 行上逐篇落后完整网格，在其余行上有 17/32 篇落后，整投影有 19/32 篇落后。只量化权重时，双侧选角相对完整网格在原 64 行的误差高 39.31%，整投影高 0.656% [0.598, 0.714]。只量化激活时，整投影降幅为 +0.223% [−0.376, +0.796]。两种单侧量化各自使用浮点的另一侧，共同量化还包含两侧的相互作用。
+
+延长角度网格的收益集中在其反复优化的行上。观测只覆盖一个权重矩阵和上一轮同一批文章。原行可能本身就容易受网格长度影响，下面的换行实验直接检验拟合行的作用。
+
+## 交换拟合行的配对实验
+
+把原来的 64 行记作 A。将输出行等分为 64 段，从每段预先随机抽一行组成 B，排除所有 A 行，两个种子使用相同的 B。回放原 A 网格，只把第 0 层 up 拟合面板替换为 B，重新求一个全模型共享的 B 网格。其余八个拟合面板、拟合文章、初始旋转、角度序列和预算规则相同。两套尺度上限各自从同一初始旋转下的对应拟合面板计算，归档保存各自数值。7B 每套网格共 256 对，每对 129 个候选角。分别评估 A、B、均未参与拟合的 10,880 行及全部 11,008 行，同时回放各自 64 对前缀，记录其余八个位置的变化。直接比较质量，A 网格的耗时应取原拟合记录。[换行实现](../src/cellquant/row_crossfit.py)
+
+先在预训练 42M 上以 32 对网格、8 对前缀、每组 64 行运行了两次。两个种子的四组旋转及逐文档误差均可重复。相对 A 拟合的网格，B 网格在 A 行误差高 5.115%，在 B 行低 4.513%。相减得到 +9.628 个百分点 [8.789, 10.503]，两个种子分别为 +11.746 和 +7.510。其余 1,248 行改善 +0.583% [0.292, 0.877]。整投影改善 +0.518% [0.242, 0.802]，种子 11 改善 1.033%，种子 23 改善 0.003%。其余八个位置的中位改善为 +0.072% [−0.207, +0.134]。这一实验测量网格对拟合行的依赖。[42M 逐篇结果、拟合追踪与环境](../evidence/output_matching_20261119/row_crossfit_42m.zip)
+
+7B 已另选 32 篇 WikiText-2 训练集文章，每个种子 16 篇，并排除了此前使用过的 267 篇。42M 的换行实验另用一批文章，与这 32 篇也互斥。在现有 Colab A100 仓库中执行下行，终端末尾给出 `row_crossfit.zip`。[7B 冻结文档与指标](../evidence/output_matching_20261119/row_crossfit_cohort_7b.json)
+
+```bash
+cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --crossfit-rows
+```
+
+主指标为 B 网格相对 A 网格在 B 行的误差降幅减去在 A 行的降幅，单位为百分点。同一文章的抽样次数在两种方法和两组行之间共用。两个种子都须各自在自己的拟合行上获胜，且主指标的文档配对 95% 区间下限大于零，才认为拟合行效应在 7B 复现。复现后可在同校准成本下检验分批更换拟合行的策略，主看未见行、整投影和其他层的迁移。若无反转，保留本轮特定 64 行与完整投影的实测差异，停止推广拟合行效应。新算法仍按原 G1 决定是否进入整模型 canary。
+
 ## 本地复算
 
 以下两条训练命令分别复现第一批与第二批小模型实验。脚本检查固定公开权重、tokenizer 和数据的 SHA-256。复算已有原始结果只需解压对应 `measurements.zip`，将解压目录传给分析脚本。它会验证逐方法 SHA-256，并从逐块误差重新计算区间与归因图。
@@ -236,6 +264,8 @@ python scripts/run_small_output_matching.py --smoke-retest
 python scripts/run_small_output_matching.py --screen-bilateral
 python scripts/run_small_output_matching.py --validate-bilateral
 python scripts/run_small_output_matching.py --diagnose-bilateral-rows
+python scripts/run_small_output_matching.py --crossfit-rows
+python scripts/analyze_bilateral_rows.py --output runs/bilateral_rows_audit.json --figure runs/bilateral_rows.png
 python scripts/analyze_bilateral_documents.py --output runs/bilateral_documents_audit.json
 python scripts/analyze_batch_retest.py evidence/output_matching_20261119/batch_g1_retest_7b.zip
 python scripts/analyze_bilateral_fit.py --output runs/bilateral_fit_audit.json

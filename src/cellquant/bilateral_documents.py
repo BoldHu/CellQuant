@@ -77,7 +77,7 @@ def read_7b_fit(screen, grid):
             'prior': old, 'dataset_fingerprint': fingerprints.pop()}
 
 
-def draw_documents(blocks, fit, small_model_blocks):
+def draw_documents(blocks, fit, small_model_blocks, *, design=DESIGN):
     """Use the same fitted blocks as the A100 screen, excluding all previous evaluation documents."""
     by_id = {b['block_id']: b for b in blocks}
     previous = {}
@@ -91,11 +91,11 @@ def draw_documents(blocks, fit, small_model_blocks):
                     raise ValueError('Frozen A100 block differs from the pinned corpus or tokenizer')
                 originals.append(actual)
             previous[seed][split] = originals
-    return confirmation_partitions(blocks, previous, DESIGN['documents_per_seed'], namespace=DESIGN['partition_namespace'],
+    return confirmation_partitions(blocks, previous, design['documents_per_seed'], namespace=design['partition_namespace'],
                                    exclude=[*fit['prior'], *small_model_blocks])
 
 
-def verify_document_inputs(config):
+def verify_document_inputs(config, *, row_crossfit=False):
     verify_parent_manifests(config)
     directory = Path(config['protocol_manifest_path']).parent
     protocol = read_json(directory/'protocol.json')
@@ -121,6 +121,18 @@ def verify_document_inputs(config):
         raise ValueError('Frozen evaluation differs from the fitted model or panel protocol')
     old = [*fit['prior'], *cohort['previous_42m_train_blocks'],
            *(b for p in fit['parts'].values() for rows in p.values() for b in rows)]
+    heldout = cohort['heldout']
+    if bool(config.get('row_crossfit')) != row_crossfit:
+        raise ValueError('Use the runner bound to this document protocol')
+    if row_crossfit:
+        from .row_crossfit import COHORT_FILE as crossfit_file, DESIGN as crossfit_design
+        spec = config['row_crossfit']
+        fresh = read_json(folder/crossfit_file)
+        if (spec != protocol.get('row_crossfit') or spec['design'] != crossfit_design or fresh['design'] != crossfit_design
+                or sha256_file(folder/crossfit_file) != spec['cohort_sha256'] or fresh['previous_cohort_hash'] != config_hash(cohort)):
+            raise ValueError('Changed row-crossfit cohort or design')
+        old.extend(b for rows in heldout.values() for b in rows)
+        heldout = fresh['heldout']
     seen = {k:{b[k] for b in old} for k in IDENTITY}
     for seed in config['seeds']:
         actual = read_json(config['data']['token_manifests'][str(seed)])
@@ -129,7 +141,7 @@ def verify_document_inputs(config):
                 or ident['dataset_fingerprint'] != cohort['dataset_fingerprint']
                 or any(ident[k] != config[k] for k in ('model_revision','tokenizer_revision','dataset_revision'))
                 or [block_identity(b) for b in parts['fit']] != [block_identity(b) for b in fit['parts'][seed]['fit']]
-                or [block_identity(b) for b in parts['dev']] != cohort['heldout'][str(seed)]):
+                or [block_identity(b) for b in parts['dev']] != heldout[str(seed)]):
             raise ValueError(f'Document identity differs for seed {seed}')
         for key in IDENTITY:
             values = {b[key] for b in parts['dev']}

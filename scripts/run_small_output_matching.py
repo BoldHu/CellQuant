@@ -36,6 +36,7 @@ def main():
     modes.add_argument('--screen-bilateral',action='store_true',help='Test input-aware angle proposals on the archived 42M fit panels')
     modes.add_argument('--validate-bilateral',action='store_true',help='Score the frozen 42M input-aware proposals on untouched train articles')
     modes.add_argument('--diagnose-bilateral-rows',action='store_true',help='Verify the row diagnostic against the frozen 42M document results')
+    modes.add_argument('--crossfit-rows',action='store_true',help='Swap the first up projection calibration rows on pretrained 42M')
     args=parser.parse_args()
     document_mode = args.validate_bilateral or args.diagnose_bilateral_rows
     import pyarrow.parquet as parquet
@@ -57,6 +58,8 @@ def main():
         prefix='bilateral_documents_42m_'
     if args.diagnose_bilateral_rows:
         prefix='bilateral_rows_42m_'
+    if args.crossfit_rows:
+        prefix='row_crossfit_42m_'
     out=ROOT/'runs/experiments'/(prefix+uuid4().hex[:12])
     out.mkdir(parents=True)
     print('Run',out,flush=True)
@@ -93,7 +96,7 @@ def main():
         design.pop('refine_continued_grid')
         design['version']=2
     study_split='validation'
-    if args.validate_batches or args.smoke_retest or document_mode:
+    if args.validate_batches or args.smoke_retest or document_mode or args.crossfit_rows:
         from cellquant.batch_validation import DESIGN as batch_design, measure_frozen_batches
         from cellquant.matching_batches import load_matching_arms
         from cellquant.matching_study import CONTINUED
@@ -125,7 +128,7 @@ def main():
             design = {**retest_design,'prefix_pairs':2,'extra_grid_pairs':2,'parent_grid_points':17,'batch_size':2}
             cfg['batch_g1_retest']={'design':design,'scope':'pretrained 42M engineering verification','matching_pairs':4}
             cfg['data']['calibration_split']='train'
-        if document_mode:
+        if document_mode or args.crossfit_rows:
             import json
             from zipfile import ZipFile
             from cellquant.batch_retest import retest_partitions
@@ -146,6 +149,20 @@ def main():
             del cfg['batch_document_pilot']
             cfg['bilateral_documents'] = {'design':design,'fit_archive_sha256':sha256_file(fit_archive),
                                            'excluded_7b_archive_sha256':sha256_file(a100)}
+            if args.crossfit_rows:
+                from cellquant.bilateral_documents import COHORT_FILE as past_cohort
+                from cellquant.row_crossfit import COHORT_FILE, DESIGN as swap_design, run_crossfit
+                folder = ROOT/'evidence/output_matching_20261119'
+                old.extend(b for _, docs in final.values() for b in docs)
+                for filename in (past_cohort,COHORT_FILE):
+                    cohort = read_json(folder/filename)
+                    old.extend(b for docs in cohort['heldout'].values() for b in docs)
+                    old.extend(cohort.get('previous_42m_train_blocks', []))
+                design = {**swap_design, 'grid_pairs':32}
+                final = confirmation_partitions(train_blocks,original,design['documents_per_seed'],
+                                                namespace=design['partition_namespace'],exclude=old)
+                del cfg['bilateral_documents']
+                cfg['row_crossfit'] = {'design':design,'excluded_7b_cohort_hash':config_hash(read_json(folder/COHORT_FILE))}
     elif args.screen_bilateral:
         from cellquant.bilateral_screen import DESIGN as screen_design, run_screen
         reference=ROOT/'evidence/output_matching_20261118/hybrid_42m/measurements.zip'
@@ -156,7 +173,7 @@ def main():
     for seed in cfg['seeds']:
         identity={'model_id':MODEL,'model_revision':MODEL_REV,'tokenizer_revision':MODEL_REV,'dataset_id':DATA,
                   'dataset_revision':DATA_REV,'source_split':study_split,'parquet_sha256':data_hash,'seed':seed,'context_length':256}
-        if args.validate_batches or document_mode:
+        if args.validate_batches or document_mode or args.crossfit_rows:
             identity.update(fit_split='validation',dev_split='train',fit_parquet_sha256=data_hash,parquet_sha256=train_hash)
         if args.smoke_retest:
             identity.update(fit_split='train',dev_split='train',parquet_sha256=train_hash)
@@ -185,14 +202,16 @@ def main():
     model.to(device)
     prepared=prepare_pilot_inputs(cfg,model,graph_identity=graph_id,heldout_only=args.validate_batches or document_mode,
                                   fit_only=args.screen_bilateral)
-    if args.diagnose_bilateral_rows:
+    if args.diagnose_bilateral_rows or args.crossfit_rows:
         full_up_weight = model.model.layers[0].mlp.up_proj.module.weight.detach()
     del model
     torch.cuda.empty_cache()
     def emit(phase,**details):
         if phase=='matching.evaluate':
             print(phase,details,flush=True)
-    if document_mode:
+    if args.crossfit_rows:
+        result=run_crossfit(cfg,prepared,full_up_weight,out,reference)
+    elif document_mode:
         result=score_frozen(cfg,prepared,out,reference,fit_archive,
             document_reference=ROOT/'evidence/output_matching_20261119/bilateral_documents_42m.zip' if args.diagnose_bilateral_rows else None,
             full_up_weight=full_up_weight if args.diagnose_bilateral_rows else None)

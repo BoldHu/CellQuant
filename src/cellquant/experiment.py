@@ -235,13 +235,14 @@ def _verify_weight_files(config,output):
 
 def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False,profile_pairs=None,
                    diagnose_pairs=False,screen_objective=False,matching_study=False,matching_batch_archive=None,
-                   batch_documents=False,batch_retest=False,all_controls=False,bilateral_archive=None):
+                   batch_documents=False,batch_retest=False,all_controls=False,bilateral_archive=None,bilateral_documents=False):
     config=read_json(config) if isinstance(config,(str,Path)) else copy.deepcopy(config)
     profile_pair=profile_pair or profile_pairs is not None
     batch_screen = matching_batch_archive is not None
     bilateral_screen = bilateral_archive is not None
     if all_controls and not batch_retest:raise ValueError('The complete-controls option belongs to the batch G1 retest')
-    if sum((bool(profile_pair), diagnose_pairs, screen_objective, matching_study, batch_screen, batch_documents, batch_retest, bilateral_screen)) > 1:
+    if sum((bool(profile_pair), diagnose_pairs, screen_objective, matching_study, batch_screen, batch_documents,
+            batch_retest, bilateral_screen, bilateral_documents)) > 1:
         raise ValueError('Choose either a single profiling mode or a single diagnostic per run')
     profile_count=1 if profile_pairs is None else profile_pairs
     if profile_pair:
@@ -252,7 +253,8 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     output=root/'runs'/'experiments'/run_id;output.mkdir(parents=True)
     atomic_json(output/'config.json',config)
     # The diagnostic writes only its own run directory and optional invocation index.
-    diagnostic = diagnose_pairs or screen_objective or matching_study or batch_screen or batch_documents or batch_retest or bilateral_screen
+    diagnostic = (diagnose_pairs or screen_objective or matching_study or batch_screen or batch_documents or
+                  batch_retest or bilateral_screen or bilateral_documents)
     checks = {k: v for k, v in config.items() if k != 'result_path'} if diagnostic else config
     ready=preflight(checks,root)
     if batch_screen or bilateral_screen:
@@ -300,6 +302,16 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
         except (ValueError, KeyError, OSError) as exc:
             ready['missing'].append(str(exc))
             ready['status']='BLOCKED'
+    if bool(config.get('bilateral_document_pilot')) != bilateral_documents:
+        ready['missing'].append('Use the frozen bilateral document protocol with --bilateral-documents')
+        ready['status']='BLOCKED'
+    elif bilateral_documents:
+        from .bilateral_documents import verify_document_inputs
+        try:
+            frozen_angles = verify_document_inputs(config)
+        except (ValueError, KeyError, OSError, BadZipFile) as exc:
+            ready['missing'].append(str(exc))
+            ready['status']='BLOCKED'
     if screen_objective or matching_study:
         from .objective_screen import validate_screen_config, verify_parent_manifests
         try:
@@ -325,6 +337,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     if matching_study:base['execution_mode']='output_matching_study'
     if batch_screen:base['execution_mode']='fit_matching_batch_screen'
     if bilateral_screen:base['execution_mode']='bilateral_angle_fit_screen'
+    if bilateral_documents:base['execution_mode']='frozen_bilateral_document_pilot'
     if batch_documents:base['execution_mode']='frozen_batch_document_pilot'
     if batch_retest:base['execution_mode']='batch_g1_retest'
     if preflight_only or ready['status']!='READY':
@@ -399,7 +412,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                 with measured('capture'):
                     prepared=prepare_pilot_inputs(config,model,graph_identity=graph_identity,
                                                   progress=progress.step,profile_only=profile_pair,fit_only=diagnose_pairs or batch_screen or bilateral_screen,
-                                                  screen_objective=screen_objective,heldout_only=batch_documents)
+                                                  screen_objective=screen_objective,heldout_only=batch_documents or bilateral_documents)
                 del model;model=None;gc.collect();torch.cuda.empty_cache()
                 captured_splits = [split for split in ('fit','screen_validation','heldout')
                                    if any(split in panels for panels in prepared['seeds'].values())]
@@ -410,6 +423,15 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                 from .batch_retest import run_retest
                 summary=run_retest(config,prepared,output,graph_identity,all_controls=all_controls,progress=progress.step)
                 result={**base,**summary,'timings':timings}
+            elif bilateral_documents:
+                from .bilateral_documents import FIT_FILE, GRID_FILE, document_decision
+                from .bilateral_screen import score_frozen
+                refs = Path(config['protocol_manifest_path']).parent/'fit_reference'
+                summary = score_frozen(config,prepared,output,refs/GRID_FILE,refs/FIT_FILE,
+                                       fit_7b=frozen_angles,progress=progress.step)
+                decision = document_decision(summary['document_summary'])
+                result = {**base,**summary,'fit_source':config['bilateral_document_pilot'],'protocol_sha256':config['protocol_sha256'],
+                          'pilot_decision':decision,'next_step':decision['next_step'],'timings':timings}
             elif batch_documents:
                 from .batch_validation import run_document_pilot
                 summary=run_document_pilot(config,prepared,output,progress=progress.step)
@@ -642,6 +664,7 @@ def main():
                         help='Use the original G1 config and replay archived 01d rotations on fit documents only')
     parser.add_argument('--batch-documents',action='store_true',help='Score frozen batch selections on the new document cohort')
     parser.add_argument('--screen-bilateral-angles', type=Path, metavar='RETEST_ZIP', help='Score input-aware proposals on the stopped retest fit panels')
+    parser.add_argument('--bilateral-documents',action='store_true',help='Score the frozen A100 angle screen on a fresh paired article cohort')
     parser.add_argument('--batch-retest',action='store_true',help='Refit and validate the frozen batch algorithm on new calibration and validation documents')
     parser.add_argument('--all-controls',action='store_true',help='Finish every matched solver even if the parent already rules out both G1 routes')
     args=parser.parse_args()
@@ -649,7 +672,8 @@ def main():
     result=run_experiment(args.config,preflight_only=args.preflight,profile_pair=args.profile_pair,profile_pairs=args.profile_pairs,
                           diagnose_pairs=args.diagnose_pairs,screen_objective=args.screen_objective,matching_study=args.matching_study,
                           matching_batch_archive=args.screen_matching_batches,batch_documents=args.batch_documents,
-                          batch_retest=args.batch_retest,all_controls=args.all_controls,bilateral_archive=args.screen_bilateral_angles)
+                          batch_retest=args.batch_retest,all_controls=args.all_controls,bilateral_archive=args.screen_bilateral_angles,
+                          bilateral_documents=args.bilateral_documents)
     if args.result_index:atomic_json(args.result_index,{k:result[k] for k in ['run_id','run_dir','status']})
     display={'status':result['status'],'run_dir':result['run_dir'],'reason':result.get('reason'),
                       'incomplete_methods':result.get('incomplete_methods',[]),

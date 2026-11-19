@@ -262,3 +262,9 @@ seed 11 的 Hadamard、STE、网格报告 COMPLETE；固定尺度搜索与 CellQ
 - 实现双侧角度提案。对六个输入面板用父旋转完整分组的尺度计算单平面乘积误差增量，加上三个输出位置的精确代价。分批接受继续使用真实动态量化和两个风险上限。RTX 3050 上的预训练 42M 在两个种子均接受 4/4 批，冻结后在 32 篇新文章上相对同起点仅输出选角改善 3.6570%，相对完整网格改善 1.0445%。已用 8 份逐文档文件复算区间。[42M 配对结果](../evidence/output_matching_20261119/bilateral_documents_42m_summary.json)
 - 7B 短测入口为 `python scripts/run_output_matching.py --screen-bilateral`。它使用本次 A100 复验的原拟合面板，回放网格到第 64 对。从 A100 因子在本机 GPU 重建的两份完整 4096 维父旋转均与 A100 记录的数组 SHA-256 一致。7B 新提案与整模型 GPTQ 尚待实测。[A100 协议](OUTPUT_MATCHING_STUDY.md#在选角时计入输入侧误差)
 - CPU 数学检查 10 项通过。358 项自动测试通过，1 项既有测试因 Notebook 00 保存的 `PREPARE_G1_INPUTS=True` 与默认值预期不符而失败。
+
+## 2026-11-19 A100 双侧选角短测与新文档评分入口
+
+- 归档 A100 运行 `2026-11-19T093653.358169_0000_82281fcdcf`。两个种子相对同一 64 对前缀的仅输出选角，九位置联合拟合损失分别下降 1.56% 和 2.09%。相对 256 对网格，第 0 层 up 仍退化 16.80% 和 16.54%。RTX 3050 上回放了两个种子的前缀、完整网格和两种选角结果，全部八个矩阵哈希都与拟合记录相同。[A100 拟合复算](../evidence/output_matching_20261119/bilateral_fit_7b_summary.json)
+- 固定了 32 篇新的 WikiText-2 train 文章，以及九位置中位降幅、输入和输出分组、第 0 层 up 的文档配对区间。已见 7B 文章 144 篇，小模型工程与验证用过 112 篇训练集文章，去重后共排除 235 篇。终端命令 `python scripts/run_output_matching.py --validate-bilateral` 读取归档拟合配置与两份已冻结的选择追踪。准备阶段核对原 48 个 7B 块和新选 32 个块的身份，实测阶段仅采集验证面板。[文档清单](../evidence/output_matching_20261119/bilateral_document_cohort_7b.json) · [运行与决策](OUTPUT_MATCHING_STUDY.md#7b-双侧选角的拟合与独立文档验证)
+- 真实预训练 42M 在本机重新执行了共用的冻结评分路径，三组配对结果、八份方法的旋转哈希和逐块测量与上次完全一致。本机用固定公共语料和已在原 48 块逐项匹配的本地 tokenizer 检查了准备入口与清单回读，A100 评分会使用固定 7B tokenizer 重验。CPU 数学 10 项通过。362 项自动测试通过，剩余一项既有默认值检查期望 Notebook 00 的 `PREPARE_G1_INPUTS=False`，当前文件保存为 `True`。本机 4 GiB 显存已验证旋转回放，7B 文档 NMSE 仍待 A100 实测。

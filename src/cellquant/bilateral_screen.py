@@ -13,7 +13,7 @@ from .matching_study import CONTINUED, HAD, WARM, paired_site_gains
 from .output_matching import disjoint_pairs, fit_totals
 from .pilot import panel_metrics, pilot_solver_config
 from .progress import report
-from .runtime import atomic_json, config_hash, sha256_file
+from .runtime import atomic_json, config_hash, read_json, sha256_file
 from .solver import panel_fingerprint
 from .tensor_solver import hadamard_rotation, rotate_rows
 
@@ -39,7 +39,7 @@ def prefix_rotation(dimension, seed, warm, device):
     return prefix, prefix_count
 
 
-def retest_grid_rows(archive_path, config):
+def retest_grid_rows(archive_path, config, *, manifest_hashes=None):
     """Read the two real parent grids from the bound-stopped 7B calibration cohort."""
     with ZipFile(archive_path) as archive:
         result = json.loads(archive.read('run/result.json'))
@@ -53,9 +53,11 @@ def retest_grid_rows(archive_path, config):
         rows = {}
         for seed in config['seeds']:
             row = json.loads(archive.read(f'run/seed_{seed}/{CONTINUED}/pilot_result.json'))
+            manifest_sha = (manifest_hashes[str(seed)] if manifest_hashes is not None else
+                            sha256_file(config['data']['token_manifests'][str(seed)]))
             if (row['seed'] != seed or row['method'] != CONTINUED or row['status'] != 'COMPLETE'
                     or row['evidence_kind'] != 'FORMAL_BATCH_G1' or row['model_revision'] != config['model_revision']
-                    or sha256_file(config['data']['token_manifests'][str(seed)]) != row['data_manifest_sha256']):
+                    or manifest_sha != row['data_manifest_sha256']):
                 raise ValueError('Retest grid seed, model or fitted articles differ')
             rows[seed] = row
         return rows
@@ -141,53 +143,84 @@ def run_screen(config, prepared, output, archive, *, progress=None):
             'scope': 'fit-only development diagnostic; incremental timing excludes the reconstructed grid prefix'}
 
 
+def replay_angle_arms(prefix, selection):
+    if q_digest(prefix) != selection['prefix_q_sha256'] or set(selection['arms']) != set(DESIGN['arms']):
+        raise ValueError('Grid prefix or angle arms differ from the frozen fit')
+    rotations = {}
+    for criterion, arm in selection['arms'].items():
+        proposal = arm['proposal']
+        rotations[criterion] = replay_selected_batches(prefix, np.asarray(proposal['pairs']),
+            prefix.new_tensor(proposal['proposed_angles']), BATCH_SIZE, arm['selection'])
+    return rotations
+
+
 @torch.inference_mode()
-def score_frozen(config, prepared, output, grid_archive, fit_archive):
+def score_frozen(config, prepared, output, grid_archive, fit_archive, *, fit_7b=None, progress=None):
     seeds = DESIGN['seeds']
-    refs = load_matching_arms(grid_archive, seeds)
     original, new = DESIGN['arms']
-    device = config['solver']['device']
-    records, raw = [], {}
-    seen_docs = {d for arms in refs.values() for r in arms.values() for key in ('fit_documents', 'heldout_documents')
-                 for d in r[key]}
-    dimension = prepared['hidden_size']
-    with ZipFile(fit_archive) as archive:
-        receipt = json.loads(archive.read('result.json'))
-        if (receipt['reference_archive_sha256'] != sha256_file(grid_archive) or receipt['design'] != DESIGN
-                or receipt['next_step'] != 'fresh_document_pilot' or receipt['model_revision'] != config['model_revision']):
-            raise ValueError('The angle study does not match the grid archive and model')
-        for seed in seeds:
-            ready = prepared['seeds'][seed]
-            panels = ready['heldout']
-            docs = set(panels[0].metadata['document_ids'])
-            if ('fit' in ready or len(panels) != 9 or len(docs) != DOCUMENT_DESIGN['documents_per_seed'] or docs & seen_docs
-                    or any(set(p.metadata['document_ids']) != docs or p.metadata['source_type'] != 'real_layer'
-                           or set(p.metadata['tokens_per_block']) != {DOCUMENT_DESIGN['tokens_per_document']} for p in panels)):
-                raise ValueError('Paired evaluation requires fresh, matching real held-out articles')
-            seen_docs.update(docs)
-            payload = archive.read(f'seed_{seed}/angle_screen.json')
-            if hashlib.sha256(payload).hexdigest() != receipt['by_seed'][str(seed)]['trace_sha256']:
-                raise ValueError('Angle selection checksum differs')
-            selection = json.loads(payload)
-            prefix, _ = prefix_rotation(dimension, seed, refs[seed][WARM]['solver'], device)
-            if q_digest(prefix) != selection['prefix_q_sha256']:
-                raise ValueError('Grid prefix checksum differs')
-            rotations = {CONTINUED: replay_continued_grid(refs[seed], dimension, seed, device),
-                         HAD: hadamard_rotation(dimension, seed, device)}
-            for criterion, arm in selection['arms'].items():
-                proposal = arm['proposal']
-                rotations[criterion] = replay_selected_batches(prefix, np.asarray(proposal['pairs']),
-                    prefix.new_tensor(proposal['proposed_angles']), BATCH_SIZE, arm['selection'])
-            for method, q in rotations.items():
-                measured = panel_metrics(panels, q, ready['specs'], device=device)
-                row = {'seed': seed, 'method': method, 'q_sha256': q_digest(q), 'source_type': 'real_layer', 'heldout': measured}
-                path = atomic_json(Path(output)/f'seed_{seed}'/method/'document_result.json', row)
-                raw[path.relative_to(output).as_posix()] = sha256_file(path)
-                records.append({'seed': seed, 'method': method, 'panels': {p['panel_id']:p['blocks'] for p in measured}})
-    placements = {p.panel_id:p.placement for p in panels}
+    device, dimension = config['solver']['device'], prepared['hidden_size']
+    design = config['bilateral_document_pilot']['design'] if fit_7b is not None else DOCUMENT_DESIGN
+    if fit_7b is None:
+        refs = load_matching_arms(grid_archive, seeds)
+        grids = {s:refs[s][CONTINUED] for s in seeds}
+        with ZipFile(fit_archive) as archive:
+            receipt = json.loads(archive.read('result.json'))
+            if (receipt['reference_archive_sha256'] != sha256_file(grid_archive) or receipt['design'] != DESIGN
+                    or receipt['next_step'] != 'fresh_document_pilot' or receipt['model_revision'] != config['model_revision']):
+                raise ValueError('The angle study does not match the grid archive and model')
+            traces = {}
+            for seed in seeds:
+                payload = archive.read(f'seed_{seed}/angle_screen.json')
+                if hashlib.sha256(payload).hexdigest() != receipt['by_seed'][str(seed)]['trace_sha256']:
+                    raise ValueError('Angle selection checksum differs')
+                traces[seed] = json.loads(payload)
+    else:
+        grids, traces = fit_7b['grids'], fit_7b['traces']
+    records, raw, placements, mean_nmse = [], {}, None, {}
+    seen_docs = {d for r in grids.values() for key in ('fit_documents','heldout_documents') for d in r[key]}
+    for seed in seeds:
+        ready, ref = prepared['seeds'][seed], grids[seed]
+        panels = ready['heldout']
+        dev = read_json(config['data']['token_manifests'][str(seed)])['partitions']['dev']
+        ids, blocks = [d['document_id'] for d in dev], [d['block_id'] for d in dev]
+        current = {p.panel_id:p.placement for p in panels}
+        if ('fit' in ready or len(current) != 9 or len(panels) != 9 or (placements is not None and current != placements)
+                or len(ids) != design['documents_per_seed'] or len(set(ids)) != len(ids) or seen_docs.intersection(ids)
+                or any(p.metadata['source_type'] != 'real_layer' or p.metadata['document_ids'] != ids
+                       or p.metadata['block_ids'] != blocks or p.metadata['tokens_per_block'] != [design['tokens_per_document']]*len(ids)
+                       for p in panels)):
+            raise ValueError('Paired evaluation requires the nine matching panels on the frozen fresh article list')
+        seen_docs.update(ids)
+        placements = current
+        if fit_7b is None:
+            warm = refs[seed][WARM]['solver']
+            grid = replay_continued_grid(refs[seed], dimension, seed, device)
+        else:
+            if (current != {p['panel_id']:p['placement'] for p in ref['heldout']}
+                    or any(p.metadata['graph_identity'] != ref['graph_identity'] for p in panels)):
+                raise ValueError('Captured graph or projection identities differ from the fitted A100 grid')
+            warm = ref['solver']['grid_stages'][0]
+            grid = replay_retest_parent(ref, device)
+        prefix, _ = prefix_rotation(dimension, seed, warm, device)
+        rotations = {CONTINUED:grid, HAD:hadamard_rotation(dimension, seed, device), **replay_angle_arms(prefix, traces[seed])}
+        panel_sha = panel_fingerprint(panels)
+        mean_nmse[str(seed)] = {}
+        for method, q in rotations.items():
+            report(progress, 'bilateral.fresh_documents', seed=seed, method=method, documents=len(ids))
+            measured = panel_metrics(panels, q, ready['specs'], device=device, error_terms=fit_7b is not None)
+            mean_nmse[str(seed)][method] = float(np.mean([p['nmse'] for p in measured]))
+            orth = float(torch.linalg.norm(q.T@q - torch.eye(dimension, dtype=q.dtype, device=q.device))/dimension**.5)
+            row = {'seed':seed, 'method':method, 'q_sha256':q_digest(q), 'source_type':'real_layer', 'heldout':measured,
+                   'heldout_panel_sha256':panel_sha, 'orthogonality_residual':orth, 'heldout_documents':ids}
+            path = atomic_json(Path(output)/f'seed_{seed}'/method/'document_result.json', row)
+            raw[path.relative_to(output).as_posix()] = sha256_file(path)
+            records.append({'seed':seed, 'method':method, 'panels':{p['panel_id']:p['blocks'] for p in measured}})
+        del rotations, prefix, grid, q
     stats = paired_site_gains(records, seeds, placements, {'vs_output_only': (new, original), 'vs_full_grid': (new, CONTINUED),
-                              'vs_hadamard': (new, HAD)}, repetitions=DOCUMENT_DESIGN['bootstrap_draws'],
-                              rng_seed=DOCUMENT_DESIGN['bootstrap_seed'])
+                              'vs_hadamard': (new, HAD)}, repetitions=design['bootstrap_draws'], rng_seed=design['bootstrap_seed'],
+                              watched_sites=[design['watch_site']] if fit_7b is not None else ())
+    if fit_7b is not None:
+        stats['mean_site_nmse_by_seed'] = mean_nmse
     return {'status': 'STUDY_COMPLETE', 'evidence_kind': 'FROZEN_BILATERAL_DOCUMENT_STUDY', 'source_type': 'real_layer',
             'reference_archive_sha256': sha256_file(grid_archive), 'fit_archive_sha256': sha256_file(fit_archive),
-            'design': DOCUMENT_DESIGN, 'document_artifacts': raw, 'document_summary': stats}
+            'design': design, 'document_artifacts': raw, 'document_summary': stats}

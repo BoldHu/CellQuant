@@ -6,7 +6,9 @@
 
 7B 分批追加修正已在独立拟合和验证文档上完成复验，状态为 **RETEST_STOPPED_BY_BOUND**。此前 pilot 的 +0.0812% 未能复现。两个新拟合结果各接受 0/32 批，原网格、选批及同批数随机对照在 32 篇验证文章的九个位置误差相同。相对最强匹配对照的准确率收益上界为 0%，相对最快对照的校准加速上界为 0.9858×。原正式 G1 仍为 FAIL；这次停止前完成了八份方法记录。[复验汇总](../evidence/output_matching_20261119/batch_g1_retest_7b_summary.json) · [原 pilot](../evidence/output_matching_20261119/batch_documents_7b_summary.json)
 
-加入短网格起点的输入感知选角诊断，保留一个共享旋转、原动态量化器与风险上限。预训练 42M 的 32 篇新文章上，九位置中位 NMSE 相对同起点的输出选角下降 3.6570% [2.9300%, 4.6226%]，相对完整网格下降 1.0445% [0.6099%, 1.3469%]。7B 下一步只在上述复验的拟合面板上检验该规则。真实整模型质量与校准速度待测。[42M 原始统计](../evidence/output_matching_20261119/bilateral_documents_42m_summary.json) · [A100 操作](OUTPUT_MATCHING_STUDY.md#在选角时计入输入侧误差)
+短网格起点的输入感知选角保留一个共享旋转、原动态量化器与风险上限。预训练 42M 的 32 篇新文章上，九位置中位 NMSE 相对同起点的输出选角下降 3.6570% [2.9300%, 4.6226%]，相对完整网格下降 1.0445% [0.6099%, 1.3469%]。[42M 原始统计](../evidence/output_matching_20261119/bilateral_documents_42m_summary.json)
+
+7B A100 新选角拟合短测完成，状态为 `DIAGNOSTIC_COMPLETE`，判定为 `fresh_document_pilot`。两个种子的联合拟合误差比同起点仅输出选角低 1.56% 和 2.09%，比完整网格高 2.13% 和 1.53%。相对完整网格，第 0 层 up 是两个种子中唯一退化超过 2% 的位置。已独立回放矩阵，并为四种旋转固定 32 篇新文章。7B 新文档质量及新方法从头校准的总耗时待实测。[原始拟合复核](../evidence/output_matching_20261119/bilateral_fit_7b_summary.json) · [A100 操作](OUTPUT_MATCHING_STUDY.md#7b-双侧选角的拟合与独立文档验证)
 
 拟合目标 `relative_site_nmse` 的 01c 已在真实 A100 上运行完成，状态为 `SCREEN_COMPLETE`，判定为 **STOP**。两种子、九位置、每组 32 对。新 CellQuant 相对两个网格中较强者的中位改善为 −0.0337%，种子 11 为 −0.0627%，种子 23 为 −0.0373%。相对旧 CellQuant 为 −0.0044%。三项预设条件均未满足，程序跳过正式 G1 复验。此次评估使用原校准文档内的划分。[01c 实测摘要](../evidence/g1_objective_20261118/a100_summary.json) · [本轮协议](G1_OBJECTIVE_TRIAL.md) · [本地工程验证](../evidence/g1_objective_20261118/local_validation.json)
 

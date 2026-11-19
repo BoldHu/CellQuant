@@ -29,7 +29,7 @@ DESIGN = {'version':3, 'partition_namespace':2026111802, 'warm_pairs':128, 'extr
           'primary':'product_full vs warm_grid, median of three output sites'}
 
 
-def paired_site_gains(records, seeds, placements, contrasts, *, repetitions=10000, rng_seed=20261118):
+def paired_site_gains(records, seeds, placements, contrasts, *, repetitions=10000, rng_seed=20261118, watched_sites=()):
     """Paired document bootstrap. Hold sites, completed fits and calibration seeds fixed."""
     sites = sorted(placements)
     methods = sorted({r['method'] for r in records})
@@ -41,6 +41,10 @@ def paired_site_gains(records, seeds, placements, contrasts, *, repetitions=1000
         mask = np.array([placements[s] == side for s in sites])
         if mask.any():
             groups[side] = mask
+    for site in watched_sites:
+        if site not in placements or site in groups:
+            raise ValueError(f'Unknown or duplicate watched site: {site}')
+        groups[site] = np.array([s == site for s in sites])
     contrasts_out = {}
     for label, (new, ref) in contrasts.items():
         pair = stats[[methods.index(new), methods.index(ref)]]

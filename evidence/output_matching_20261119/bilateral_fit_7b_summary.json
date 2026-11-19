@@ -1,0 +1,82 @@
+{
+  "by_seed": {
+    "11": {
+      "accepted_batches": {
+        "bilateral_fixed_scale_proposal": 8,
+        "product": 19
+      },
+      "applied_pairs": {
+        "bilateral_fixed_scale_proposal": 349,
+        "product": 879
+      },
+      "incremental_solver_seconds": {
+        "bilateral_fixed_scale_proposal": 9.590255369997976,
+        "product": 5.791579038001146
+      },
+      "input_sum_gain_vs_output_only_pct": 6.812324195776808,
+      "joint_fit_gain_vs_full_grid_pct": -2.1330632042055653,
+      "joint_fit_gain_vs_output_only_pct": 1.5556954133360335,
+      "median_site_gain_vs_full_grid_pct": -0.02932842669245428,
+      "new_gain_vs_full_grid_at_watched_site_pct": -16.804365017923374,
+      "new_gain_vs_output_only_at_watched_site_pct": 4.331973685344625,
+      "output_sum_gain_vs_output_only_pct": -4.447861113797069,
+      "prefix_gain_vs_full_grid_at_watched_site_pct": -21.908418738693957,
+      "replayed_q_sha256": {
+        "bilateral_fixed_scale_proposal": "9745657762ac21709df051bd893db044517b6864b2846b0c3dbb1f336874db0d",
+        "continued_grid": "500937bc8fe2f04b69dcb670286c05186224dc14df521757e8d0e9abdd7b13ba",
+        "prefix": "3e7b7e86fdf8c83b4c6b422d1c3ef3243e0def24386db992a36fc89f32465d32",
+        "product": "f8082ece0e5b3f3276ee1ef8f94e3fc980e82d7c7c913ef0ba6d51bdca2a123d"
+      },
+      "sites_within_two_pct_of_full_grid": 8
+    },
+    "23": {
+      "accepted_batches": {
+        "bilateral_fixed_scale_proposal": 9,
+        "product": 14
+      },
+      "applied_pairs": {
+        "bilateral_fixed_scale_proposal": 368,
+        "product": 638
+      },
+      "incremental_solver_seconds": {
+        "bilateral_fixed_scale_proposal": 9.496677170000112,
+        "product": 5.61858809899968
+      },
+      "input_sum_gain_vs_output_only_pct": 6.539280617101606,
+      "joint_fit_gain_vs_full_grid_pct": -1.5323685170085088,
+      "joint_fit_gain_vs_output_only_pct": 2.0912034774203003,
+      "median_site_gain_vs_full_grid_pct": 0.40852994543728594,
+      "new_gain_vs_full_grid_at_watched_site_pct": -16.54329132352683,
+      "new_gain_vs_output_only_at_watched_site_pct": 5.079410838669462,
+      "output_sum_gain_vs_output_only_pct": -2.726536991320061,
+      "prefix_gain_vs_full_grid_at_watched_site_pct": -28.860515724416192,
+      "replayed_q_sha256": {
+        "bilateral_fixed_scale_proposal": "2f3edf154810df503cd19c788099d02e92bc7ea04e2f1048d4881609240d0ecc",
+        "continued_grid": "fe93e5c60607ddf2cb51fec5fc38a034dfe6571b069c591e42897931265e23bc",
+        "prefix": "4e2e52460235cc662aab8ef73b073b57a2d1b851ba0ceec5036acee8b40124c4",
+        "product": "dd2b61869b2f84e801ed30bae23d3a37b98136458c84bc29b8aead31a22ac13d"
+      },
+      "sites_within_two_pct_of_full_grid": 8
+    }
+  },
+  "fit_archive_sha256": "f06262fda207868075a2e8877727ed50e084bc6dfe04602abaeceac63adf9f6c",
+  "grid_archive_sha256": "e8bc4e71da06250d7082853f4d934bc43b05528514057843600938ca65be2fc9",
+  "local_replay_device": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "median_site_gain_vs_grid_pct": 0.2596014164588656,
+  "next_step": "fresh_document_pilot",
+  "run_id": "2026-11-19T093653.358169_0000_82281fcdcf",
+  "scope": "A100 fit panels only; no fresh 7B evaluation",
+  "site_gains_vs_grid_pct": {
+    "layer_0.down_proj": 0.4302668259294873,
+    "layer_0.q_proj": 4.97897604343584,
+    "layer_0.up_proj": -16.673828170725102,
+    "layer_15.down_proj": 0.36888215036586236,
+    "layer_15.q_proj": 0.03631794367874308,
+    "layer_15.up_proj": -0.8198848951778248,
+    "layer_31.down_proj": 0.2596014164588656,
+    "layer_31.q_proj": 1.9488169173057346,
+    "layer_31.up_proj": -0.6511725911021282
+  },
+  "source_type": "real_layer",
+  "watched_site": "layer_0.up_proj"
+}

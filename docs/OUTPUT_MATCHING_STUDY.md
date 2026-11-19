@@ -172,6 +172,35 @@ cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matchin
 
 程序在拟合前固定两项短测条件。两个种子都要在九位置联合拟合损失上优于同起点仅输出选角，而且各自至少有 6/9 个位置的 NMSE 在完整网格的 2% 以内（含优于网格的位置）。符合时返回 `fresh_document_pilot`，下一步冻结新旋转并用未参与开发的文章评分。否则返回 `stop_bilateral_proposal`。两种结果都写入终端所列的 `bilateral_angle_screen.zip`。正式 G1、模型级 GPTQ 验证及 G3 准备条件分别决定后续投入。
 
+### 7B 双侧选角的拟合与独立文档验证
+
+A100 用时 95.57 秒完成拟合短测。两个种子各用 8 篇拟合文章。以下降幅均以对照误差为分母，正数表示改善。九位置中位数给每个位置同等权重。联合损失对九个位置的 NMSE 求和。[A100 原始追踪](../evidence/output_matching_20261119/bilateral_fit_7b.zip) · [逐种子复算及旋转哈希](../evidence/output_matching_20261119/bilateral_fit_7b_summary.json)
+
+| 7B 拟合观测 | 种子 11 | 种子 23 |
+|---|---:|---:|
+| 新规则接受的批数 / 32 | 8 | 9 |
+| 相对同起点仅输出选角，六个输入的 NMSE 总和降幅 | +6.81% | +6.54% |
+| 相对同起点仅输出选角，三个输出的 NMSE 总和降幅 | −4.45% | −2.73% |
+| 相对同起点仅输出选角，九位置联合损失降幅 | +1.56% | +2.09% |
+| 相对完整网格，九位置联合损失降幅 | −2.13% | −1.53% |
+| 相对完整网格，九位置中位降幅 | −0.029% | +0.409% |
+| 相对完整网格，第 0 层 up 降幅 | −16.80% | −16.54% |
+| 新规则 / 仅输出选角的增量耗时，秒 | 9.59 / 5.79 | 9.50 / 5.62 |
+
+两种子均有 8/9 个位置在完整网格的 2% 以内或更好，达到预定拟合条件。第 0 层 up 在 64 对网格起点的 NMSE 已比完整网格高 21.91% 和 28.86%。双侧选角缩小了这个差距，在该位置还比同起点仅输出选角改善 4.33% 和 5.08%。新文档评估将检验这一剩余差距，以及输入侧收益能否迁移。
+
+新验证在固定修订的 WikiText-2 train 上按种子各取 16 篇文章，每篇保留一个 2048-token 块，在同一组 32 个 token 位置评价所有旋转。抽样排除了此前两个模型的 235 篇不同训练集文章，同时检查文章内容和 token 块的 SHA-256。文章清单、比较方法和决策规则均在 7B 评分前固定。准备阶段使用固定的 7B tokenizer 重新产生并逐项核对文章与块哈希。脚本从归档恢复每个种子的 Hadamard、完整 256 对网格及同一 64 对起点的两种选角结果，检查最后的旋转哈希，并在相同九位置面板上评分。[新文档及排除清单](../evidence/output_matching_20261119/bilateral_document_cohort_7b.json)
+
+```bash
+cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --validate-bilateral
+```
+
+脚本从仓库内的拟合 ZIP 读取配置。终端末行给出 `bilateral_document_pilot.zip`。包内含八份逐文档方法结果、实际面板及旋转哈希、正交残差和决策。程序在每个种子内对整篇文章配对重采样 10,000 次，报告九位置、输入侧、输出侧以及预先指定的第 0 层 up。
+
+- `formal_g1_retest` 表示相对仅输出选角的两个种子中位降幅和配对 95% 下界均大于零，且相对完整网格与 Hadamard 的已测质量还容许至少一条 G1 路线。下一项是用全新拟合与验证文档、完整匹配求解器和从头计时做正式 G1。
+- `stop_bilateral_variant` 表示对这批冻结旋转与验证文章，现有对照已排除两条 G1 质量路线。保留误差归因，停止扩大该版本。例如任何一个位置在跨种子平均后相对网格的退化超过 10%，即可排除两条路线。
+- `review_inconclusive_pilot` 表示仍有路线可达，但双侧选角相对仅输出选角的迁移证据不足。`insufficient_evidence` 表示存在无法定义的比较。两者均需复核已有记录。全量矩阵仍按正式 G1、G2 和 G3 决策。
+
 ## 本地复算
 
 以下两条训练命令分别复现第一批与第二批小模型实验。脚本检查固定公开权重、tokenizer 和数据的 SHA-256。复算已有原始结果只需解压对应 `measurements.zip`，将解压目录传给分析脚本。它会验证逐方法 SHA-256，并从逐块误差重新计算区间与归因图。
@@ -184,5 +213,6 @@ python scripts/run_small_output_matching.py --smoke-retest
 python scripts/run_small_output_matching.py --screen-bilateral
 python scripts/run_small_output_matching.py --validate-bilateral
 python scripts/analyze_batch_retest.py evidence/output_matching_20261119/batch_g1_retest_7b.zip
+python scripts/analyze_bilateral_fit.py --output runs/bilateral_fit_audit.json
 python scripts/analyze_rotation_sites.py --study <解压目录> --output runs/rotation_analysis
 ```

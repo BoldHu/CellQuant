@@ -38,6 +38,8 @@ def main(argv=None):
     modes.add_argument('--validate-batches', action='store_true', help='Evaluate completed batch fits on independent new documents')
     modes.add_argument('--retest-batches', action='store_true', help='Confirm the batch algorithm on fresh calibration and evaluation articles for G1')
     modes.add_argument('--screen-bilateral', action='store_true', help='Compare input-aware and output-only proposals on fit articles at a short grid prefix')
+    modes.add_argument('--validate-bilateral', action='store_true', help='Score the two frozen A100 fits on 32 previously unused articles')
+    parser.add_argument('--fit-archive', type=Path, help='Use the original bilateral_angle_screen.zip for --validate-bilateral')
     parser.add_argument('--all-controls', action='store_true', help='Also measure every matched solver if the parent alone rules out both G1 routes')
     parser.add_argument('--pilot-archive', type=Path, default=Path('evidence/output_matching_20261119/batch_documents_7b.zip'))
     parser.add_argument('--retest-archive', type=Path, default=Path('evidence/output_matching_20261119/batch_g1_retest_7b.zip'),
@@ -47,17 +49,27 @@ def main(argv=None):
                         help='01d measurement archive used in the batch screen')
     args = parser.parse_args(argv)
     parent = ROOT/args.config
-    if not parent.is_file():
+    if not args.validate_bilateral and not parent.is_file():
         parser.error(f'Original frozen G1 inputs missing at {parent}. Restore the prepared run or use --config.')
     os.environ['PYTHONPATH'] = os.pathsep.join(filter(None,(str(ROOT/'src'),os.environ.get('PYTHONPATH'))))
     if args.screen_run and not args.validate_batches:
         parser.error('--screen-run is used with --validate-batches')
     if args.all_controls and not args.retest_batches:
         parser.error('--all-controls is used with --retest-batches')
+    if args.fit_archive and not args.validate_bilateral:
+        parser.error('--fit-archive is used with --validate-bilateral')
     mode = ['--matching-study']
     prepare_mode = mode
     prefix, archive_name = 'matching_', 'output_matching.zip'
-    if args.screen_bilateral:
+    if args.validate_bilateral:
+        from cellquant.bilateral_documents import COHORT_FILE, FIT_FILE
+        refs = ROOT/'evidence/output_matching_20261119'
+        screen = ROOT/args.fit_archive if args.fit_archive else refs/FIT_FILE
+        parent = screen
+        mode = ['--bilateral-documents']
+        prepare_mode = ['--bilateral-sources', str(screen), str(ROOT/args.retest_archive), str(refs/COHORT_FILE)]
+        prefix, archive_name = 'bilateral_documents_', 'bilateral_document_pilot.zip'
+    elif args.screen_bilateral:
         mode = ['--screen-bilateral-angles', str(ROOT / args.retest_archive)]
         prepare_mode = ['--retest-pilot', str(ROOT / args.pilot_archive)]
         prefix, archive_name = 'bilateral_screen_', 'bilateral_angle_screen.zip'
@@ -84,11 +96,15 @@ def main(argv=None):
         status = stream_command([sys.executable,'-u',*command],work/(label+'.log'),cwd=ROOT,timeout_s=4*3600)
         if status['returncode']:
             print('Study stopped. See', status['log_path'], file=sys.stderr)
-            if not ((args.retest_batches or args.screen_bilateral) and label=='study' and index.is_file()):
+            if not ((args.retest_batches or args.screen_bilateral or args.validate_bilateral) and label=='study' and index.is_file()):
                 return status['returncode']
     run = Path(read_json(index)['run_dir'])
     result = read_json(run/'result.json')
-    if not (args.retest_batches or args.screen_bilateral) and (result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer'):
+    if args.validate_bilateral and result['status'] == 'STUDY_COMPLETE' and (
+            result.get('source_type') != 'real_layer' or result.get('execution_mode') != 'frozen_bilateral_document_pilot'
+            or result.get('evidence_kind') != 'FROZEN_BILATERAL_DOCUMENT_STUDY'):
+        raise RuntimeError(f'Expected completed real bilateral document measurements in {run}')
+    if not (args.retest_batches or args.screen_bilateral or args.validate_bilateral) and (result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer'):
         raise RuntimeError(f'Expected completed real measurements in {run}')
     dest = work/archive_name
     with ZipFile(dest.with_suffix('.partial'), 'w', ZIP_DEFLATED) as z:
@@ -106,7 +122,7 @@ def main(argv=None):
             print('Upper bounds', result['route_bounds'])
         if result.get('reason'):
             print('Reason', result['reason'])
-    elif args.validate_batches:
+    elif (args.validate_batches or args.validate_bilateral) and result['status']=='STUDY_COMPLETE':
         stats = result['document_summary']
         print('Fresh paired documents', stats['distinct_documents'])
         for label, item in stats['comparisons'].items():
@@ -116,12 +132,24 @@ def main(argv=None):
             effect = item['all']
             lo, hi = effect['paired_95_pct']
             print(f"{label}: all sites {effect['median_gain_pct']:+.4f}% [{lo:+.4f}, {hi:+.4f}], seed medians {effect['seed_medians_pct']}")
-        print('Worst site against grid', stats.get('worst_site_vs_grid'))
-        for seed, times in result['calibration_seconds_by_seed'].items():
+        if args.validate_bilateral:
+            decision = result['pilot_decision']
+            if 'watched_site' in decision:
+                watched = decision['watched_site_vs_grid']
+                lo, hi = watched['paired_95_pct']
+                print(f"{decision['watched_site']} vs grid: {watched['median_gain_pct']:+.4f}% [{lo:+.4f}, {hi:+.4f}], "
+                      f"seed gains {watched['seed_medians_pct']}")
+                print('Worst site against grid', decision['worst_site_vs_grid'])
+                print('Mechanism replicated', decision['mechanism_replicated'], 'failed quality bounds', decision['failed_quality_bounds_by_route'])
+        else:
+            print('Worst site against grid', stats.get('worst_site_vs_grid'))
+        for seed, times in result.get('calibration_seconds_by_seed', {}).items():
             print(f"Seed {seed}: grid {times['continued_grid_seconds']:.2f} s, "
                   f"grid + proposal + fit screen {times['accounted_candidate_seconds']:.2f} s, "
                   f"random control within fit budgets {times['random_fit_feasible']}")
         print('next_step', result['next_step'])
+    elif args.validate_bilateral:
+        print('Bilateral document pilot', result['status'], result.get('reason', result.get('readiness',{}).get('missing',[])))
     else:
         print_results(result['matching_summary'])
     print('Results', dest)

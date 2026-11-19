@@ -7,6 +7,8 @@ from pathlib import Path
 import argparse
 import copy
 import os
+import shutil
+from zipfile import ZipFile
 from cellquant.runtime import atomic_json,read_json,sha256_file,environment_report,config_hash,huggingface_cache_paths
 from cellquant.data import (resolve_revision,wikitext_documents,tokenize_documents,split_train_blocks,
                             save_token_manifest,load_token_manifest,confirmation_partitions,verify_disjoint,immutable_revision)
@@ -26,16 +28,31 @@ def cached_matching_model(config, model_id, weight_files, cache):
 
 
 def prepare(config_path,output,*,include_tests=False,relative_screen=None,matching_study=False,
-            batch_screen=None,matching_archive=None,retest_pilot=None):
-    config=read_json(config_path);output=Path(output).resolve()
+            batch_screen=None,matching_archive=None,retest_pilot=None,bilateral_sources=None):
+    output=Path(output).resolve()
     previous=None
     parent_dataset_fingerprints=set()
-    reuse_matching_inputs = matching_study or batch_screen is not None or retest_pilot is not None
-    if relative_screen is not None or reuse_matching_inputs:
+    reuse_matching_inputs = matching_study or batch_screen is not None or retest_pilot is not None or bilateral_sources is not None
+    if bilateral_sources is not None:
+        from cellquant.bilateral_documents import COHORT_FILE, FIT_FILE, GRID_FILE, DESIGN as bilateral_design
+        from cellquant.bilateral_documents import block_identity, draw_documents, read_7b_fit
+        from cellquant.gates import load_rules
+        if (len(bilateral_sources) != 3 or Path(config_path).resolve() != Path(bilateral_sources[0]).resolve()
+                or include_tests or relative_screen is not None or matching_study or batch_screen is not None or retest_pilot is not None):
+            raise ValueError('Bilateral document evaluation takes its configuration from the completed fit archive')
+        screen = read_7b_fit(bilateral_sources[0], bilateral_sources[1])
+        config = copy.deepcopy(screen['config'])
+        source = config.pop('batch_g1_retest')
+        parent = {k:source[k] for k in ('parent_config_sha256','parent_token_manifests')}
+        previous = screen['parts']
+        parent_dataset_fingerprints = {screen['dataset_fingerprint']}
+    else:
+        config=read_json(config_path)
+    if bilateral_sources is None and (relative_screen is not None or reuse_matching_inputs):
         from cellquant.objective_screen import verified_screen, validate_screen_config, verify_parent_manifests
         if (config.get('stage')!='G1' or include_tests or config.get('resume_run_dir')
                 or config.get('g1_confirmation') or config.get('output_matching_study') or config.get('batch_document_pilot')
-                or config.get('batch_g1_retest')
+                or config.get('batch_g1_retest') or config.get('bilateral_document_pilot')
                 or sum((relative_screen is not None, matching_study, batch_screen is not None, retest_pilot is not None)) != 1):
             raise ValueError('Select one study on the original frozen G1 training documents')
         validate_screen_config(config)
@@ -65,6 +82,24 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
         config.pop('result_path',None)
     if output.exists() and any(output.iterdir()):raise ValueError('Use a new preparation directory; frozen artifacts are immutable')
     output.mkdir(parents=True,exist_ok=True)
+    if bilateral_sources is not None:
+        refs = output/'fit_reference'
+        refs.mkdir()
+        hashes = {}
+        for name, source_path in zip((FIT_FILE, GRID_FILE, COHORT_FILE), bilateral_sources):
+            dest = refs/name
+            shutil.copyfile(source_path, dest)
+            hashes[name] = sha256_file(dest)
+        cohort = read_json(refs/COHORT_FILE)
+        if (cohort['fit_archive_sha256'] != hashes[FIT_FILE] or screen['receipt']['reference_archive_sha256'] != hashes[GRID_FILE]
+                or cohort['design'] != bilateral_design or cohort['dataset_revision'] != config['dataset_revision']):
+            raise ValueError('The frozen document list, fit and grid belong to different runs')
+        with ZipFile(refs/FIT_FILE) as archive:
+            model_source = refs/'model_source_manifest.json'
+            model_source.write_bytes(archive.read('inputs/model_source_manifest.json'))
+            config['model_source_manifest_path'] = str(model_source)
+        config['bilateral_document_pilot'] = {**parent, 'design':bilateral_design, 'archives':hashes, 'quality_rules_sha256':config_hash(load_rules()),
+                                               'screen_run_id':screen['receipt']['run_id']}
     if retest_pilot is not None:
         from cellquant.batch_retest import DESIGN as retest_design,read_document_pilot,retest_partitions
         from cellquant.gates import resolve_rules_path
@@ -143,7 +178,15 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
     config['runtime'].update(dtype=dtype,cache_dir=str(cache),dataset_cache_dir=str(dataset_cache))
     manifests={};formal=config.get('formal_pilot',{})
     fresh=None
-    if retest_pilot is not None:
+    if bilateral_sources is not None:
+        if ds._fingerprint != cohort['dataset_fingerprint']:
+            raise ValueError('The fresh cohort belongs to a different WikiText revision')
+        fresh = draw_documents(blocks, screen, cohort['previous_42m_train_blocks'])
+        if {str(s):[block_identity(b) for b in dev] for s, (_, dev) in fresh.items()} != cohort['heldout']:
+            raise ValueError('Pinned 7B tokenizer or fresh article selection differs from the frozen list')
+        formal['heldout_sequences'] = bilateral_design['documents_per_seed']
+        formal['heldout_tokens_per_panel'] = bilateral_design['documents_per_seed'] * bilateral_design['tokens_per_document']
+    elif retest_pilot is not None:
         fresh=retest_partitions(blocks,previous,excluded)
         formal['heldout_sequences']=retest_design['dev']
         formal['heldout_tokens_per_panel']=retest_design['dev']*32
@@ -205,7 +248,9 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
               'harness_commit':config.get('harness_commit'),
               'tokenization':'per-document nonoverlapping blocks; no BOS; drop short tails',
               'note':'Own matched protocol; do not compare these PPL values to stock concatenated WikiText numbers'}
-    if retest_pilot is not None:
+    if bilateral_sources is not None:
+        protocol.update(bilateral_document_pilot=config['bilateral_document_pilot'],formal_pilot=formal)
+    elif retest_pilot is not None:
         protocol.update(batch_g1_retest=config['batch_g1_retest'],formal_pilot=formal)
     elif batch_screen is not None:
         protocol.update(batch_document_pilot=config['batch_document_pilot'],formal_pilot=formal)
@@ -232,6 +277,8 @@ if __name__=='__main__':
     p.add_argument('--batch-document-screen',type=Path,help='Use the frozen rotations from this completed fit screen')
     p.add_argument('--matching-archive',type=Path,help='01d archive referenced by the fit screen')
     p.add_argument('--retest-pilot',type=Path,help='Verified document-pilot bundle for an independent formal batch G1 retest')
+    p.add_argument('--bilateral-sources', type=Path, nargs=3, metavar=('FIT_ZIP','GRID_ZIP','COHORT'),
+                   help='Freeze two completed rotations and prepare new articles for held-out scoring')
     a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests,relative_screen=a.relative_g1_screen,
                             matching_study=a.matching_study,batch_screen=a.batch_document_screen,matching_archive=a.matching_archive,
-                            retest_pilot=a.retest_pilot)
+                            retest_pilot=a.retest_pilot,bilateral_sources=a.bilateral_sources)

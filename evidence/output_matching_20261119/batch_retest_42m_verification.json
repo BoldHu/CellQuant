@@ -1,0 +1,151 @@
+{
+  "budget": {
+    "design": {
+      "batch_size": 2,
+      "candidate": "output_matching_batches",
+      "control_schedule": "same continued grid, disjoint axes, angle range, risk caps and total time budget",
+      "controls": [
+        "continued_grid",
+        "angle_grid_matched",
+        "givens_ste_matched",
+        "fixed_scale_search_matched"
+      ],
+      "dev": 16,
+      "extra_grid_pairs": 2,
+      "fit": 8,
+      "fit_objective": "sum_nmse",
+      "matching_grid_points": 17,
+      "parent_grid_points": 17,
+      "partition_namespace": 2026111903,
+      "prefix_pairs": 2,
+      "seeds": [
+        11,
+        23
+      ],
+      "step_scales": [
+        0.0,
+        0.25,
+        0.5,
+        1.0
+      ],
+      "version": 1
+    },
+    "matching_pairs": 4,
+    "scope": "pretrained 42M engineering verification"
+  },
+  "context_length": 256,
+  "control_records_and_random": {
+    "seed_11/angle_grid_matched/pilot_result.json": {
+      "Q_npz_sha256": "bb299073222dd7daa3bed45c2e84a678b2d149b131250469ccd02a3ebbffec01",
+      "calibration_seconds": 3.8849062000517733,
+      "completed_matching_pairs_or_parent_pairs": 4,
+      "measurement_sha256": "4cffdb2f9b71df8cbe84baeff510f5b4b2bb275236b16ee52491af0589ed06a4"
+    },
+    "seed_11/continued_grid/pilot_result.json": {
+      "Q_npz_sha256": "cb4e8b801d9a22464e45c150f87608b5601aff2bccf5e5b4e54287e0b33debbd",
+      "calibration_seconds": 2.0191579000093043,
+      "completed_matching_pairs_or_parent_pairs": 4,
+      "measurement_sha256": "84ebe1b23f2a0a3db44679880abbaf178c140ee64657ce57e9f03874e4575901"
+    },
+    "seed_11/fixed_scale_search_matched/pilot_result.json": {
+      "Q_npz_sha256": "84283cd3659738adaf128ba21989cfb394333221376f4173393d4f6256a2b3e0",
+      "calibration_seconds": 22.311085599998478,
+      "completed_matching_pairs_or_parent_pairs": 4,
+      "measurement_sha256": "9380e55c46e2754e8e09135379b423fa569a46ca49af1c1816f395f1420d51ae"
+    },
+    "seed_11/givens_ste_matched/pilot_result.json": {
+      "Q_npz_sha256": "8718ff777b32b031589c650f875aeebdb435c388080f729e965660de4f04e956",
+      "calibration_seconds": 6.4144710000255145,
+      "completed_matching_pairs_or_parent_pairs": 4,
+      "measurement_sha256": "7fc9ce5fe1aa9367f8d2e93ac38a57743876e06bd74e27ffcc65db03baca355c"
+    },
+    "seed_11/hadamard_shared/pilot_result.json": {
+      "Q_npz_sha256": "c69d2a1e97b638a36f24b479d95275a6dee826e597a58a653d5a94d5c22e53f7",
+      "calibration_seconds": 0.3550066000316292,
+      "completed_matching_pairs_or_parent_pairs": null,
+      "measurement_sha256": "093f3dcf3d33e01e10033f5095218a50c258012a61dfc1eec7dc0e9e9cb025e7"
+    },
+    "seed_11/output_matching_batches/pilot_result.json": {
+      "Q_npz_sha256": "a02511766714f7c5cb6f1e63a33feb18fc19e8d98cff28aafb0c2790d9b940bb",
+      "calibration_seconds": 2.8860890000360087,
+      "completed_matching_pairs_or_parent_pairs": 4,
+      "measurement_sha256": "a6bfa67673cff3f0941ecf337fd115fb3fa23ef5b4d1fab2e79422ce40ed40b0"
+    },
+    "seed_11/same_count_random/random_result.json": {
+      "Q_npz_sha256": "78e252e327625732a93fd12d0e57fc739d1bb188ed7fc06af34637843e0b6774",
+      "calibration_seconds": 2.8860890000360087,
+      "completed_matching_pairs_or_parent_pairs": null,
+      "measurement_sha256": "16fcbbe1c6bc2100abdad85ab60b41f3fab35ed50e11a57bd8758d7a99b55d43"
+    },
+    "seed_23/angle_grid_matched/pilot_result.json": {
+      "Q_npz_sha256": "502d65b081b4677619da691edacb4b60619ae4c66020357833f7b8a7ec79d5df",
+      "calibration_seconds": 2.753580500022508,
+      "completed_matching_pairs_or_parent_pairs": 4,
+      "measurement_sha256": "5cf7c3610dfffec5e28d293e9d9f19d9c956758826d2b5fcd240fac4ee1c89df"
+    },
+    "seed_23/continued_grid/pilot_result.json": {
+      "Q_npz_sha256": "dd9c4685ac5eba3acd95c06b4f76ffbc53c4a14286d0f7c9410552b1cb5da4e2",
+      "calibration_seconds": 2.0539983000489883,
+      "completed_matching_pairs_or_parent_pairs": 4,
+      "measurement_sha256": "6f4bb787bc217e43fc0c60fc4e21243d881b897a7de44c24a6005e0e36003185"
+    },
+    "seed_23/fixed_scale_search_matched/pilot_result.json": {
+      "Q_npz_sha256": "7400e45ac7b0e2ba8e3b33dfb6327ef4d56eb9390e3d4ee47bd703bc67b8f982",
+      "calibration_seconds": 21.27715249999892,
+      "completed_matching_pairs_or_parent_pairs": 4,
+      "measurement_sha256": "afc3408c5ac03c205e5c5078d7ca59c6da667ab2b41d10f9b9db84727d7a358e"
+    },
+    "seed_23/givens_ste_matched/pilot_result.json": {
+      "Q_npz_sha256": "3350569c7d5727df0c2bfa71ecce3b65164538bb20df98ea578a0027fdac4057",
+      "calibration_seconds": 4.041578600066714,
+      "completed_matching_pairs_or_parent_pairs": 4,
+      "measurement_sha256": "3a1cba1cb25477569a2b69236d9452ee5d3e53105106238dff57073bad3e3ee2"
+    },
+    "seed_23/hadamard_shared/pilot_result.json": {
+      "Q_npz_sha256": "69beba590bfd71d148fd4a8e6c9d59fc29e92c9d7b676e6ef1e1df5f1ed2fbdb",
+      "calibration_seconds": 0.33157040004152805,
+      "completed_matching_pairs_or_parent_pairs": null,
+      "measurement_sha256": "34a57d0a7e9726ba7c1eb605ddb7d5ef450b92506ad21a4ea61d188e7603e18f"
+    },
+    "seed_23/output_matching_batches/pilot_result.json": {
+      "Q_npz_sha256": "dd9c4685ac5eba3acd95c06b4f76ffbc53c4a14286d0f7c9410552b1cb5da4e2",
+      "calibration_seconds": 2.8534185000462458,
+      "completed_matching_pairs_or_parent_pairs": 4,
+      "measurement_sha256": "42278d42c4558f00630cd5f7b3d7fd2f00b9d20802beafd7c9b62a9d4beedc7f"
+    },
+    "seed_23/same_count_random/random_result.json": {
+      "Q_npz_sha256": "dd9c4685ac5eba3acd95c06b4f76ffbc53c4a14286d0f7c9410552b1cb5da4e2",
+      "calibration_seconds": 2.8534185000462458,
+      "completed_matching_pairs_or_parent_pairs": null,
+      "measurement_sha256": "eae33f4868a66de8848089bfa371969352563100b36c1fba1d7afccbceb5d30d"
+    }
+  },
+  "data_manifest_sha256": {
+    "11": "093b74251f00f25ea167c92edf33edafb235dc83bcabec62f7faa7a6021a3334",
+    "23": "76893dc3d113e19ae210c56449de161bd4ab87ee25043d25c4cae0574e864a2d"
+  },
+  "dataset_revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+  "dev_documents_per_seed": 16,
+  "distinct_articles": 48,
+  "fit_documents_per_seed": 8,
+  "formal_evidence_rejects_engineering_scope": true,
+  "four_shared_arms_have_identical_q_and_blocks_in_both_runs": true,
+  "full_control_run": "batch_retest_42m_0c0fbdb95ca0",
+  "full_status": "COMPLETE",
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "graph_dtype": "float32",
+  "model_id": "Xenova/llama2.c-stories42M",
+  "model_revision": "be9e05cce52ef2a4615026726bddb12639d541f5",
+  "route_bounds": {
+    "accuracy_minimum_pct": 5,
+    "accuracy_upper_gain_pct": 0.02236149665578724,
+    "both_routes_ruled_out": true,
+    "efficiency_minimum_speedup": 2,
+    "efficiency_upper_speedup": 0.7242864906141003
+  },
+  "scope": "pretrained 42M shortened-schedule engineering verification, two runs on the same fresh pool",
+  "solver_dtype": "float64",
+  "source_type": "real_layer",
+  "staged_run": "batch_retest_42m_0464cf90d567",
+  "staged_status": "RETEST_STOPPED_BY_BOUND"
+}

@@ -89,6 +89,8 @@ def preflight(config,root=None):
         if not Path(gate_evidence).is_file() or evaluate_file(required,gate_evidence)['status']!='PASS':missing.append(f'Recomputed {required} evidence is required')
         if required=='G1' and Path(gate_evidence).is_file():
             provenance=read_json(gate_evidence).get('provenance',{})
+            if provenance.get('pilot_variant')=='output_matching_batches':
+                missing.append('This canary fits the legacy solver. A batch-rotation canary adapter is required for this G1 evidence.')
             modes=provenance.get('fit_objectives',['sum_nmse'])
             if (modes!=[config.get('solver',{}).get('fit_objective','sum_nmse')]
                     or (modes==['relative_site_nmse'] and not provenance.get('includes_original_grid'))):
@@ -232,11 +234,12 @@ def _verify_weight_files(config,output):
 
 def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=False,profile_pairs=None,
                    diagnose_pairs=False,screen_objective=False,matching_study=False,matching_batch_archive=None,
-                   batch_documents=False):
+                   batch_documents=False,batch_retest=False,all_controls=False):
     config=read_json(config) if isinstance(config,(str,Path)) else copy.deepcopy(config)
     profile_pair=profile_pair or profile_pairs is not None
     batch_screen = matching_batch_archive is not None
-    if sum((bool(profile_pair), diagnose_pairs, screen_objective, matching_study, batch_screen, batch_documents)) > 1:
+    if all_controls and not batch_retest:raise ValueError('The complete-controls option belongs to the batch G1 retest')
+    if sum((bool(profile_pair), diagnose_pairs, screen_objective, matching_study, batch_screen, batch_documents, batch_retest)) > 1:
         raise ValueError('Choose either a single profiling mode or a single diagnostic per run')
     profile_count=1 if profile_pairs is None else profile_pairs
     if profile_pair:
@@ -247,7 +250,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     output=root/'runs'/'experiments'/run_id;output.mkdir(parents=True)
     atomic_json(output/'config.json',config)
     # The diagnostic writes only its own run directory and optional invocation index.
-    diagnostic = diagnose_pairs or screen_objective or matching_study or batch_screen or batch_documents
+    diagnostic = diagnose_pairs or screen_objective or matching_study or batch_screen or batch_documents or batch_retest
     checks = {k: v for k, v in config.items() if k != 'result_path'} if diagnostic else config
     ready=preflight(checks,root)
     if batch_screen:
@@ -271,6 +274,16 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     if bool(config.get('output_matching_study')) != matching_study:
         ready['missing'].append('Use the matching-study runner with its own frozen document cohort')
         ready['status']='BLOCKED'
+    if bool(config.get('batch_g1_retest')) != batch_retest:
+        ready['missing'].append('Use the batch G1 runner with its independently prepared retest cohort')
+        ready['status']='BLOCKED'
+    elif batch_retest:
+        from .batch_retest import verify_protocol
+        try:
+            verify_protocol(config)
+        except (OSError,ValueError,KeyError) as exc:
+            ready['missing'].append(str(exc))
+            ready['status']='BLOCKED'
     if bool(config.get('batch_document_pilot')) != batch_documents:
         ready['missing'].append('Use the frozen batch document protocol with --batch-documents')
         ready['status']='BLOCKED'
@@ -306,6 +319,7 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
     if matching_study:base['execution_mode']='output_matching_study'
     if batch_screen:base['execution_mode']='fit_matching_batch_screen'
     if batch_documents:base['execution_mode']='frozen_batch_document_pilot'
+    if batch_retest:base['execution_mode']='batch_g1_retest'
     if preflight_only or ready['status']!='READY':
         result={**base,'readiness':ready,'status':'PREFLIGHT_ONLY' if preflight_only else 'BLOCKED'}
         atomic_json(output/'result.json',result);return result
@@ -385,7 +399,11 @@ def run_experiment(config,*,project_root=None,preflight_only=False,profile_pair=
                 progress.step('g1.model_released',captured_seeds=list(prepared['seeds']),
                               captured_splits=captured_splits,
                               reason='requested panels captured and resident on CUDA')
-            if batch_documents:
+            if batch_retest:
+                from .batch_retest import run_retest
+                summary=run_retest(config,prepared,output,graph_identity,all_controls=all_controls,progress=progress.step)
+                result={**base,**summary,'timings':timings}
+            elif batch_documents:
                 from .batch_validation import run_document_pilot
                 summary=run_document_pilot(config,prepared,output,progress=progress.step)
                 result={**base,**summary,'timings':timings}
@@ -612,11 +630,14 @@ def main():
     parser.add_argument('--screen-matching-batches',type=Path,metavar='01D_ZIP',
                         help='Use the original G1 config and replay archived 01d rotations on fit documents only')
     parser.add_argument('--batch-documents',action='store_true',help='Score frozen batch selections on the new document cohort')
+    parser.add_argument('--batch-retest',action='store_true',help='Refit and validate the frozen batch algorithm on new calibration and validation documents')
+    parser.add_argument('--all-controls',action='store_true',help='Finish every matched solver even if the parent already rules out both G1 routes')
     args=parser.parse_args()
     if args.result_index and Path(args.result_index).exists():raise FileExistsError('Result index already exists; choose a unique path')
     result=run_experiment(args.config,preflight_only=args.preflight,profile_pair=args.profile_pair,profile_pairs=args.profile_pairs,
                           diagnose_pairs=args.diagnose_pairs,screen_objective=args.screen_objective,matching_study=args.matching_study,
-                          matching_batch_archive=args.screen_matching_batches,batch_documents=args.batch_documents)
+                          matching_batch_archive=args.screen_matching_batches,batch_documents=args.batch_documents,
+                          batch_retest=args.batch_retest,all_controls=args.all_controls)
     if args.result_index:atomic_json(args.result_index,{k:result[k] for k in ['run_id','run_dir','status']})
     display={'status':result['status'],'run_dir':result['run_dir'],'reason':result.get('reason'),
                       'incomplete_methods':result.get('incomplete_methods',[]),
@@ -628,8 +649,10 @@ def main():
     if 'matching_summary' in result:display['comparisons']=result['matching_summary']['comparisons']
     if 'fit_screen' in result:display.update(fit_screen=result['fit_screen'],next_step=result['next_step'])
     if 'document_summary' in result:display.update(document_summary=result['document_summary'],next_step=result['next_step'])
+    if 'route_bounds' in result:display.update(route_bounds=result['route_bounds'],gate=result.get('gate'),
+                                              complete_comparison=result['complete_comparison'])
     print(json.dumps(display,ensure_ascii=False,indent=2))
-    return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY','PROFILE_COMPLETE','DIAGNOSTIC_COMPLETE','SCREEN_COMPLETE','STUDY_COMPLETE'} else 2
+    return 0 if result['status'] in {'COMPLETE','PREFLIGHT_ONLY','PROFILE_COMPLETE','DIAGNOSTIC_COMPLETE','SCREEN_COMPLETE','STUDY_COMPLETE','RETEST_STOPPED_BY_BOUND'} else 2
 
 
 if __name__=='__main__':raise SystemExit(main())

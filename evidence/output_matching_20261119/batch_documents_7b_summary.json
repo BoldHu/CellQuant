@@ -1,0 +1,292 @@
+{
+  "archive_audit": {
+    "bootstrap_draws_recomputed": 10000,
+    "distinct_fresh_document_ids_content_hashes_and_block_hashes": 32,
+    "document_intervals_reproduced": true,
+    "heldout_documents": 32,
+    "methods": 3,
+    "seed_method_records": 6
+  },
+  "calibration_seconds_by_seed": {
+    "11": {
+      "accounted_candidate_seconds": 341.6931787870012,
+      "batch_screen_with_controls_seconds": 4.1670675210007175,
+      "continued_grid_seconds": 335.96610814300084,
+      "random_fit_feasible": true,
+      "whole_proposal_and_check_seconds": 1.5600031229996603
+    },
+    "23": {
+      "accounted_candidate_seconds": 339.2872683030005,
+      "batch_screen_with_controls_seconds": 4.099381114000607,
+      "continued_grid_seconds": 333.6339366349998,
+      "random_fit_feasible": true,
+      "whole_proposal_and_check_seconds": 1.5539505540000391
+    }
+  },
+  "descriptive_mean_of_site_relative_gains_pct": -0.2019957398130977,
+  "design": {
+    "advance": "both seed medians positive and paired document 95% lower bound positive",
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 20261119,
+    "documents_per_seed": 16,
+    "partition_namespace": 2026111902,
+    "primary": "accepted batches vs continued grid, median across all nine sites",
+    "tokens_per_document": 32,
+    "version": 1
+  },
+  "document_summary": {
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 20261119,
+    "comparisons": {
+      "random_vs_grid": {
+        "all": {
+          "median_gain_pct": 0.01772604985630921,
+          "paired_95_pct": [
+            -0.2351849114414936,
+            0.12588762603311499
+          ],
+          "seed_medians_pct": {
+            "11": 0.09207125113553927,
+            "23": -0.06677127668159866
+          }
+        },
+        "input": {
+          "median_gain_pct": -0.2563177219787133,
+          "paired_95_pct": [
+            -0.5083237400386642,
+            0.09039885987055751
+          ],
+          "seed_medians_pct": {
+            "11": -0.5999824114583663,
+            "23": -0.2252523160524822
+          }
+        },
+        "output": {
+          "median_gain_pct": 0.12468867637741576,
+          "paired_95_pct": [
+            0.09668511100648883,
+            0.15212280332050712
+          ],
+          "seed_medians_pct": {
+            "11": 0.11897425057987299,
+            "23": 0.13040310217495854
+          }
+        },
+        "site_gain_pct": {
+          "layer_0.down_proj": 0.12468867637741576,
+          "layer_0.q_proj": -0.7620259418506747,
+          "layer_0.up_proj": -0.5276155172825869,
+          "layer_15.down_proj": 0.08838849414277705,
+          "layer_15.q_proj": 0.01772604985630921,
+          "layer_15.up_proj": 0.05070610539666398,
+          "layer_31.down_proj": 0.15756915867198296,
+          "layer_31.q_proj": -0.5174085737231993,
+          "layer_31.up_proj": 0.00477312976577271
+        }
+      },
+      "selected_vs_grid": {
+        "all": {
+          "median_gain_pct": 0.08119987468309109,
+          "paired_95_pct": [
+            0.03781724772036421,
+            0.13289842485886633
+          ],
+          "seed_medians_pct": {
+            "11": 0.074938344445874,
+            "23": 0.08746140492030818
+          }
+        },
+        "input": {
+          "median_gain_pct": -0.004933220071676181,
+          "paired_95_pct": [
+            -0.2960602243919019,
+            0.20480549431724449
+          ],
+          "seed_medians_pct": {
+            "11": -0.3462291933052919,
+            "23": -0.07743211968281871
+          }
+        },
+        "output": {
+          "median_gain_pct": 0.08119987468309109,
+          "paired_95_pct": [
+            0.05705607645089428,
+            0.10818003037768238
+          ],
+          "seed_medians_pct": {
+            "11": 0.07752961334130948,
+            "23": 0.08746140492030818
+          }
+        },
+        "site_gain_pct": {
+          "layer_0.down_proj": 0.05635593764631297,
+          "layer_0.q_proj": -1.8456504208449576,
+          "layer_0.up_proj": -0.9922187184362552,
+          "layer_15.down_proj": 0.08119987468309109,
+          "layer_15.q_proj": -0.18836640877306632,
+          "layer_15.up_proj": 0.4093617580796294,
+          "layer_31.down_proj": 0.15324594307145056,
+          "layer_31.q_proj": 0.17849996862971396,
+          "layer_31.up_proj": 0.32961040762620186
+        }
+      },
+      "selected_vs_random": {
+        "all": {
+          "median_gain_pct": -0.00719534587523829,
+          "paired_95_pct": [
+            -0.07260493405552071,
+            0.06195900659373762
+          ],
+          "seed_medians_pct": {
+            "11": -0.01714869570834665,
+            "23": -0.00038198820762058716
+          }
+        },
+        "input": {
+          "median_gain_pct": 0.058446933522388056,
+          "paired_95_pct": [
+            -0.2791001136784615,
+            0.42382040904219054
+          ],
+          "seed_medians_pct": {
+            "11": -0.05671110718387107,
+            "23": 0.005749911877184211
+          }
+        },
+        "output": {
+          "median_gain_pct": -0.00719534587523829,
+          "paired_95_pct": [
+            -0.045095267727558175,
+            0.012773175327283465
+          ],
+          "seed_medians_pct": {
+            "11": -0.01714869570834665,
+            "23": -0.00038198820762058716
+          }
+        },
+        "site_gain_pct": {
+          "layer_0.down_proj": -0.06841958885337451,
+          "layer_0.q_proj": -1.0731043724430234,
+          "layer_0.up_proj": -0.46231214491893047,
+          "layer_15.down_proj": -0.00719534587523829,
+          "layer_15.q_proj": -0.2066582367291736,
+          "layer_15.up_proj": 0.35805726644039804,
+          "layer_31.down_proj": -0.004330896456816724,
+          "layer_31.q_proj": 0.6913517353592247,
+          "layer_31.up_proj": 0.3235521037739497
+        }
+      }
+    },
+    "distinct_documents": 32,
+    "seeds_held_fixed": [
+      11,
+      23
+    ],
+    "sites": [
+      "layer_0.down_proj",
+      "layer_0.q_proj",
+      "layer_0.up_proj",
+      "layer_15.down_proj",
+      "layer_15.q_proj",
+      "layer_15.up_proj",
+      "layer_31.down_proj",
+      "layer_31.q_proj",
+      "layer_31.up_proj"
+    ],
+    "worst_site_vs_grid": {
+      "gain_pct": -1.8456504208449576,
+      "panel_id": "layer_0.q_proj"
+    }
+  },
+  "fit_and_heldout_by_seed": {
+    "11": {
+      "fit_total_gain_pct": 0.10358102567035177,
+      "fixed_random_batch_ids_zero_based": [
+        31
+      ],
+      "holdout_gain_in_sum_of_site_nmse_pct": {
+        "all": -0.03380138206743322,
+        "input": -0.15989212284108767,
+        "output": 0.09913949306977754
+      },
+      "random_pairs": 51,
+      "selected_batch_ids_zero_based": [
+        19
+      ],
+      "selected_fit_seconds_extra_over_grid": 5.727070644000378,
+      "selected_pairs": 49
+    },
+    "23": {
+      "fit_total_gain_pct": 0.0021950054193586865,
+      "fixed_random_batch_ids_zero_based": [
+        25
+      ],
+      "holdout_gain_in_sum_of_site_nmse_pct": {
+        "all": 0.018374264905873794,
+        "input": -0.04981978776179563,
+        "output": 0.09045856333987912
+      },
+      "random_pairs": 50,
+      "selected_batch_ids_zero_based": [
+        17
+      ],
+      "selected_fit_seconds_extra_over_grid": 5.6533316680006465,
+      "selected_pairs": 46
+    }
+  },
+  "hardware": "NVIDIA A100-SXM4-40GB",
+  "heldout_error_contributions_vs_parent_pp": {
+    "layer_0.down_proj": {
+      "activation_error_energy": -2.5361737834246724e-15,
+      "cross_energy": -0.0005412142513106958,
+      "weight_error_energy": 0.056897151897636083
+    },
+    "layer_0.q_proj": {
+      "activation_error_energy": -1.0788459733392919,
+      "cross_energy": -0.9729843525233508,
+      "weight_error_energy": 0.2061799050177241
+    },
+    "layer_0.up_proj": {
+      "activation_error_energy": -0.23730378322637807,
+      "cross_energy": -0.22546197138257007,
+      "weight_error_energy": -0.5294529638273279
+    },
+    "layer_15.down_proj": {
+      "activation_error_energy": 5.81141289852911e-17,
+      "cross_energy": 0.0050105028681003624,
+      "weight_error_energy": 0.07618937181498023
+    },
+    "layer_15.q_proj": {
+      "activation_error_energy": -0.1265342107574742,
+      "cross_energy": -0.10288925909036103,
+      "weight_error_energy": 0.04105706107477414
+    },
+    "layer_15.up_proj": {
+      "activation_error_energy": 0.16266545511376573,
+      "cross_energy": -0.07511786066805562,
+      "weight_error_energy": 0.3218141636339143
+    },
+    "layer_31.down_proj": {
+      "activation_error_energy": 0.0,
+      "cross_energy": 0.013457670148171277,
+      "weight_error_energy": 0.13978827292327925
+    },
+    "layer_31.q_proj": {
+      "activation_error_energy": 0.07849743791197551,
+      "cross_energy": -0.08289852711147946,
+      "weight_error_energy": 0.18290105782922167
+    },
+    "layer_31.up_proj": {
+      "activation_error_energy": 0.05701472208236583,
+      "cross_energy": -0.036923773066451074,
+      "weight_error_energy": 0.30951945861030333
+    }
+  },
+  "parent_time_over_candidate_time_mean": 0.9832883838433104,
+  "pilot_decision": "formal_g1_retest",
+  "run_id": "2026-11-19T081247.541172_0000_732fba9cbe",
+  "scope": "paired held-out product NMSE on nine frozen LLaMA-2-7B RTN panels",
+  "source_commit": "a3d1823752c2e4477dd48ce8263aac0a5a9cf485",
+  "source_sha256": "bd3b44dca8a0c937d04ea0ee130a23fa1fb1a94f95def2332510b941db96f26f",
+  "source_type": "real_layer"
+}

@@ -104,6 +104,34 @@ cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matchin
 
 本机 42M 在 RTX 3050 上回放了自己已拟合的旋转，使用 32 篇未参与此前 42M 实验的 train 文章。对其 32 对父网格，九位置中位 NMSE 改善 1.554%，配对 95% 区间为 [0.856%, 1.633%]。两个种子各改善 0.705% 和 1.007%，最差位置为第 0 层 up_proj，平均退化 2.445%。42M 的 256-token 上下文及网格预算均与 7B 有别。这个测量验证了回放、独立文档评分和区间计算流程。[42M 原始逐文档测量](../evidence/output_matching_20261119/batch_documents_42m.zip)
 
+### 7B 独立文档结果与正式复验
+
+2026-11-19，LLaMA-2-7B 在 A100-SXM4-40GB 完成评分。两个种子各用 16 篇未用过的 WikiText train 文章。六份测量、旋转及面板指纹、token 缓存和文档排除清单均已核对。逐块汇总 NMSE 并按种子分层重采样文档 10000 次，复现以下结果。数值为相对误差降幅，正值代表改善，区间以这两个已拟合旋转为条件。[完整测量包](../evidence/output_matching_20261119/batch_documents_7b.zip) · [统计与归因数据](../evidence/output_matching_20261119/batch_documents_7b_summary.json)
+
+| 比较 | 九位置中位降幅 | 配对 95% 区间 | 种子 11 | 种子 23 |
+|---|---:|---:|---:|---:|
+| 拟合选批对 256 对网格 | +0.0812% | [+0.0378%, +0.1329%] | +0.0749% | +0.0875% |
+| 同批数随机对 256 对网格 | +0.0177% | [−0.2352%, +0.1259%] | +0.0921% | −0.0668% |
+| 拟合选批对同批数随机 | −0.0072% | [−0.0726%, +0.0620%] | −0.0171% | −0.0004% |
+
+相对网格，六个位置的跨种子平均 NMSE 下降。三个 down_proj 在两个种子上都下降，跨种子平均的改善分别为 0.056%、0.081%、0.153%。第 0 层 q_proj 和 up_proj 在两个种子上都退化，跨种子平均分别为 1.846%、0.992%。q_proj 的激活误差和权重–激活交叉项分别贡献 −1.079、−0.973 个百分点，权重项贡献 +0.206 个百分点。若在独立文档上按拟合时的绝对目标相加，九位置 NMSE 之和在种子 11 上升 0.0338%，在种子 23 下降 0.0184%。这些量回答的分别是典型位置和总重建损失的问题。
+
+两个种子都只保留 32 批中的 1 批。已选批次分别有 49、46 个非零角，固定随机批次分别有 51、50 个。相对网格，拟合选择的增量校准成本为 5.73、5.65 秒，均含候选生成、拟合回放和随机对照开销。当前数据支持共享旋转带来的小幅输出改善。拟合选批的额外贡献与下游 PPL、GPTQ 效果仍待验证。
+
+#### 在 Colab 复验
+
+```bash
+cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matching.py --retest-batches
+```
+
+程序验证上述结果包和原 G1 输入后，从同一固定修订排除已见数据，种子 11 和 23 各另取 8 篇拟合和 16 篇验证文章。48 篇文章在 ID、内容哈希和 token 块哈希上互不重叠。原 9 个位置、2048-token 上下文、量化方式、R2/R3/R4、128+128 对网格和 64 对一批的选择规则均沿用。每个种子的旋转和网格在新拟合文档上从头学习。
+
+先在新验证面板评分 Hadamard、256 对网格、分批候选及固定同批数随机对照。完整比较把父网格列入对照。逐位置最强对照的 NMSE 至多等于父网格，因此相对最强对照的中位改善至多等于相对父网格的改善。最快对照的校准时间也至多等于父网格时间。程序用这两个上界检查现有 G1 准确率路线要求的 5% 和效率路线要求的 2×。在本轮已读的 32 篇文章上，这两个上界分别是 0.0812% 和 0.9833×。正式复验只用新文档和新计时来判断。
+
+- 如果新的上界已同时排除两条路线，默认返回 `RETEST_STOPPED_BY_BOUND`，保存 `route_bounds.json` 和逐文档测量。此时完整对照尚未执行，保留原正式 G1 记录。
+- 若仍有路线可达，继续同目标的角度网格、STE 和固定尺度搜索。三者共用新拟合的父网格、同一组 2048 个平面、角度范围、风险上限及每方法完整校准预算。网格和 STE 各给每平面 17 次候选评估，固定尺度使用原数值搜索。正式比较对每个种子和位置取父网格及三种匹配求解器中最低的 NMSE。资源中断保留部分记录，不能晋级。
+- 希望无论上界都测量三个求解器时，在同一命令后加 `--all-controls`。完整比较后使用 `configs/gate_rules.json` 生成 `G1.json`，另从逐文档输出计算相对逐位置最强对照的配对区间。结果包名为 `batch_g1_retest.zip`，稠密 Q 保存在 Colab 的运行目录里。正式 G1 PASS 后，下一阶段是检验同一分批方法的单模型 GPTQ canary。
+
 ## 本地复算
 
 以下两条训练命令分别复现第一批与第二批小模型实验。脚本检查固定公开权重、tokenizer 和数据的 SHA-256。复算已有原始结果只需解压对应 `measurements.zip`，将解压目录传给分析脚本。它会验证逐方法 SHA-256，并从逐块误差重新计算区间与归因图。
@@ -112,5 +140,6 @@ cd /content/CellQuant && git pull --ff-only && python scripts/run_output_matchin
 python scripts/run_small_output_matching.py
 python scripts/run_small_output_matching.py --confirm-hybrid
 python scripts/run_small_output_matching.py --validate-batches
+python scripts/run_small_output_matching.py --smoke-retest
 python scripts/analyze_rotation_sites.py --study <解压目录> --output runs/rotation_analysis
 ```

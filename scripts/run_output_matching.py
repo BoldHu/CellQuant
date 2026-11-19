@@ -34,7 +34,11 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', type=Path, default=os.environ.get('CELLQUANT_PILOT_CONFIG','runs/prepared/g1_gpu/config.json'),
                         help='Pinned original G1 input config in the current checkout')
-    parser.add_argument('--validate-batches', action='store_true', help='Evaluate completed batch fits on independent new documents')
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--validate-batches', action='store_true', help='Evaluate completed batch fits on independent new documents')
+    modes.add_argument('--retest-batches', action='store_true', help='Confirm the batch algorithm on fresh calibration and evaluation articles for G1')
+    parser.add_argument('--all-controls', action='store_true', help='Also measure every matched solver if the parent alone rules out both G1 routes')
+    parser.add_argument('--pilot-archive', type=Path, default=Path('evidence/output_matching_20261119/batch_documents_7b.zip'))
     parser.add_argument('--screen-run', type=Path, help='Completed fit screen directory; by default find the latest matching run')
     parser.add_argument('--matching-archive', type=Path, default=Path('evidence/output_matching_20261119/measurements.zip'),
                         help='01d measurement archive used in the batch screen')
@@ -45,10 +49,16 @@ def main(argv=None):
     os.environ['PYTHONPATH'] = os.pathsep.join(filter(None,(str(ROOT/'src'),os.environ.get('PYTHONPATH'))))
     if args.screen_run and not args.validate_batches:
         parser.error('--screen-run is used with --validate-batches')
+    if args.all_controls and not args.retest_batches:
+        parser.error('--all-controls is used with --retest-batches')
     mode = ['--matching-study']
     prepare_mode = mode
     prefix, archive_name = 'matching_', 'output_matching.zip'
-    if args.validate_batches:
+    if args.retest_batches:
+        mode = ['--batch-retest'] + (['--all-controls'] if args.all_controls else [])
+        prepare_mode = ['--retest-pilot', str(ROOT/args.pilot_archive)]
+        prefix, archive_name = 'batch_retest_', 'batch_g1_retest.zip'
+    elif args.validate_batches:
         from cellquant.batch_validation import locate_fit_screen
         archive = ROOT/args.matching_archive
         screen = ROOT/args.screen_run if args.screen_run else locate_fit_screen(
@@ -67,10 +77,11 @@ def main(argv=None):
         status = stream_command([sys.executable,'-u',*command],work/(label+'.log'),cwd=ROOT,timeout_s=4*3600)
         if status['returncode']:
             print('Study stopped. See', status['log_path'], file=sys.stderr)
-            return status['returncode']
+            if not (args.retest_batches and label=='study' and index.is_file()):
+                return status['returncode']
     run = Path(read_json(index)['run_dir'])
     result = read_json(run/'result.json')
-    if result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer':
+    if not args.retest_batches and (result['status'] != 'STUDY_COMPLETE' or result.get('source_type') != 'real_layer'):
         raise RuntimeError(f'Expected completed real measurements in {run}')
     dest = work/archive_name
     with ZipFile(dest.with_suffix('.partial'), 'w', ZIP_DEFLATED) as z:
@@ -80,7 +91,13 @@ def main(argv=None):
         for path in sorted(run.rglob('*.json')):
             z.write(path, Path('run')/path.relative_to(run))
     dest.with_suffix('.partial').replace(dest)
-    if args.validate_batches:
+    if args.retest_batches:
+        print('Formal batch retest', result['status'], 'G1', result.get('gate','not evaluated'))
+        if 'route_bounds' in result:
+            print('Upper bounds', result['route_bounds'])
+        if result.get('reason'):
+            print('Reason', result['reason'])
+    elif args.validate_batches:
         stats = result['document_summary']
         print('Fresh paired documents', stats['distinct_documents'])
         for label, item in stats['comparisons'].items():
@@ -99,7 +116,7 @@ def main(argv=None):
     else:
         print_results(result['matching_summary'])
     print('Results', dest)
-    return 0
+    return status['returncode']
 
 
 if __name__ == '__main__':

@@ -26,16 +26,17 @@ def cached_matching_model(config, model_id, weight_files, cache):
 
 
 def prepare(config_path,output,*,include_tests=False,relative_screen=None,matching_study=False,
-            batch_screen=None,matching_archive=None):
+            batch_screen=None,matching_archive=None,retest_pilot=None):
     config=read_json(config_path);output=Path(output).resolve()
     previous=None
     parent_dataset_fingerprints=set()
-    reuse_matching_inputs = matching_study or batch_screen is not None
+    reuse_matching_inputs = matching_study or batch_screen is not None or retest_pilot is not None
     if relative_screen is not None or reuse_matching_inputs:
         from cellquant.objective_screen import verified_screen, validate_screen_config, verify_parent_manifests
         if (config.get('stage')!='G1' or include_tests or config.get('resume_run_dir')
                 or config.get('g1_confirmation') or config.get('output_matching_study') or config.get('batch_document_pilot')
-                or sum((relative_screen is not None, matching_study, batch_screen is not None)) != 1):
+                or config.get('batch_g1_retest')
+                or sum((relative_screen is not None, matching_study, batch_screen is not None, retest_pilot is not None)) != 1):
             raise ValueError('Select one study on the original frozen G1 training documents')
         validate_screen_config(config)
         if reuse_matching_inputs:
@@ -57,13 +58,24 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
         if matching_study:
             from cellquant.matching_study import DESIGN
             config['output_matching_study']={**parent, 'design':DESIGN}
-        elif batch_screen is None:
+        elif relative_screen is not None:
             config['g1_confirmation']={**parent,'screen_result_sha256':screen_sha,
                 'partition_seed_namespace':20261118,'extra_control':'original_objective_grid'}
             config['solver']['fit_objective']='relative_site_nmse'
         config.pop('result_path',None)
     if output.exists() and any(output.iterdir()):raise ValueError('Use a new preparation directory; frozen artifacts are immutable')
     output.mkdir(parents=True,exist_ok=True)
+    if retest_pilot is not None:
+        from cellquant.batch_retest import DESIGN as retest_design,read_document_pilot,retest_partitions
+        from cellquant.gates import resolve_rules_path
+        promotion,_,excluded=read_document_pilot(retest_pilot)
+        if (promotion['next_step']!='formal_g1_retest'
+                or promotion['fit_source']['parent_config_sha256']!=parent['parent_config_sha256']
+                or promotion['fit_source']['parent_token_manifests']!=parent['parent_token_manifests']):
+            raise ValueError('Document pilot does not qualify with these original inputs')
+        config['batch_g1_retest']={**parent,'design':retest_design,'pilot_run_id':promotion['run_id'],
+            'pilot_sha256':sha256_file(retest_pilot),'gate_rules_sha256':sha256_file(resolve_rules_path()),
+            'excluded_sha256':sha256_file(atomic_json(output/'prior_documents.json',excluded))}
     if batch_screen is not None:
         from cellquant.batch_validation import DESIGN as batch_design, draw_fresh_documents, freeze_batch_inputs
         from cellquant.matching_batches import load_matching_arms
@@ -130,7 +142,13 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
         dtype='bfloat16' if env['cuda'].get('bf16_supported') else 'float16'
     config['runtime'].update(dtype=dtype,cache_dir=str(cache),dataset_cache_dir=str(dataset_cache))
     manifests={};formal=config.get('formal_pilot',{})
-    fresh=confirmation_partitions(blocks,previous,formal['heldout_sequences']) if previous is not None else None
+    fresh=None
+    if retest_pilot is not None:
+        fresh=retest_partitions(blocks,previous,excluded)
+        formal['heldout_sequences']=retest_design['dev']
+        formal['heldout_tokens_per_panel']=retest_design['dev']*32
+    elif previous is not None:
+        fresh=confirmation_partitions(blocks,previous,formal['heldout_sequences'])
     if batch_screen is not None:
         reserved = [b for _, dev in fresh.values() for b in dev]
         arms = load_matching_arms(output/'fit_reference/measurements.zip',config['seeds'])
@@ -187,7 +205,9 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
               'harness_commit':config.get('harness_commit'),
               'tokenization':'per-document nonoverlapping blocks; no BOS; drop short tails',
               'note':'Own matched protocol; do not compare these PPL values to stock concatenated WikiText numbers'}
-    if batch_screen is not None:
+    if retest_pilot is not None:
+        protocol.update(batch_g1_retest=config['batch_g1_retest'],formal_pilot=formal)
+    elif batch_screen is not None:
         protocol.update(batch_document_pilot=config['batch_document_pilot'],formal_pilot=formal)
     elif matching_study:
         protocol['output_matching_study']=config['output_matching_study']
@@ -211,5 +231,7 @@ if __name__=='__main__':
     p.add_argument('--matching-study',action='store_true',help='Freeze a new disjoint train-document cohort for output matching')
     p.add_argument('--batch-document-screen',type=Path,help='Use the frozen rotations from this completed fit screen')
     p.add_argument('--matching-archive',type=Path,help='01d archive referenced by the fit screen')
+    p.add_argument('--retest-pilot',type=Path,help='Verified document-pilot bundle for an independent formal batch G1 retest')
     a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests,relative_screen=a.relative_g1_screen,
-                            matching_study=a.matching_study,batch_screen=a.batch_document_screen,matching_archive=a.matching_archive)
+                            matching_study=a.matching_study,batch_screen=a.batch_document_screen,matching_archive=a.matching_archive,
+                            retest_pilot=a.retest_pilot)

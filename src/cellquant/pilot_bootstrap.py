@@ -70,7 +70,7 @@ def document_resamples(strata, n_documents, repetitions, seed):
     return weights
 
 
-def _gains(weights, stats, methods, controls):
+def _gains(weights, stats, methods, controls, candidate='cellquant'):
     # A document has one multiplicity across all its methods, sites and seeds.
     sums = np.einsum('bd,msldk->bmslk', weights, stats, optimize=True)
     if (sums[..., 1] <= 0).any():
@@ -80,22 +80,29 @@ def _gains(weights, stats, methods, controls):
     comparator['best_matched_per_site'] = np.minimum.reduce([comparator[m] for m in controls])
     if any((v <= 0).any() for v in comparator.values()):
         raise ValueError('Zero comparator NMSE in a document resample')
-    cell = nmse[:, METHODS.index('cellquant')]
+    cell = nmse[:, methods.index(candidate)]
     gains = {name: (100 * (1 - cell / other)).mean(axis=1) for name, other in comparator.items()}
     return gains, nmse
 
 
-def paired_document_intervals(records, distributions, *, repetitions=10000, seed=20261115, include_original_grid=False):
+def paired_document_intervals(records, distributions, *, repetitions=10000, seed=20261115, include_original_grid=False,
+                              batch_retest=False):
+    from .pilot import BATCH_CANDIDATE, BATCH_PARENT
     seeds, sites = distributions['seeds'], distributions['sites']
     if (repetitions < 2 or not seeds or len(set(seeds)) != len(seeds)
             or not sites or len(set(sites)) != len(sites)):
         raise ValueError('Invalid repetitions, seeds or sites')
     extra = (ORIGINAL_GRID,) if include_original_grid else ()
-    methods, controls = METHODS + extra, CONTROLS + extra
+    candidate = BATCH_CANDIDATE if batch_retest else 'cellquant'
+    if batch_retest:
+        if include_original_grid:raise ValueError('Distinct G1 confirmation designs')
+        extra = (BATCH_PARENT,)
+    methods = tuple(candidate if m == 'cellquant' else m for m in METHODS) + extra
+    controls = CONTROLS + extra
     stats, strata, docs = document_statistics(records, seeds, sites, methods)
-    point, nmse = _gains(np.ones((1, len(docs))), stats, methods, controls)
-    expected = (('cellquant', 'new_nmse'), ('hadamard_shared', 'hadamard_nmse'))
-    matrices = [(nmse[0, METHODS.index(m)], k) for m, k in expected]
+    point, nmse = _gains(np.ones((1, len(docs))), stats, methods, controls, candidate)
+    expected = ((candidate, 'new_nmse'), ('hadamard_shared', 'hadamard_nmse'))
+    matrices = [(nmse[0, methods.index(m)], k) for m, k in expected]
     matrices.append((np.minimum.reduce([nmse[0, methods.index(m)] for m in controls]), 'best_control_nmse'))
     for values, key in matrices:
         ref = np.asarray(distributions[key], dtype=float)
@@ -105,7 +112,7 @@ def paired_document_intervals(records, distributions, *, repetitions=10000, seed
     weights = document_resamples(strata, len(docs), repetitions, seed)
     draws = defaultdict(list)
     for start in range(0, repetitions, 256):
-        gains, _ = _gains(weights[start:start + 256], stats, methods, controls)
+        gains, _ = _gains(weights[start:start + 256], stats, methods, controls, candidate)
         for name, values in gains.items():
             draws[name].append(np.median(values, axis=1))
     contrasts = {}
@@ -123,6 +130,7 @@ def paired_document_intervals(records, distributions, *, repetitions=10000, seed
 
 
 def analyze_run(run_dir):
+    from .pilot import BATCH_CANDIDATE, BATCH_PARENT
     root = Path(run_dir)
     evidence_path = root / 'G1_evidence.json'
     evidence = read_json(evidence_path)
@@ -133,6 +141,10 @@ def analyze_run(run_dir):
     supplemental = evidence['provenance'].get('includes_original_grid', False)
     artifact_root = root.parent if supplemental else root
     filenames = dict.fromkeys(METHODS, 'pilot_result.json')
+    batch = evidence['provenance'].get('pilot_variant') == BATCH_CANDIDATE
+    if batch:
+        del filenames['cellquant']
+        filenames.update({BATCH_CANDIDATE:'pilot_result.json', BATCH_PARENT:'pilot_result.json'})
     if supplemental:
         filenames[ORIGINAL_GRID] = 'original_grid_result.json'
     if any(artifact_root.glob('seed_*/*/pilot_result.json')):
@@ -159,7 +171,8 @@ def analyze_run(run_dir):
             raise ValueError('Document extracts do not match this G1 evidence')
         records = extracted['records']
         source = {'kind': 'notebook_block_field_extracts', 'sha256': sha256_file(path)}
-    report = paired_document_intervals(records, read_json(root / 'G1_distributions.json'), include_original_grid=supplemental)
+    report = paired_document_intervals(records, read_json(root / 'G1_distributions.json'), include_original_grid=supplemental,
+                                       batch_retest=batch)
     return dict(report, source_type='real_layer', evidence_sha256=digest, block_source=source)
 
 

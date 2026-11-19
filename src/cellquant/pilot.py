@@ -15,11 +15,15 @@ from .gates import evaluate_file
 from .progress import report
 
 
+BATCH_CANDIDATE = 'output_matching_batches'
+BATCH_PARENT = 'continued_grid'
+
+
 def _incomplete_reason(row):
     solver = row.get('solver', {})
     if row.get('status') != 'COMPLETE' or solver.get('status', 'COMPLETE') != 'COMPLETE':
         return solver.get('reason') or 'Incomplete method; no solver reason was recorded'
-    if row.get('method') in (*METHODS, 'original_objective_grid') and row['method'] != 'hadamard_shared':
+    if row.get('method') in (*METHODS, 'original_objective_grid', BATCH_CANDIDATE, BATCH_PARENT) and row['method'] != 'hadamard_shared':
         requested = solver.get('requested_pairs')
         done = solver.get('completed_pairs', len(solver.get('log', [])))
         if requested is None or requested <= 0 or done != requested or solver.get('stopped_by_wall_budget'):
@@ -315,8 +319,9 @@ def run_pilot(config,model,output,*,graph_identity,device='cuda',execution_finge
     return records
 
 
-def build_g1_evidence(paths,output,*,g0_evidence_path,include_original_grid=False):
+def build_g1_evidence(paths,output,*,g0_evidence_path,include_original_grid=False,batch_retest=False):
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
+    if include_original_grid and batch_retest:raise ValueError('Distinct G1 confirmation designs')
     if not paths:
         evidence={'schema_version':'1.0','gate_id':'G1','source_type':'not_run','metrics':{},'provenance':{},'artifact_refs':[]}
     else:
@@ -325,16 +330,25 @@ def build_g1_evidence(paths,output,*,g0_evidence_path,include_original_grid=Fals
             row=read_json(path)
             if row.get('evidence_kind')=='PAIR_PROFILE_ONLY':raise ValueError('Pair profiles cannot form G1 evidence')
             if row.get('evidence_kind') in {'FIT_OBJECTIVE_SCREEN','FIT_PAIR_DIAGNOSTIC','OUTPUT_MATCHING_STUDY',
-                                           'FIT_MATCHING_BATCH_SCREEN','FROZEN_BATCH_DOCUMENT_PILOT'}:
+                                           'FIT_MATCHING_BATCH_SCREEN','FROZEN_BATCH_DOCUMENT_PILOT','BATCH_RETEST_ENGINEERING'}:
                 raise ValueError('Diagnostic results cannot form G1 evidence')
             if row.get('source_type')!='real_layer':raise ValueError('Only real-layer artifacts can form G1')
+            if (row.get('pilot_variant') == BATCH_CANDIDATE) != batch_retest:
+                raise ValueError('Batch G1 requires its own candidate and matched controls')
+            if batch_retest and row.get('evidence_kind')!='FORMAL_BATCH_G1':
+                raise ValueError('Expected a formal batch G1 method record')
             for k,h in [('q_path','q_sha256'),('data_manifest_path','data_manifest_sha256')]:
                 if sha256_file(row[k])!=row[h]:raise ValueError('Pilot artifact checksum mismatch')
             rows.append(row);refs.append({'path':str(Path(path).resolve()),'sha256':sha256_file(path)})
         seeds=sorted({r['seed'] for r in rows});by={(r['seed'],r['method']):r for r in rows}
         if len(by)!=len(rows):raise ValueError('Duplicate seed/method pilot results')
-        required=(*METHODS,'original_objective_grid') if include_original_grid else METHODS
+        candidate=BATCH_CANDIDATE if batch_retest else 'cellquant'
+        primary=tuple(candidate if m=='cellquant' else m for m in METHODS)
+        extra=(BATCH_PARENT,) if batch_retest else ()
+        if include_original_grid:extra=('original_objective_grid',)
+        required=primary+extra
         complete=all((s,m) in by and _incomplete_reason(by[s,m]) is None for s in seeds for m in required)
+        if batch_retest:complete=complete and seeds==[11,23] and set(by)=={(s,m) for s in seeds for m in required}
         metrics={'g0_pass':evaluate_file('G0',g0_evidence_path)['status']=='PASS',
             'calibration_seed_count':len(seeds),'real_model_parameter_billions':min(r['model_parameter_billions'] for r in rows),
             'matched_solver_controls_complete':complete,
@@ -350,20 +364,30 @@ def build_g1_evidence(paths,output,*,g0_evidence_path,include_original_grid=Fals
         metrics['layer_count']=len({p['layer'] for p in rows[0]['heldout']}) if same_sites else 0
         metrics['full_quant_groups_preserved']=all(p['weight_shape'][1]==p['activation_shape'][0] for r in rows for p in r['heldout'])
         metrics['down_projection_output_side_correct']=all(p['placement']=='output' for r in rows for p in r['heldout'] if p['panel_id'].endswith('down_proj')) and any(p['panel_id'].endswith('down_proj') for p in rows[0]['heldout'])
-        policies={r['solver'].get('fit_objective',{'mode':'sum_nmse'})['mode'] for r in rows if r['method'] in METHODS}
+        policies={r['solver'].get('fit_objective',{'mode':'sum_nmse'})['mode'] for r in rows if r['method'] in primary}
         if complete and same_sites:
             sites=sorted(panel_sets[0]);values={key:np.array([next(p['nmse'] for p in row['heldout'] if p['panel_id']==site) for site in sites]) for key,row in by.items()}
             controls=['givens_ste_matched','angle_grid_matched','fixed_scale_search_matched']
-            if include_original_grid:controls.append('original_objective_grid')
+            controls.extend(extra)
             # Same-seed controls must use identical frozen panels/schedule/time/R2.
             matched=all(len({by[s,m][k] for m in required})==1 for s in seeds for k in ['fit_panel_fingerprint','schedule_sha256','wall_budget_seconds','graph_identity','data_manifest_sha256'])
             matched=matched and len(policies)==1 and all(len({config_hash(by[s,m]['solver'].get(
-                'fit_objective',{'mode':'sum_nmse'})) for m in METHODS})==1 for s in seeds)
+                'fit_objective',{'mode':'sum_nmse'})) for m in primary})==1 for s in seeds)
+            if batch_retest:
+                from .batch_retest import DESIGN
+                for s in seeds:
+                    parent=by[s,BATCH_PARENT]
+                    matched=matched and len({by[s,m]['heldout_panel_fingerprint'] for m in required})==1
+                    matched=matched and all(by[s,m]['parent_q_sha256']==parent['parent_q_sha256']
+                                            for m in (*controls,candidate))
+                    matched=matched and parent['solver']['requested_pairs']==DESIGN['prefix_pairs']+DESIGN['extra_grid_pairs']
+                    matched=matched and all(by[s,m]['solver']['requested_pairs']==parent['hidden_size']//2
+                                            for m in primary if m!='hadamard_shared')
             if include_original_grid:
                 matched=matched and policies=={'relative_site_nmse'} and all(
                     by[s,'original_objective_grid']['solver']['fit_objective']['mode']=='sum_nmse' for s in seeds)
             metrics['matched_solver_controls_complete']=matched
-            new=np.stack([values[s,'cellquant'] for s in seeds]);had=np.stack([values[s,'hadamard_shared'] for s in seeds])
+            new=np.stack([values[s,candidate] for s in seeds]);had=np.stack([values[s,'hadamard_shared'] for s in seeds])
             best=np.stack([np.minimum.reduce([values[s,m] for m in controls]) for s in seeds])
             if np.any(had<=0) or np.any(best<=0):raise ValueError('Zero comparator NMSE; percentage improvements are undefined')
             gain_h=(100*(1-new/had)).mean(0);gain_b=(100*(1-new/best)).mean(0)
@@ -371,7 +395,7 @@ def build_g1_evidence(paths,output,*,g0_evidence_path,include_original_grid=Fals
                 median_nmse_gain_vs_hadamard_pct=float(np.median(gain_h)),median_nmse_gain_vs_best_matched_solver_pct=float(np.median(gain_b)),
                 max_site_nmse_regression_vs_best_pct=float(np.max(-gain_b)),site_win_fraction_vs_best_matched_solver=float(np.mean(gain_b>0)),
                 median_nmse_regression_vs_best_matched_solver_pct=float(np.median(-gain_b)),site_noninferior_fraction_at_2pct=float(np.mean(gain_b>=-2)),
-                pilot_calibration_speedup=float(np.mean([min(by[s,m]['total_calibration_seconds'] for m in controls)/by[s,'cellquant']['total_calibration_seconds'] for s in seeds])))
+                pilot_calibration_speedup=float(np.mean([min(by[s,m]['total_calibration_seconds'] for m in controls)/by[s,candidate]['total_calibration_seconds'] for s in seeds])))
             atomic_json(output/'G1_distributions.json',{'seeds':seeds,'sites':sites,'new_nmse':new.tolist(),'hadamard_nmse':had.tolist(),'best_control_nmse':best.tolist(),
                 'site_gain_hadamard_pct':gain_h.tolist(),'site_gain_best_control_pct':gain_b.tolist(),'scope':'exploratory raw seed/site distributions; no token-IID inference'})
         # A resource-interrupted comparison is incomplete evidence, not a
@@ -381,5 +405,8 @@ def build_g1_evidence(paths,output,*,g0_evidence_path,include_original_grid=Fals
             'provenance':{'raw_results':len(rows),'complete_comparison':complete,'g0_evidence_sha256':sha256_file(g0_evidence_path),
                           'fit_objectives':sorted(policies),'includes_original_grid':include_original_grid,
                           'aggregation':'mean seed-relative improvement per site, median sites'},'artifact_refs':refs}
+        if batch_retest:
+            evidence['provenance'].update(pilot_variant=candidate,controls=[
+                BATCH_PARENT,'givens_ste_matched','angle_grid_matched','fixed_scale_search_matched'])
     atomic_json(output/'G1_evidence.json',evidence);gate=evaluate_file('G1',output/'G1_evidence.json');atomic_json(output/'G1.json',gate)
     return gate

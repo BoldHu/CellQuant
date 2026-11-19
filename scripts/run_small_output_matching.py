@@ -32,6 +32,7 @@ def main():
     modes=parser.add_mutually_exclusive_group()
     modes.add_argument('--confirm-hybrid',action='store_true',help='Evaluate the fixed grid-then-matching combination on eight untouched shared articles')
     modes.add_argument('--validate-batches',action='store_true',help='Replay the archived 42M batch fits on 32 unused train articles')
+    modes.add_argument('--smoke-retest',action='store_true',help='Exercise the complete retest and matched controls with a four-pair schedule on 42M')
     args=parser.parse_args()
     import pyarrow.parquet as parquet
     import torch
@@ -45,7 +46,7 @@ def main():
     os.environ['CELLQUANT_FHT_BACKEND']='torch_reference'
     cfg=read_json(ROOT/'configs/colab_pilot.json')
     overlay=activate_overlay(ROOT/cfg['spinquant_overlay'])
-    prefix='batch_documents_42m_' if args.validate_batches else 'matching_42m_'
+    prefix='batch_retest_42m_' if args.smoke_retest else 'batch_documents_42m_' if args.validate_batches else 'matching_42m_'
     out=ROOT/'runs/experiments'/(prefix+uuid4().hex[:12])
     out.mkdir(parents=True)
     print('Run',out,flush=True)
@@ -82,7 +83,7 @@ def main():
         design.pop('refine_continued_grid')
         design['version']=2
     study_split='validation'
-    if args.validate_batches:
+    if args.validate_batches or args.smoke_retest:
         from cellquant.batch_validation import DESIGN as batch_design, measure_frozen_batches
         from cellquant.matching_batches import load_matching_arms
         from cellquant.matching_study import CONTINUED
@@ -106,18 +107,28 @@ def main():
                                    heldout_tokens_per_panel=design['documents_per_seed']*design['tokens_per_document'])
         cfg['batch_document_pilot']={'design':design, 'scope':'pretrained 42M engineering verification',
                                     'reference_sha256':sha256_file(reference),'fit_source_sha256':sha256_file(fit_source)}
+        if args.smoke_retest:
+            from cellquant.batch_retest import DESIGN as retest_design, retest_partitions, run_retest
+            excluded = [*blocks, *(b for _, dev in final.values() for b in dev)]
+            final = retest_partitions(train_blocks,original,excluded)
+            del cfg['batch_document_pilot']
+            design = {**retest_design,'prefix_pairs':2,'extra_grid_pairs':2,'parent_grid_points':17,'batch_size':2}
+            cfg['batch_g1_retest']={'design':design,'scope':'pretrained 42M engineering verification','matching_pairs':4}
+            cfg['data']['calibration_split']='train'
     else:
         cfg['output_matching_study']={'design':design, 'scope':'pretrained 42M development study'}
     for seed in cfg['seeds']:
         identity={'model_id':MODEL,'model_revision':MODEL_REV,'tokenizer_revision':MODEL_REV,'dataset_id':DATA,
-                  'dataset_revision':DATA_REV,'source_split':study_split,'parquet_sha256':data_hash,'seed':seed}
+                  'dataset_revision':DATA_REV,'source_split':study_split,'parquet_sha256':data_hash,'seed':seed,'context_length':256}
         if args.validate_batches:
             identity.update(fit_split='validation',dev_split='train',fit_parquet_sha256=data_hash,parquet_sha256=train_hash)
+        if args.smoke_retest:
+            identity.update(fit_split='train',dev_split='train',parquet_sha256=train_hash)
         training,validation=final[seed]
         path=save_token_manifest(out/f'inputs_{seed}',{'fit':training,'dev':validation},identity)
         cfg['data']['token_manifests'][str(seed)]=str(path)
     protocol=atomic_json(out/'protocol.json',{'status':'FROZEN','design':design,'layers':[0,3,7],'context':256,
-        'quantization':cfg['quantization'],'fit_split':'validation','source_split':study_split,'token_manifests':{
+        'quantization':cfg['quantization'],'fit_split':cfg['data']['calibration_split'],'source_split':study_split,'token_manifests':{
         s:sha256_file(p) for s,p in cfg['data']['token_manifests'].items()}})
     first=cfg['data']['token_manifests']['11']
     provenance=atomic_json(out/'execution_provenance.json',{'models':{MODEL:{'model_revision':MODEL_REV,'tokenizer_revision':MODEL_REV}},
@@ -142,7 +153,9 @@ def main():
     def emit(phase,**details):
         if phase=='matching.evaluate':
             print(phase,details,flush=True)
-    if args.validate_batches:
+    if args.smoke_retest:
+        result=run_retest(cfg,prepared,out,graph_id,all_controls=True,engineering_pairs=4)
+    elif args.validate_batches:
         result=measure_frozen_batches(prepared,arms,traces,out,device=device)
         result.update(scope='pretrained 42M engineering verification',fit_source=cfg['batch_document_pilot'])
     else:

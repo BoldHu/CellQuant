@@ -204,7 +204,7 @@ def test_preparation_binds_cached_weights_and_reuses_only_fit_documents(tmp_path
     # The only remote substitutes are the dataset rows, tokenizer, and cache lookup.
     class Corpus(list):
         _fingerprint='fixture_revision'
-    corpus=Corpus({'text':f'= Article {i} ='} for i in range(128))
+    corpus=Corpus({'text':f'= Article {i} ='} for i in range(192))
     def tokenizer(text,**kwargs):
         i=int(text.split()[2])
         return {'input_ids':[i]*2048}
@@ -281,6 +281,24 @@ def test_preparation_binds_cached_weights_and_reuses_only_fit_documents(tmp_path
     assert batch['formal_pilot']['heldout_tokens_per_panel']==512
     assert experiment.run_experiment(batch,project_root=tmp_path,preflight_only=True,batch_documents=True)['readiness']['status']=='READY'
     assert experiment.run_experiment(batch,project_root=tmp_path,preflight_only=True)['readiness']['status']=='BLOCKED'
+
+    from cellquant import batch_retest
+    excluded=[b for b in blocks if b['document_id'] in set(new_docs)|ids|reserved]
+    promoted={'next_step':'formal_g1_retest','run_id':'test_input',
+              'fit_source':{'parent_config_sha256':config_hash(cfg),'parent_token_manifests':{
+                  s:sha256_file(path) for s,path in cfg['data']['token_manifests'].items()}}}
+    monkeypatch.setattr(batch_retest,'read_document_pilot',lambda path:(promoted,{},[
+        {k:b[k] for k in ('document_id','block_id','token_ids_sha256','document_sha256')} for b in excluded]))
+    retest=read_json(prep.prepare(tmp_path/'parent.json',tmp_path/'retest',retest_pilot=tmp_path/'screen/result.json'))
+    batch_retest.verify_protocol(retest)
+    assert experiment.run_experiment(retest,project_root=tmp_path,preflight_only=True,batch_retest=True)['readiness']['status']=='READY'
+    assert experiment.run_experiment(retest,project_root=tmp_path,preflight_only=True)['readiness']['status']=='BLOCKED'
+    original_ids={b['document_id'] for part in original.values() for split in part.values() for b in split}
+    drawn=set()
+    for s in cfg['seeds']:
+        _,parts=data.load_token_manifest(retest['data']['token_manifests'][str(s)],allow_fixture=True)
+        drawn.update(b['document_id'] for b in parts['fit']+parts['dev'])
+    assert len(drawn)==48 and drawn.isdisjoint(original_ids|ids|reserved|set(new_docs))
 
 
 def test_colab_terminal_entry_runs_preparation_and_only_the_registered_study(tmp_path,monkeypatch,capsys):

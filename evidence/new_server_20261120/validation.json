@@ -1,0 +1,67 @@
+{
+  "recorded_at_utc": "2026-11-20T10:49:50.889059+00:00",
+  "source_type": "unit_test_fixture",
+  "status": "LOCAL_MIGRATION_CHECKS_COMPLETE",
+  "code_head": "8d50c536bc659f28ec8d13d5aee06a771798f62e",
+  "working_tree_edits": true,
+  "source_sha256": {
+    "scripts/prepare_experiment.py": "cc50b19149ae2965fcf8a1fd57b2162bf1947b804b997ff02bed96149e347f15",
+    "scripts/run_output_matching.py": "6247b6e3bf4503533b37134e0b635208fc500f3f0ebf4855a09a3349d1fb15d4",
+    "tests/test_output_matching.py": "cec2390fce45e1e216e511b1f29ce0a7be3ac74e578c4b6879e84f483be2187c",
+    "tests/test_bilateral_documents.py": "414d06693a64e54d4b0e5b0893a19a1a758ff2897d5ef14e1e0fea5f5d705d1f",
+    "docs/NEW_SERVER_START.md": "eb70594473889710b7c663fb19314f70d5d0b01c608353c5dd7c8953514bdfd1",
+    "docs/IMPLEMENTATION_STATUS.md": "2357d8d63116224069eacfed73c79e6ddbf989a6bbf48a0ab6cd0998ccc3b8cc",
+    "docs/WORK_LOG.md": "affac0a6503d1dc1be1ce3c23fe27bc87649e51f9cadeca0ef8526ed26365f85",
+    "README.md": "81d856c370895102344ed40b42e1b96ca84484de02f4f21e22b7a349b25e82c6"
+  },
+  "tests": {
+    "command": "python -m pytest -q tests/test_output_matching.py tests/test_bilateral_documents.py tests/test_batch_documents.py tests/test_batch_retest.py",
+    "returncode": 0,
+    "passed": 40,
+    "warnings": 1,
+    "seconds": 19.98,
+    "warning": "Existing Windows pytest cache directory permission",
+    "log": "evidence/new_server_20261120/tests.log",
+    "scope": "Targeted tests; no full-suite or new-server GPU qualification"
+  },
+  "cli_checks": [
+    {
+      "command": [
+        "python",
+        "scripts/prepare_experiment.py",
+        "--help"
+      ],
+      "returncode": 0,
+      "log": "evidence/new_server_20261120/prepare_experiment_help.log"
+    },
+    {
+      "command": [
+        "python",
+        "scripts/run_output_matching.py",
+        "--help"
+      ],
+      "returncode": 0,
+      "log": "evidence/new_server_20261120/run_output_matching_help.log"
+    },
+    {
+      "command": "git diff --check",
+      "returncode": 0,
+      "log": "evidence/new_server_20261120/diff_check.log"
+    }
+  ],
+  "archive_relocation": {
+    "record": "evidence/new_server_20261120/archive_relocation_check.json",
+    "sha256": "bacee7e78352578664ccd086052d939b054ab0c810d349176d473235d765b0e9",
+    "scope": "Real archived references validated; cache availability/tokenizer mocked; no network, new model run or GPU-server qualification."
+  },
+  "gate_rules_sha256": "5d36290ca487795337300f3cccbc1c4d5a18d250639498bb15455ca5ad6a554e",
+  "gate_rules_unchanged_from_head": true,
+  "not_run": [
+    "New AutoDL/Linux server connection and installation",
+    "New server CUDA/FHT qualification",
+    "New server pinned 7B download",
+    "7B cross-layer row-transfer replay",
+    "G2-G4"
+  ],
+  "scientific_status": "Prior formal A100 G1 remains FAIL; this change provides no new scientific gate evidence"
+}

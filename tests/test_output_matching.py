@@ -330,6 +330,39 @@ def test_preparation_binds_cached_weights_and_reuses_only_fit_documents(tmp_path
         drawn.update(b['document_id'] for b in parts['fit']+parts['dev'])
     assert len(drawn)==48 and drawn.isdisjoint(original_ids|ids|reserved|set(new_docs))
 
+    # A fresh server explicitly relocates an offline Colab runtime. Its pinned
+    # revisions and fit documents stay unchanged, and the parent is not edited.
+    cold=read_json(tmp_path/'parent.json')
+    cold['runtime'].update(cache_dir='/content/CellQuant/old_hub',
+                           dataset_cache_dir='/content/CellQuant/old_datasets',local_cache_only=True)
+    cold_path=atomic_json(tmp_path/'cold_parent.json',cold)
+    cold_sha=sha256_file(cold_path)
+    new_hub=tmp_path/'new_server/hub';new_data=tmp_path/'new_server/datasets'
+    monkeypatch.setattr(hub,'try_to_load_from_cache',lambda *args,**kwargs:None)
+    def online_tokenizer(repo_id,**kwargs):
+        assert not kwargs['local_files_only']
+        assert kwargs['cache_dir']==str(new_hub.resolve()) and kwargs['revision']=='b'*40
+        return tokenizer
+    def relocated_dataset(*args,**kwargs):
+        assert kwargs['cache_dir']==str(new_data.resolve()) and kwargs['revision']=='c'*40
+        return corpus
+    monkeypatch.setattr(transformers.AutoTokenizer,'from_pretrained',online_tokenizer)
+    monkeypatch.setattr(datasets,'load_dataset',relocated_dataset)
+    migrated=read_json(prep.prepare(cold_path,tmp_path/'migrated',matching_study=True,
+        cache_dir=new_hub,dataset_cache_dir=new_data,allow_model_download=True))
+    assert sha256_file(cold_path)==cold_sha
+    assert not migrated['runtime']['local_cache_only']
+    for key in ('model_revision','tokenizer_revision','dataset_revision','solver','quantization','rotation','seeds'):
+        assert migrated[key]==cold[key]
+    frozen=read_json(migrated['protocol_manifest_path'])
+    assert frozen['runtime']==migrated['runtime']
+    assert frozen['runtime_relocation_sha256']==sha256_file(tmp_path/'migrated/runtime_relocation.json')
+    receipt=read_json(tmp_path/'migrated/runtime_relocation.json')
+    assert receipt['changes']['cache_dir']['previous']=='/content/CellQuant/old_hub'
+    for seed in cfg['seeds']:
+        _,parts=data.load_token_manifest(migrated['data']['token_manifests'][str(seed)],allow_fixture=True)
+        assert [b['token_ids_sha256'] for b in parts['fit']]==[b['token_ids_sha256'] for b in original[seed]['fit']]
+
 
 def test_colab_terminal_entry_runs_preparation_and_only_the_registered_study(tmp_path,monkeypatch,capsys):
     path=Path(__file__).resolve().parents[1]/'scripts/run_output_matching.py'

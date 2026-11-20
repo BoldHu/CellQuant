@@ -1,0 +1,5 @@
+warning: in the working copy of 'docs/WORK_LOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/prepare_experiment.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/run_output_matching.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/test_bilateral_documents.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/test_output_matching.py', LF will be replaced by CRLF the next time Git touches it

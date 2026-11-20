@@ -1,0 +1,20 @@
+{
+  "status": "ARCHIVE_VALIDATION_AND_RELOCATION_CHECKED",
+  "source_type": "unit_test_fixture",
+  "observed_tokenizer_call": {
+    "model_id": "meta-llama/Llama-2-7b-hf",
+    "revision": "01c7f73d771dfac7d292323805ebc428287df4f9",
+    "cache_dir": "D:\\python_project\\quant-llm\\evidence\\new_server_20261120\\cache\\hub",
+    "local_files_only": false
+  },
+  "archive_sha256": {
+    "evidence\\output_matching_20261119\\bilateral_fit_7b.zip": "f06262fda207868075a2e8877727ed50e084bc6dfe04602abaeceac63adf9f6c",
+    "evidence\\output_matching_20261119\\batch_g1_retest_7b.zip": "e8bc4e71da06250d7082853f4d934bc43b05528514057843600938ca65be2fc9",
+    "evidence\\output_matching_20261119\\bilateral_document_cohort_7b.json": "55fa028bd16812009753300d76c40c9deffc35a4258a26c10a146147a19fa627",
+    "evidence\\output_matching_20261119\\row_crossfit_cohort_7b.json": "c9bef95e11d0002eae3ed95a0936470f4974b8735bf4b5112e106739896b36b4",
+    "evidence\\output_matching_20261119\\row_crossfit_7b.zip": "0492a3a9c4d86e485b88d5d2959e8819f903ba151c856b54b02878f8f0df629e",
+    "evidence\\output_matching_20261119\\row_refresh_cohort_7b.json": "3a39d098d36450cd1a3075f3b56f60c8eb3cc93b8a2c2f3918c9acda4f0311ac",
+    "evidence\\output_matching_20261119\\row_refresh_7b.zip": "947f8b489702617ad4963ad67df84b8035294c955e6c43ab9d4ae079201385ec"
+  },
+  "scope": "Real archived references validated; cache availability/tokenizer mocked; no network, new model run or GPU-server qualification."
+}

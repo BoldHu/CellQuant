@@ -34,6 +34,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', type=Path, default=os.environ.get('CELLQUANT_PILOT_CONFIG','runs/prepared/g1_gpu/config.json'),
                         help='Pinned original G1 input config in the current checkout')
+    parser.add_argument('--cache-dir',type=Path,help='Model cache on this server; explicitly overrides the archived runtime path in a new run')
+    parser.add_argument('--dataset-cache-dir',type=Path,help='Dataset cache on this server for the new run')
+    parser.add_argument('--allow-model-download',action='store_true',help='Allow pinned model/tokenizer downloads into the new server cache')
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--validate-batches', action='store_true', help='Evaluate completed batch fits on independent new documents')
     modes.add_argument('--retest-batches', action='store_true', help='Confirm the batch algorithm on fresh calibration and evaluation articles for G1')
@@ -117,7 +120,11 @@ def main(argv=None):
     inputs = work/'inputs'
     index = work/'index.json'
     print('Study directory', work, flush=True)
-    commands = [('prepare', [str(ROOT/'scripts/prepare_experiment.py'),'--config',str(parent),'--output',str(inputs),*prepare_mode]),
+    runtime_args=[]
+    for flag,value in (('--cache-dir',args.cache_dir),('--dataset-cache-dir',args.dataset_cache_dir)):
+        if value is not None:runtime_args.extend([flag,str(value.expanduser().resolve())])
+    if args.allow_model_download:runtime_args.append('--allow-model-download')
+    commands = [('prepare', [str(ROOT/'scripts/prepare_experiment.py'),'--config',str(parent),'--output',str(inputs),*runtime_args,*prepare_mode]),
                 ('study', ['-m','cellquant.experiment','--config',str(inputs/'config.json'),*mode,'--result-index',str(index)])]
     for label, command in commands:
         status = stream_command([sys.executable,'-u',*command],work/(label+'.log'),cwd=ROOT,timeout_s=4*3600)

@@ -1,0 +1,8 @@
+........................................                                 [100%]
+============================== warnings summary ===============================
+..\..\anaconda\envs\SA-Jev\Lib\site-packages\_pytest\cacheprovider.py:487
+  D:\anaconda\envs\SA-Jev\Lib\site-packages\_pytest\cacheprovider.py:487: PytestCacheWarning: could not create cache path D:\python_project\quant-llm\.pytest_cache\v\cache\nodeids: [WinError 5] 拒绝访问。: 'D:\\python_project\\quant-llm\\.pytest_cache\\v\\cache'
+    config.cache.set("cache/nodeids", sorted(str(n) for n in self.cached_nodeids))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+40 passed, 1 warning in 19.98s

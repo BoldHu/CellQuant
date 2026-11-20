@@ -155,7 +155,8 @@ def test_terminal_accepts_the_portable_fit_zip_without_an_old_g1_config(tmp_path
 
 
 @pytest.mark.parametrize('study',['diagnosis','crossfit','refresh','transfer'])
-def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tmp_path, monkeypatch,study):
+@pytest.mark.parametrize('migrate',[False,True])
+def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tmp_path, monkeypatch,study,migrate):
     spec = importlib.util.spec_from_file_location('row_colab_cli', ROOT/'scripts/run_output_matching.py')
     cli = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cli)
@@ -168,6 +169,12 @@ def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tm
 
     def execute(argv, log, cwd, timeout_s):
         if '--output' in argv:
+            if migrate:
+                assert argv[argv.index('--cache-dir')+1]==str((tmp_path/'cache/hub').resolve())
+                assert argv[argv.index('--dataset-cache-dir')+1]==str((tmp_path/'cache/datasets').resolve())
+                assert '--allow-model-download' in argv
+            else:
+                assert '--cache-dir' not in argv and '--allow-model-download' not in argv
             expected = [str(refs/n) for n in (docs.FIT_FILE,docs.GRID_FILE,docs.COHORT_FILE)]
             if study != 'diagnosis':
                 from cellquant.row_crossfit import COHORT_FILE
@@ -198,7 +205,9 @@ def test_row_command_reuses_portable_archives_and_preserves_an_incomplete_run(tm
     flag,filename = {'refresh':('--refresh-rows','row_refresh.zip'),'crossfit':('--crossfit-rows','row_crossfit.zip'),
                      'diagnosis':('--diagnose-bilateral-rows','bilateral_row_diagnostic.zip'),
                      'transfer':('--audit-row-transfer','row_transfer.zip')}[study]
-    assert cli.main([flag]) == 2
+    overrides=['--cache-dir',str(tmp_path/'cache/hub'),'--dataset-cache-dir',str(tmp_path/'cache/datasets'),
+               '--allow-model-download'] if migrate else []
+    assert cli.main([flag,*overrides]) == 2
     path, = (tmp_path/'runs/01_pilot').rglob(filename)
     with ZipFile(path) as z:
         assert json.loads(z.read('run/result.json'))['status'] == 'RESOURCE_BLOCKED'

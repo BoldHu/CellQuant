@@ -298,3 +298,12 @@ seed 11 的 Hadamard、STE、网格报告 COMPLETE；固定尺度搜索与 CellQ
 - 两种顺序在未见行的平均 NMSE 降幅 −0.230% [−0.308%, −0.148%]，在整投影为 −0.148% [−0.225%, −0.066%]，按规则结束单次换行策略。对同一批文章回放原固定网格，A、B 拟合行间的降幅差为 +62.54 个百分点 [60.71, 64.15]。按固定对照双侧误差归一化后，未见行退化中的 −0.165 个百分点来自权重单侧误差变化。[逐行组与单侧误差分解](OUTPUT_MATCHING_STUDY.md#7b-中途换行结果)
 - 增加跨层回放入口。只采集验证激活并恢复同一条网格轨迹的两个旋转，对首中末层全部六个输入投影统计完整权重行。以中层和末层 up 的拟合行及其余行的收益差作为主指标，每种子核对六个位置的完整网格逐篇误差。7B 准备入口已用经 SHA-256 校验的本机 WikiText 语料、tokenizer 及归档数据集指纹验证，两份拟合与验证 token 清单均与 A100 源档一致。CPU 数学检查 10 项、专项测试 17 项通过，全套 375 项通过、1 项既有失败为 notebook 00 保存的准备开关为 True。7B 六投影实测待 A100 执行。[跨层协议](OUTPUT_MATCHING_STUDY.md#跨层测量拟合行与未见行)
 - 本机实测 42M 跨层回放两次。干净代码提交 `f3decd441a9b512ac26058208fc0de2b43d92cca` 的两份逐种子文件与首次运行逐字节相同。独立矩阵加权实现复算了三种精度、六个位置以及中末层平均差的全部配对区间。W4A4 主指标为 +5.965 个百分点 [5.466, 6.508]。原始测量包 SHA-256 为 `831a2ca99b4ece9f55676e547aa78e029d74bf6732fa31bb9213fe6abde38b7d`。[42M 归档](../evidence/output_matching_20261119/row_transfer_42m.zip)
+
+
+## 2026-11-20 AutoDL / Linux 新服务器启动
+
+- 核对最新仓库状态：正式 A100 G1 保持 FAIL；当前下一项为冻结轨迹的 7B 跨层行回放，不进入 G2 或完整矩阵。
+- 修复归档中的 `/content/CellQuant` 缓存路径与 `local_cache_only=true` 在空缓存新服务器上的阻塞。准备器及研究入口新增 `--cache-dir`、`--dataset-cache-dir`、`--allow-model-download`；仅显式请求时迁移新的准备配置。原归档不变，模型/数据 revision、种子、拟合块、量化器、旋转和求解预算保持不变。路径与下载策略记录为 `runtime_relocation.json`，其哈希及最终 runtime 绑定到新协议。
+- 新增 `docs/NEW_SERVER_START.md`，覆盖 Remote-SSH、本地数据盘、复用宿主 torch、交互 HF 登录、固定 SpinQuant、FHT 实测、G0/CUDA 检查及当前跨层回放。AutoDL 不挂载 Colab Drive；换环境建立新运行并保留来源记录。
+- 实际执行 `python -m pytest -q tests/test_output_matching.py tests/test_bilateral_documents.py tests/test_batch_documents.py tests/test_batch_retest.py`：**40 passed, 1 warning in 19.98s**，退出码 0；警告仅为现有 Windows pytest 缓存权限。两入口 `--help` 均成功。另用仓库内真实 7B 归档校验引用链和新缓存参数，模拟空缓存/tokenizer 并在网络下载边界停止，所有输入归档字节哈希不变；不将其记为真实模型执行。
+- 本轮没有连接新服务器、下载 7B 或运行新 CUDA/FHT 检查，这些项目均 NOT_RUN。执行命令见启动说明；详细本地记录见 `evidence/new_server_20261120/validation.json`。科学门槛未改，代码未提交或 push。

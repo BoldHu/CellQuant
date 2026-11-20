@@ -1,0 +1,55 @@
+usage: run_output_matching.py [-h] [--config CONFIG] [--cache-dir CACHE_DIR]
+                              [--dataset-cache-dir DATASET_CACHE_DIR]
+                              [--allow-model-download]
+                              [--validate-batches | --retest-batches | --screen-bilateral | --validate-bilateral | --diagnose-bilateral-rows | --crossfit-rows | --refresh-rows | --audit-row-transfer]
+                              [--fit-archive FIT_ARCHIVE] [--all-controls]
+                              [--pilot-archive PILOT_ARCHIVE]
+                              [--retest-archive RETEST_ARCHIVE]
+                              [--screen-run SCREEN_RUN]
+                              [--matching-archive MATCHING_ARCHIVE]
+
+Prepare fresh WikiText train documents, run the A100 matching study and
+archive its measurements.
+
+options:
+  -h, --help            show this help message and exit
+  --config CONFIG       Pinned original G1 input config in the current
+                        checkout
+  --cache-dir CACHE_DIR
+                        Model cache on this server; explicitly overrides the
+                        archived runtime path in a new run
+  --dataset-cache-dir DATASET_CACHE_DIR
+                        Dataset cache on this server for the new run
+  --allow-model-download
+                        Allow pinned model/tokenizer downloads into the new
+                        server cache
+  --validate-batches    Evaluate completed batch fits on independent new
+                        documents
+  --retest-batches      Confirm the batch algorithm on fresh calibration and
+                        evaluation articles for G1
+  --screen-bilateral    Compare input-aware and output-only proposals on fit
+                        articles at a short grid prefix
+  --validate-bilateral  Score the two frozen A100 fits on 32 previously unused
+                        articles
+  --diagnose-bilateral-rows
+                        Measure all first-layer up projection rows on the
+                        completed document cohort
+  --crossfit-rows       Swap the 64 up projection fit rows and compare both
+                        matched grids on new articles
+  --refresh-rows        Test a midpoint row switch against both fixed-row
+                        grids on new articles
+  --audit-row-transfer  Score fitted and unseen rows at six input projections
+                        without refitting
+  --fit-archive FIT_ARCHIVE
+                        Use the original bilateral_angle_screen.zip for frozen
+                        bilateral evaluation
+  --all-controls        Also measure every matched solver if the parent alone
+                        rules out both G1 routes
+  --pilot-archive PILOT_ARCHIVE
+  --retest-archive RETEST_ARCHIVE
+                        Completed grid logs from the bound-stopped A100 retest
+  --screen-run SCREEN_RUN
+                        Completed fit screen directory; by default find the
+                        latest matching run
+  --matching-archive MATCHING_ARCHIVE
+                        01d measurement archive used in the batch screen

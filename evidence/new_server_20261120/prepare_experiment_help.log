@@ -1,0 +1,54 @@
+usage: prepare_experiment.py [-h] --config CONFIG --output OUTPUT
+                             [--include-tests]
+                             [--relative-g1-screen RELATIVE_G1_SCREEN]
+                             [--matching-study]
+                             [--batch-document-screen BATCH_DOCUMENT_SCREEN]
+                             [--matching-archive MATCHING_ARCHIVE]
+                             [--retest-pilot RETEST_PILOT]
+                             [--bilateral-sources FIT_ZIP GRID_ZIP COHORT]
+                             [--row-crossfit-cohort ROW_CROSSFIT_COHORT]
+                             [--row-refresh-sources CROSSFIT_ZIP COHORT]
+                             [--row-transfer-archive ROW_TRANSFER_ARCHIVE]
+                             [--cache-dir CACHE_DIR]
+                             [--dataset-cache-dir DATASET_CACHE_DIR]
+                             [--allow-model-download]
+
+options:
+  -h, --help            show this help message and exit
+  --config CONFIG
+  --output OUTPUT
+  --include-tests
+  --relative-g1-screen RELATIVE_G1_SCREEN
+                        Completed objective-screen run for the single fresh G1
+                        confirmation
+  --matching-study      Freeze a new disjoint train-document cohort for output
+                        matching
+  --batch-document-screen BATCH_DOCUMENT_SCREEN
+                        Use the frozen rotations from this completed fit
+                        screen
+  --matching-archive MATCHING_ARCHIVE
+                        01d archive referenced by the fit screen
+  --retest-pilot RETEST_PILOT
+                        Verified document-pilot bundle for an independent
+                        formal batch G1 retest
+  --bilateral-sources FIT_ZIP GRID_ZIP COHORT
+                        Freeze two completed rotations and prepare new
+                        articles for held-out scoring
+  --row-crossfit-cohort ROW_CROSSFIT_COHORT
+                        Prepare a separate previously unused evaluation cohort
+                        for the row-swap experiment
+  --row-refresh-sources CROSSFIT_ZIP COHORT
+                        Completed matched grids and unused articles for
+                        midpoint row switching
+  --row-transfer-archive ROW_TRANSFER_ARCHIVE
+                        Replay the frozen trajectory on the completed row-
+                        refresh documents
+  --cache-dir CACHE_DIR
+                        Explicit model cache location for the newly prepared
+                        run
+  --dataset-cache-dir DATASET_CACHE_DIR
+                        Explicit dataset cache location for the newly prepared
+                        run
+  --allow-model-download
+                        Allow fetching pinned model/tokenizer files when the
+                        new server cache is empty

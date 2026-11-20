@@ -29,7 +29,8 @@ def cached_matching_model(config, model_id, weight_files, cache):
 
 def prepare(config_path,output,*,include_tests=False,relative_screen=None,matching_study=False,
             batch_screen=None,matching_archive=None,retest_pilot=None,bilateral_sources=None,row_crossfit_cohort=None,
-            row_refresh_sources=None,row_transfer_archive=None):
+            row_refresh_sources=None,row_transfer_archive=None,cache_dir=None,dataset_cache_dir=None,
+            allow_model_download=False):
     output=Path(output).resolve()
     previous=None
     parent_dataset_fingerprints=set()
@@ -150,6 +151,25 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
             raise ValueError('Expected the matching archive used by the fit screen')
         config['batch_document_pilot']={**parent, **freeze_batch_inputs(
             output,Path(batch_screen),Path(matching_archive),config['seeds'],parent['parent_config_sha256'])}
+    # A new server may have neither the archived Colab cache path nor its
+    # files. Relocate only on explicit request, after validating all parent
+    # references. The original archive/config stays immutable; the new runtime
+    # locations and download policy are frozen in this run's protocol.
+    relocation={}
+    runtime=config.setdefault('runtime',{})
+    for key,value in (('cache_dir',cache_dir),('dataset_cache_dir',dataset_cache_dir)):
+        if value is not None:
+            resolved=str(Path(value).expanduser().resolve())
+            relocation[key]={'previous':runtime.get(key),'requested':resolved}
+            runtime[key]=resolved
+    if allow_model_download:
+        relocation['local_cache_only']={'previous':runtime.get('local_cache_only',False),'requested':False}
+        runtime['local_cache_only']=False
+    if relocation:
+        receipt=atomic_json(output/'runtime_relocation.json',{
+            'source_type':'not_run','changes':relocation,
+            'scope':'New-run storage/download configuration only; no model, data, solver, gate or resume authorization.'})
+        config['runtime_relocation_sha256']=sha256_file(receipt)
     data=config['data'];model_id=config.get('model_id',config.get('formal_pilot',{}).get('model_id'))
     token=os.environ.get('HF_TOKEN') or None
     cache,dataset_cache=huggingface_cache_paths(config.get('runtime'))
@@ -291,6 +311,8 @@ def prepare(config_path,output,*,include_tests=False,relative_screen=None,matchi
               'harness_commit':config.get('harness_commit'),
               'tokenization':'per-document nonoverlapping blocks; no BOS; drop short tails',
               'note':'Own matched protocol; do not compare these PPL values to stock concatenated WikiText numbers'}
+    if relocation:
+        protocol['runtime_relocation_sha256']=config['runtime_relocation_sha256']
     if bilateral_sources is not None:
         protocol.update(bilateral_document_pilot=config['bilateral_document_pilot'],formal_pilot=formal)
         if row_crossfit_cohort is not None:
@@ -331,7 +353,11 @@ if __name__=='__main__':
     p.add_argument('--row-crossfit-cohort',type=Path,help='Prepare a separate previously unused evaluation cohort for the row-swap experiment')
     p.add_argument('--row-refresh-sources',type=Path,nargs=2,metavar=('CROSSFIT_ZIP','COHORT'),help='Completed matched grids and unused articles for midpoint row switching')
     p.add_argument('--row-transfer-archive',type=Path,help='Replay the frozen trajectory on the completed row-refresh documents')
+    p.add_argument('--cache-dir',type=Path,help='Explicit model cache location for the newly prepared run')
+    p.add_argument('--dataset-cache-dir',type=Path,help='Explicit dataset cache location for the newly prepared run')
+    p.add_argument('--allow-model-download',action='store_true',help='Allow fetching pinned model/tokenizer files when the new server cache is empty')
     a=p.parse_args();prepare(a.config,a.output,include_tests=a.include_tests,relative_screen=a.relative_g1_screen,
                             matching_study=a.matching_study,batch_screen=a.batch_document_screen,matching_archive=a.matching_archive,
                             retest_pilot=a.retest_pilot,bilateral_sources=a.bilateral_sources,row_crossfit_cohort=a.row_crossfit_cohort,
-                            row_refresh_sources=a.row_refresh_sources,row_transfer_archive=a.row_transfer_archive)
+                            row_refresh_sources=a.row_refresh_sources,row_transfer_archive=a.row_transfer_archive,
+                            cache_dir=a.cache_dir,dataset_cache_dir=a.dataset_cache_dir,allow_model_download=a.allow_model_download)
